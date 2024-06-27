@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>three.js - misc - octree collisions</title>
+    <meta charset=utf-8 />
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="main.css">
+</head>
+<body>
+    <div id="info">
+        RATO para olhar em redor<br/>
+        WASD para mover e ESPAÇO para saltar<br/>
+        T para trocar de camera
+    </div>
+    <div id="container"></div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../build/three.module.js",
+                "three/addons/": "./jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+
+        import * as THREE from 'three';
+        import Stats from 'three/addons/libs/stats.module.js';
+        import { Octree } from 'three/addons/math/Octree.js';
+        import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
+        import { Capsule } from 'three/addons/math/Capsule.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const clock = new THREE.Clock();
+
+        let racks;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x127dff);
+
+        let instancedMesh;
+
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 10000);
+        camera.rotation.order = 'YXZ';
+
+        const aspect = window.innerWidth / window.innerHeight;
+        const topCamera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 10000);
+        topCamera.position.set(50, 100, 50);
+        topCamera.lookAt(50, 0, 50);
+
+        let activeCamera = camera;
+
+        const fillLight1 = new THREE.HemisphereLight(0x8dc1de, 0x00668d, 1.5);
+        fillLight1.position.set(2, 1, 1);
+        scene.add(fillLight1);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        directionalLight.position.set(-5, 25, -1);
+
+        scene.add(directionalLight);
+
+        const container = document.getElementById('container');
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setAnimationLoop(animate);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.VSMShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        container.appendChild(renderer.domElement);
+
+        const stats = new Stats();
+        stats.domElement.style.position = 'absolute';
+        stats.domElement.style.top = '0px';
+        container.appendChild(stats.domElement);
+
+        const GRAVITY = 30;
+        const STEPS_PER_FRAME = 5;
+
+        const worldOctree = new Octree();
+
+        const playerCollider = new Capsule(new THREE.Vector3(50, 0.35, 50), new THREE.Vector3(50, 1, 50), 0.35);
+
+        const playerVelocity = new THREE.Vector3();
+        const playerDirection = new THREE.Vector3();
+
+        let playerOnFloor = false;
+        let mouseTime = 0;
+
+        const keyStates = {};
+
+        const vector1 = new THREE.Vector3();
+        const vector2 = new THREE.Vector3();
+        const vector3 = new THREE.Vector3();
+
+        document.addEventListener('keydown', (event) => {
+            keyStates[event.code] = true;
+
+            if (event.code === 'KeyT') {
+                toggleCamera();
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            keyStates[event.code] = false;
+        });
+
+        container.addEventListener('mousedown', () => {
+            if (activeCamera === camera) {
+                document.body.requestPointerLock();
+                mouseTime = performance.now();
+            }
+        });
+
+        document.body.addEventListener('mousemove', (event) => {
+            if (document.pointerLockElement === document.body) {
+                camera.rotation.y -= event.movementX / 500;
+                camera.rotation.x -= event.movementY / 500;
+            }
+        });
+
+        window.addEventListener('resize', onWindowResize);
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            const aspect = window.innerWidth / window.innerHeight;
+            topCamera.left = -50 * aspect;
+            topCamera.right = 50 * aspect;
+            topCamera.top = 50;
+            topCamera.bottom = -50;
+            topCamera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Calculate the bounding box of all the racks
+        function calculateWallBoundingBox(racks) {
+            const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+            const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+
+            racks.forEach(rack => {
+                const position = new THREE.Vector3(
+                    rack.Spazio_coord_draw_a / 50,
+                    rack.Spazio_coord_draw_b / 50,
+                    rack.Spazio_coord_draw_c / 50
+                );
+
+                min.min(position);
+                max.max(position);
+            });
+            console.log(min);
+            console.log(max);
+            return { min, max };
+        }
+
+        
+
+        function createWall(position, size) {
+            const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+            const material = new THREE.MeshLambertMaterial({ color: 0xd1d1d1 });
+            const wall = new THREE.Mesh(geometry, material);
+            wall.position.copy(position);
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            scene.add(wall);
+            worldOctree.fromGraphNode(wall);
+        }
+
+        // F2 change parameter name in all document
+        // Create walls around the bounding box with a margin
+        function createWallsAroundRacks(wallBoundingBoxCoords) {
+            const min = wallBoundingBoxCoords.min;
+            const max = wallBoundingBoxCoords.max;
+
+            // Parâmetros das paredes
+            const wallHeight = 5;
+            const wallThickness = 0.01;
+            const wallMargin = 5; // Adjust this value to set the margin
+
+            // Calculate adjusted min and max with margin
+            const adjustedMin = new THREE.Vector3(min.x - wallMargin, min.y, min.z - wallMargin);
+            const adjustedMax = new THREE.Vector3(max.x + wallMargin, max.y, max.z + wallMargin);
+
+            // Calculate wall positions and sizes
+            const frontWallPosition = new THREE.Vector3((adjustedMin.x + adjustedMax.x) / 2, wallHeight / 2, adjustedMin.z - wallThickness / 2);
+            const backWallPosition = new THREE.Vector3((adjustedMin.x + adjustedMax.x) / 2, wallHeight / 2, adjustedMax.z + wallThickness / 2);
+            const leftWallPosition = new THREE.Vector3(adjustedMin.x - wallThickness / 2, wallHeight / 2, (adjustedMin.z + adjustedMax.z) / 2);
+            const rightWallPosition = new THREE.Vector3(adjustedMax.x + wallThickness / 2, wallHeight / 2, (adjustedMin.z + adjustedMax.z) / 2);
+
+            const wallWidth = adjustedMax.x - adjustedMin.x + wallThickness;
+            const wallDepth = adjustedMax.z - adjustedMin.z + wallThickness;
+
+            // Create four walls
+            createWall(frontWallPosition, new THREE.Vector3(wallWidth, wallHeight, wallThickness)); // Front wall
+            createWall(backWallPosition, new THREE.Vector3(wallWidth, wallHeight, wallThickness));  // Back wall
+            createWall(leftWallPosition, new THREE.Vector3(wallThickness, wallHeight, wallDepth));  // Left wall
+            createWall(rightWallPosition, new THREE.Vector3(wallThickness, wallHeight, wallDepth)); // Right wall
+
+            // Create floor
+            const floorGeometry = new THREE.PlaneGeometry(wallWidth, wallDepth);
+            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set((adjustedMin.x + adjustedMax.x) / 2, 0, (adjustedMin.z + adjustedMax.z) / 2);
+            floor.receiveShadow = true;
+            scene.add(floor);
+            worldOctree.fromGraphNode(floor);
+        }
+
+        // Update createWalls function to use bounding box
+        function createWalls() {
+            if (racks && racks.length > 0) {
+                const wallBoundingBoxCoords = calculateWallBoundingBox(racks);
+                createWallsAroundRacks(wallBoundingBoxCoords);
+            }
+        }
+
+        // Calcula se algum vetor interseta com um bounding box
+        function playerCollisions() {
+            const result = worldOctree.capsuleIntersect(playerCollider);
+            playerOnFloor = false;
+
+            if (result) {
+                playerOnFloor = result.normal.y > 0;
+
+                if (!playerOnFloor) {
+                    playerVelocity.addScaledVector(result.normal, -result.normal.dot(playerVelocity));
+                }
+
+                playerCollider.translate(result.normal.multiplyScalar(result.depth));
+            }
+        }
+
+        // Atualizar o player a cada frame (colisões, velocidade)
+        function updatePlayer(deltaTime) {
+            let damping = Math.exp(-4 * deltaTime) - 1;
+
+            if (!playerOnFloor) {
+                playerVelocity.y -= GRAVITY * deltaTime;
+                damping *= 0.1;
+            }
+
+            playerVelocity.addScaledVector(playerVelocity, damping);
+
+            const deltaPosition = playerVelocity.clone().multiplyScalar(deltaTime);
+            playerCollider.translate(deltaPosition);
+
+            // colisões
+            playerCollisions();
+
+            camera.position.copy(playerCollider.end);
+        }
+
+        function getForwardVector() {
+            camera.getWorldDirection(playerDirection);
+            playerDirection.y = 0;
+            playerDirection.normalize();
+            return playerDirection;
+        }
+
+        
+        function getSideVector() {
+            camera.getWorldDirection(playerDirection);
+            playerDirection.y = 0;
+            playerDirection.normalize();
+            playerDirection.cross(camera.up);
+            return playerDirection;
+        }
+
+        // Ativar movimentos com as teclas
+        function handleControls(deltaTime) {
+            const speedDelta = deltaTime * (playerOnFloor ? 25 : 8);
+
+            if (keyStates['KeyW']) {
+                playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
+            }
+
+            if (keyStates['KeyS']) {
+                playerVelocity.add(getForwardVector().multiplyScalar(-speedDelta));
+            }
+
+            if (keyStates['KeyA']) {
+                playerVelocity.add(getSideVector().multiplyScalar(-speedDelta));
+            }
+
+            if (keyStates['KeyD']) {
+                playerVelocity.add(getSideVector().multiplyScalar(speedDelta));
+            }
+
+            if (playerOnFloor) {
+                if (keyStates['Space']) {
+                    playerVelocity.y = 15;
+                }
+            }
+        }
+
+        // wtv
+        const helper = new OctreeHelper(worldOctree);
+        helper.visible = false;
+        scene.add(helper);
+
+        // wtv
+        const gui = new GUI({ width: 200 });
+        gui.add({ debug: false }, 'debug')
+            .onChange(function (value) {
+                helper.visible = value;
+            });
+        
+        // Se o personagem foge do mapa ele volta
+        function teleportPlayerIfOob() {
+            if (camera.position.y <= -25) {
+                playerCollider.start.set(50, 0.35, 50);
+                playerCollider.end.set(50, 1, 50);
+                playerCollider.radius = 0.35;
+                camera.position.copy(playerCollider.end);
+                camera.rotation.set(0, 0, 0);
+            }
+        }
+
+        // Alterar entre camaras
+        function toggleCamera() {
+            activeCamera = activeCamera === camera ? topCamera : camera;
+            if (activeCamera === camera) {
+                document.body.requestPointerLock();
+            } else {
+                document.exitPointerLock();
+            }
+        }
+
+        const orbitControls = new OrbitControls(topCamera, renderer.domElement);
+        orbitControls.target.set(45, 10, 79.49);
+        orbitControls.screenSpacePanning = false;
+        orbitControls.minDistance = 1;
+        orbitControls.maxDistance = 10000;
+        orbitControls.maxPolarAngle = Math.PI / 2;
+        orbitControls.enablePan = false;
+		orbitControls.enableDamping = true;
+        orbitControls.enabled = true; // Disable initially
+        
+        // Atualização da cena
+        function animate() {
+            const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
+
+            for (let i = 0; i < STEPS_PER_FRAME; i++) {
+                handleControls(deltaTime);
+                updatePlayer(deltaTime);
+                teleportPlayerIfOob();
+            }
+
+            if (activeCamera === topCamera) {
+                orbitControls.update();
+            }
+
+            renderer.render(scene, activeCamera);
+            stats.update();
+        }
+
+        function createCubesFromJSON() {
+            const geometry = new THREE.BoxGeometry(2, 2, 2); // Define cube geometry
+            const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 }); // Material for cubes
+
+            console.log(racks.length)
+
+            instancedMesh = new THREE.InstancedMesh(geometry, material, racks.length);
+            scene.add(instancedMesh);
+
+            const matrix = new THREE.Matrix4();
+            let instanceId = 0;
+
+            let positions = [];
+
+            racks.forEach(rack => {
+                const position = new THREE.Vector3(
+                    rack.Spazio_coord_draw_a / 50,
+                    rack.Spazio_coord_draw_b / 50 + 1,
+                    rack.Spazio_coord_draw_c / 50
+                );
+
+                // bounding box
+                const boundingBox = new THREE.Mesh(geometry, material);
+
+                // Establecer la posición de la caja delimitadora
+                boundingBox.position.copy(position);
+
+                // Añadir al `worldOctree`
+                worldOctree.fromGraphNode(boundingBox);
+
+                // Opcional: Añadir la caja delimitadora a la escena para visualización
+                scene.add(boundingBox);
+
+                matrix.setPosition(position);
+                instancedMesh.setMatrixAt(instanceId, matrix);
+                instanceId++;
+            });
+
+            
+
+            instancedMesh.instanceMatrix.needsUpdate = true;
+        }
+
+        // Extract data from JSON
+        async function extractDataFromJSON(data) {
+            racks = data.Racks;
+            createCubesFromJSON();
+            //createRackBoundingBox();
+            createWalls();
+        }
+
+        // Fetch JSON data and start rendering
+        window.onload = function () {
+            fetch('resources/data/results1.json')
+                .then(response => response.json())
+                .then(data => {
+                    extractDataFromJSON(data);
+                })
+                .catch(error => console.error('Error fetching JSON:', error));
+        };
+    </script>
+</body>
+</html>
