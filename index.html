@@ -1,4 +1,3 @@
-@ -0,0 +1,425 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,10 +32,13 @@
         import { Capsule } from 'three/addons/math/Capsule.js';
         import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         const clock = new THREE.Clock();
 
         let racks;
+
+        const gltfLoader = new GLTFLoader();
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x127dff);
@@ -154,8 +156,6 @@
                 min.min(position);
                 max.max(position);
             });
-            console.log(min);
-            console.log(max);
             return { min, max };
         }
 
@@ -181,7 +181,7 @@
             // Parâmetros das paredes
             const wallHeight = 5;
             const wallThickness = 0.01;
-            const wallMargin = 5; // Adjust this value to set the margin
+            const wallMargin = 10; // Adjust this value to set the margin
 
             // Calculate adjusted min and max with margin
             const adjustedMin = new THREE.Vector3(min.x - wallMargin, min.y, min.z - wallMargin);
@@ -361,54 +361,54 @@
             stats.update();
         }
 
-        function createCubesFromJSON() {
-            const geometry = new THREE.BoxGeometry(2, 2, 2); // Define cube geometry
-            const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 }); // Material for cubes
+        // Function to create racks (GLTF models) from JSON data using InstancedMesh
+        async function createRacksFromJSON() {
+            const gltf = await gltfLoader.loadAsync('resources/rackNova/scene.gltf');
+            const model = gltf.scene;
+            const geometry = [];
+            const material = [];
 
-            console.log(racks.length)
+            model.traverse(child => {
+                if (child.isMesh) {
+                    geometry.push(child.geometry);
+                    material.push(child.material);
+                }
+            });
 
-            instancedMesh = new THREE.InstancedMesh(geometry, material, racks.length);
-            scene.add(instancedMesh);
+            const count = racks.length;
+            instancedMesh = new THREE.InstancedMesh(geometry[0], material[0], count);
 
-            const matrix = new THREE.Matrix4();
-            let instanceId = 0;
-
-            let positions = [];
-
-            racks.forEach(rack => {
+            const dummy = new THREE.Object3D();
+            racks.forEach((rack, i) => {
                 const position = new THREE.Vector3(
                     rack.Spazio_coord_draw_a / 50,
-                    rack.Spazio_coord_draw_b / 50 + 1,
+                    rack.Spazio_coord_draw_b / 50,
                     rack.Spazio_coord_draw_c / 50
                 );
 
-                // bounding box
-                const boundingBox = new THREE.Mesh(geometry, material);
+                // Adjust the rotation
+                const rotation = new THREE.Euler(-Math.PI / 2, 0, Math.PI / 2);
 
-                // Establecer la posición de la caja delimitadora
-                boundingBox.position.copy(position);
-
-                // Añadir al `worldOctree`
-                worldOctree.fromGraphNode(boundingBox);
-
-                // Opcional: Añadir la caja delimitadora a la escena para visualización
-                scene.add(boundingBox);
-
-                matrix.setPosition(position);
-                instancedMesh.setMatrixAt(instanceId, matrix);
-                instanceId++;
+                // Adjust the scale
+                const scale = new THREE.Vector3(0.4, 0.4, 0.4);
+                
+                dummy.position.copy(position);
+                dummy.rotation.copy(rotation);
+                dummy.scale.copy(scale);
+                dummy.updateMatrix();
+                instancedMesh.setMatrixAt(i, dummy.matrix);
             });
 
-            
-
-            instancedMesh.instanceMatrix.needsUpdate = true;
+            instancedMesh.castShadow = true;
+            instancedMesh.receiveShadow = true;
+            scene.add(instancedMesh);
+            worldOctree.fromGraphNode(instancedMesh);
         }
 
         // Extract data from JSON
         async function extractDataFromJSON(data) {
             racks = data.Racks;
-            createCubesFromJSON();
-            //createRackBoundingBox();
+            await createRacksFromJSON();
             createWalls();
         }
 
