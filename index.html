@@ -37,6 +37,7 @@
         const clock = new THREE.Clock();
 
         let racks;
+        let boundingBoxCenter = new THREE.Vector3();
 
         const gltfLoader = new GLTFLoader();
 
@@ -99,6 +100,8 @@
         const vector2 = new THREE.Vector3();
         const vector3 = new THREE.Vector3();
 
+        let employeeModel;
+
         document.addEventListener('keydown', (event) => {
             keyStates[event.code] = true;
 
@@ -141,7 +144,7 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // Calculate the bounding box of all the racks
+        // Calculate the bounding box of all the racks and the center
         function calculateWallBoundingBox(racks) {
             const min = new THREE.Vector3(Infinity, Infinity, Infinity);
             const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
@@ -156,10 +159,15 @@
                 min.min(position);
                 max.max(position);
             });
-            return { min, max };
-        }
 
-        
+            const center = new THREE.Vector3(
+                (min.x + max.x) / 2,
+                (min.y + max.y) / 2,
+                (min.z + max.z) / 2
+            );
+
+            return { min, max, center };
+        }
 
         function createWall(position, size) {
             const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
@@ -197,10 +205,10 @@
             const wallDepth = adjustedMax.z - adjustedMin.z + wallThickness;
 
             // Create four walls
-            createWall(frontWallPosition, new THREE.Vector3(wallWidth, wallHeight, wallThickness)); // Front wall
-            createWall(backWallPosition, new THREE.Vector3(wallWidth, wallHeight, wallThickness));  // Back wall
-            createWall(leftWallPosition, new THREE.Vector3(wallThickness, wallHeight, wallDepth));  // Left wall
-            createWall(rightWallPosition, new THREE.Vector3(wallThickness, wallHeight, wallDepth)); // Right wall
+            createWall(frontWallPosition, new THREE.Vector3(wallWidth, wallHeight, wallThickness));
+            createWall(backWallPosition, new THREE.Vector3(wallWidth, wallHeight, wallThickness));
+            createWall(leftWallPosition, new THREE.Vector3(wallThickness, wallHeight, wallDepth));
+            createWall(rightWallPosition, new THREE.Vector3(wallThickness, wallHeight, wallDepth));
 
             // Create floor
             const floorGeometry = new THREE.PlaneGeometry(wallWidth, wallDepth);
@@ -214,9 +222,8 @@
         }
 
         // Update createWalls function to use bounding box
-        function createWalls() {
+        function createWalls(wallBoundingBoxCoords) {
             if (racks && racks.length > 0) {
-                const wallBoundingBoxCoords = calculateWallBoundingBox(racks);
                 createWallsAroundRacks(wallBoundingBoxCoords);
             }
         }
@@ -264,7 +271,6 @@
             return playerDirection;
         }
 
-        
         function getSideVector() {
             camera.getWorldDirection(playerDirection);
             playerDirection.y = 0;
@@ -277,25 +283,27 @@
         function handleControls(deltaTime) {
             const speedDelta = deltaTime * (playerOnFloor ? 25 : 8);
 
-            if (keyStates['KeyW']) {
-                playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
-            }
+            if (activeCamera === camera) {
+                if (keyStates['KeyW']) {
+                    playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
+                }
 
-            if (keyStates['KeyS']) {
-                playerVelocity.add(getForwardVector().multiplyScalar(-speedDelta));
-            }
+                if (keyStates['KeyS']) {
+                    playerVelocity.add(getForwardVector().multiplyScalar(-speedDelta));
+                }
 
-            if (keyStates['KeyA']) {
-                playerVelocity.add(getSideVector().multiplyScalar(-speedDelta));
-            }
+                if (keyStates['KeyA']) {
+                    playerVelocity.add(getSideVector().multiplyScalar(-speedDelta));
+                }
 
-            if (keyStates['KeyD']) {
-                playerVelocity.add(getSideVector().multiplyScalar(speedDelta));
-            }
+                if (keyStates['KeyD']) {
+                    playerVelocity.add(getSideVector().multiplyScalar(speedDelta));
+                }
 
-            if (playerOnFloor) {
-                if (keyStates['Space']) {
-                    playerVelocity.y = 15;
+                if (playerOnFloor) {
+                    if (keyStates['Space']) {
+                        playerVelocity.y = 15;
+                    }
                 }
             }
         }
@@ -311,12 +319,12 @@
             .onChange(function (value) {
                 helper.visible = value;
             });
-        
+
         // Se o personagem foge do mapa ele volta
         function teleportPlayerIfOob() {
             if (camera.position.y <= -25) {
-                playerCollider.start.set(50, 0.35, 50);
-                playerCollider.end.set(50, 1, 50);
+                playerCollider.start.set(boundingBoxCenter.x, boundingBoxCenter.y + 0.35, boundingBoxCenter.z);
+                playerCollider.end.set(boundingBoxCenter.x, boundingBoxCenter.y + 1, boundingBoxCenter.z);
                 playerCollider.radius = 0.35;
                 camera.position.copy(playerCollider.end);
                 camera.rotation.set(0, 0, 0);
@@ -326,6 +334,12 @@
         // Alterar entre camaras
         function toggleCamera() {
             activeCamera = activeCamera === camera ? topCamera : camera;
+
+            if (employeeModel) {
+                employeeModel.position.copy(playerCollider.end);
+                employeeModel.visible = (activeCamera === topCamera);
+            }
+
             if (activeCamera === camera) {
                 document.body.requestPointerLock();
             } else {
@@ -340,9 +354,9 @@
         orbitControls.maxDistance = 10000;
         orbitControls.maxPolarAngle = Math.PI / 2;
         orbitControls.enablePan = false;
-		orbitControls.enableDamping = true;
-        orbitControls.enabled = true; // Disable initially
-        
+        orbitControls.enableDamping = true;
+        orbitControls.enabled = true;
+
         // Atualização da cena
         function animate() {
             const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
@@ -351,6 +365,11 @@
                 handleControls(deltaTime);
                 updatePlayer(deltaTime);
                 teleportPlayerIfOob();
+            }
+
+            if (employeeModel) {
+                // Toggle visibility of employee based on active camera
+                employeeModel.visible = (activeCamera === topCamera);
             }
 
             if (activeCamera === topCamera) {
@@ -391,7 +410,7 @@
 
                 // Adjust the scale
                 const scale = new THREE.Vector3(0.4, 0.4, 0.4);
-                
+
                 dummy.position.copy(position);
                 dummy.rotation.copy(rotation);
                 dummy.scale.copy(scale);
@@ -405,11 +424,29 @@
             worldOctree.fromGraphNode(instancedMesh);
         }
 
+        // cria um cubo que representa a posição do empregado
+        function createEmployee() {
+            const geometry = new THREE.BoxGeometry(1, 1, 1); // Adjust size as needed
+            const material = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Adjust color and material as needed
+            employeeModel = new THREE.Mesh(geometry, material);
+            employeeModel.position.copy(playerCollider.end); // Position the cube where the employee model would be
+            employeeModel.visible = false; // Initially hide the cube
+            scene.add(employeeModel);
+        }
+
         // Extract data from JSON
         async function extractDataFromJSON(data) {
             racks = data.Racks;
+            const wallBoundingBoxCoords = calculateWallBoundingBox(racks);
+            boundingBoxCenter.copy(wallBoundingBoxCoords.center);
+            
+            // coloca o collider do player no centro da bounding box do armazém
+            playerCollider.start.set(boundingBoxCenter.x, 0 ,boundingBoxCenter.z);
+            playerCollider.end.set(boundingBoxCenter.x, 1 ,boundingBoxCenter.z)
+
             await createRacksFromJSON();
-            createWalls();
+            createWalls(wallBoundingBoxCoords);
+            createEmployee()
         }
 
         // Fetch JSON data and start rendering
