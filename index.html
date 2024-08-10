@@ -37,6 +37,7 @@
         const clock = new THREE.Clock();
 
         let racks;
+        let buffer;
         let boundingBoxCenter = new THREE.Vector3();
 
         const gltfLoader = new GLTFLoader();
@@ -51,8 +52,8 @@
 
         const aspect = window.innerWidth / window.innerHeight;
         const topCamera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 10000);
-        topCamera.position.set(50, 100, 50);
-        topCamera.lookAt(50, 0, 50);
+        //topCamera.position.set(50, 100, 50);
+        //topCamera.lookAt(50, 0, 50);
 
         let activeCamera = camera;
 
@@ -134,11 +135,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
 
-            const aspect = window.innerWidth / window.innerHeight;
-            topCamera.left = -50 * aspect;
-            topCamera.right = 50 * aspect;
-            topCamera.top = 50;
-            topCamera.bottom = -50;
+            topCamera.aspect = window.innerWidth / window.innerHeight;
             topCamera.updateProjectionMatrix();
 
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -348,7 +345,7 @@
         }
 
         const orbitControls = new OrbitControls(topCamera, renderer.domElement);
-        orbitControls.target.set(45, 10, 79.49);
+        //orbitControls.target.set(45, 10, 79.49);
         orbitControls.screenSpacePanning = false;
         orbitControls.minDistance = 1;
         orbitControls.maxDistance = 10000;
@@ -398,6 +395,13 @@
             instancedMesh = new THREE.InstancedMesh(geometry[0], material[0], count);
 
             const dummy = new THREE.Object3D();
+            const cubeGeometry = new THREE.BoxGeometry(0.85, 3.3, 5.5); // Cube geometry
+            const cubeMaterial = new THREE.MeshLambertMaterial({
+                color: 0xff0000, // Cor do cubo
+                opacity: 0,     // opacity:1 --> cubos visíveis
+                transparent: true 
+            });
+
             racks.forEach((rack, i) => {
                 const position = new THREE.Vector3(
                     rack.Spazio_coord_draw_a / 50,
@@ -416,6 +420,18 @@
                 dummy.scale.copy(scale);
                 dummy.updateMatrix();
                 instancedMesh.setMatrixAt(i, dummy.matrix);
+
+                // Create and position the cube
+                const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+                position.add(new THREE.Vector3(1.57, 0, 0.37));
+                cube.position.copy(position);
+                cube.rotation.copy(rotation);
+                cube.castShadow = true;
+                cube.receiveShadow = true;
+                scene.add(cube);
+
+                // Add the cube to the Octree
+                worldOctree.fromGraphNode(cube);
             });
 
             instancedMesh.castShadow = true;
@@ -434,24 +450,65 @@
             scene.add(employeeModel);
         }
 
+        // Function to create buffer from JSON data using InstancedMesh
+        async function createBufferFromJSON() {
+            // Create geometry and material for cubes
+            const cubeGeometry = new THREE.BoxGeometry(1, 1, 1); // 1x1x1 cubes
+            const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red color
+
+            const count = buffer.length; // Assuming buffer is an array of data
+
+            // Create InstancedMesh with cube geometry and material
+            instancedMesh = new THREE.InstancedMesh(cubeGeometry, cubeMaterial, count);
+
+            const dummy = new THREE.Object3D();
+
+            buffer.forEach((item, i) => {
+                const position = new THREE.Vector3(
+                    item.Spazio_coord_draw_a / 50,
+                    item.Spazio_coord_draw_b / 50,
+                    item.Spazio_coord_draw_c / 50
+                );
+
+                // Set position only, no rotation or scaling
+                dummy.position.copy(position);
+                dummy.rotation.set(0, 0, 0); // No rotation
+                dummy.scale.set(1, 1, 1); // Default scale
+                dummy.updateMatrix();
+                instancedMesh.setMatrixAt(i, dummy.matrix);
+            });
+
+            instancedMesh.castShadow = true;
+            instancedMesh.receiveShadow = true;
+            scene.add(instancedMesh);
+
+            // Add the InstancedMesh to the Octree
+            worldOctree.fromGraphNode(instancedMesh);
+        }
+
         // Extract data from JSON
         async function extractDataFromJSON(data) {
             racks = data.Racks;
+            buffer = data.Buffer;
             const wallBoundingBoxCoords = calculateWallBoundingBox(racks);
             boundingBoxCenter.copy(wallBoundingBoxCoords.center);
             
             // coloca o collider do player no centro da bounding box do armazém
             playerCollider.start.set(boundingBoxCenter.x, 0 ,boundingBoxCenter.z);
-            playerCollider.end.set(boundingBoxCenter.x, 1 ,boundingBoxCenter.z)
+            playerCollider.end.set(boundingBoxCenter.x, 1 ,boundingBoxCenter.z);
+
+            // Set the topCamera position to the center of the bounding box
+            orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
 
             await createRacksFromJSON();
+            await createBufferFromJSON();
             createWalls(wallBoundingBoxCoords);
             createEmployee()
         }
 
         // Fetch JSON data and start rendering
         window.onload = function () {
-            fetch('resources/data/results1.json')
+            fetch('resources/data/arm5401.json')
                 .then(response => response.json())
                 .then(data => {
                     extractDataFromJSON(data);
