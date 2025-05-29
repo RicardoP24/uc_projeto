@@ -17,8 +17,8 @@
     <script type="importmap">
         {
             "imports": {
-                "three": "../build/three.module.js",
-                "three/addons/": "./jsm/"
+                "three": "./three/build/three.module.js",
+                "three/addons/": "./three/examples/jsm/"
             }
         }
     </script>
@@ -37,7 +37,7 @@
         const clock = new THREE.Clock();
 
         let racks;
-        let buffer;
+        let spaces;
         let boundingBoxCenter = new THREE.Vector3();
 
         const gltfLoader = new GLTFLoader();
@@ -399,7 +399,7 @@
             const cubeMaterial = new THREE.MeshLambertMaterial({
                 color: 0xff0000, // Cor do cubo
                 opacity: 0,     // opacity:1 --> cubos visíveis
-                transparent: true 
+                transparent: true
             });
 
             racks.forEach((rack, i) => {
@@ -450,20 +450,20 @@
             scene.add(employeeModel);
         }
 
-        // Function to create buffer from JSON data using InstancedMesh
-        async function createBufferFromJSON() {
+        // Function to create spaces from JSON data using InstancedMesh
+        async function createSpacesFromJSON() {
             // Create geometry and material for cubes
             const cubeGeometry = new THREE.BoxGeometry(1, 1, 1); // 1x1x1 cubes
             const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red color
 
-            const count = buffer.length; // Assuming buffer is an array of data
+            const count = spaces.length; // Assuming spaces is an array of data
 
             // Create InstancedMesh with cube geometry and material
             instancedMesh = new THREE.InstancedMesh(cubeGeometry, cubeMaterial, count);
 
             const dummy = new THREE.Object3D();
 
-            buffer.forEach((item, i) => {
+            spaces.forEach((item, i) => {
                 const position = new THREE.Vector3(
                     item.Spazio_coord_draw_a / 50,
                     item.Spazio_coord_draw_b / 50,
@@ -489,10 +489,10 @@
         // Extract data from JSON
         async function extractDataFromJSON(data) {
             racks = data.Racks;
-            buffer = data.Buffer;
+            spaces = data.Spaces;
             const wallBoundingBoxCoords = calculateWallBoundingBox(racks);
             boundingBoxCenter.copy(wallBoundingBoxCoords.center);
-            
+
             // coloca o collider do player no centro da bounding box do armazém
             playerCollider.start.set(boundingBoxCenter.x, 0 ,boundingBoxCenter.z);
             playerCollider.end.set(boundingBoxCenter.x, 1 ,boundingBoxCenter.z);
@@ -501,14 +501,14 @@
             orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
 
             await createRacksFromJSON();
-            await createBufferFromJSON();
+            await createSpacesFromJSON();
             createWalls(wallBoundingBoxCoords);
             createEmployee()
         }
 
         // Fetch JSON data and start rendering
         window.onload = function () {
-            fetch('resources/data/arm5401.json')
+            fetch('resources/data/arm01.json')
                 .then(response => response.json())
                 .then(data => {
                     extractDataFromJSON(data);
