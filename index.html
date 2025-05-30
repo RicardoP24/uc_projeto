@@ -378,67 +378,74 @@
         }
 
         // Function to create racks (GLTF models) from JSON data using InstancedMesh
-        async function createRacksFromJSON() {
-            const gltf = await gltfLoader.loadAsync('resources/rackNova/scene.gltf');
-            const model = gltf.scene;
-            const geometry = [];
-            const material = [];
+         async function createRacksFromJSON() {
+    const gltf = await gltfLoader.loadAsync('resources/rackNova/scene.gltf');
+    const model = gltf.scene;
+    const geometry = [];
+    const material = [];
 
-            model.traverse(child => {
-                if (child.isMesh) {
-                    geometry.push(child.geometry);
-                    material.push(child.material);
-                }
-            });
-
-            const count = racks.length;
-            instancedMesh = new THREE.InstancedMesh(geometry[0], material[0], count);
-
-            const dummy = new THREE.Object3D();
-            const cubeGeometry = new THREE.BoxGeometry(0.85, 3.3, 5.5); // Cube geometry
-            const cubeMaterial = new THREE.MeshLambertMaterial({
-                color: 0xff0000, // Cor do cubo
-                opacity: 0,     // opacity:1 --> cubos visíveis
-                transparent: true
-            });
-
-            racks.forEach((rack, i) => {
-                const position = new THREE.Vector3(
-                    rack.Spazio_coord_draw_a / 50,
-                    rack.Spazio_coord_draw_b / 50,
-                    rack.Spazio_coord_draw_c / 50
-                );
-
-                // Adjust the rotation
-                const rotation = new THREE.Euler(-Math.PI / 2, 0, Math.PI / 2);
-
-                // Adjust the scale
-                const scale = new THREE.Vector3(0.4, 0.4, 0.4);
-
-                dummy.position.copy(position);
-                dummy.rotation.copy(rotation);
-                dummy.scale.copy(scale);
-                dummy.updateMatrix();
-                instancedMesh.setMatrixAt(i, dummy.matrix);
-
-                // Create and position the cube
-                const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-                position.add(new THREE.Vector3(1.57, 0, 0.37));
-                cube.position.copy(position);
-                cube.rotation.copy(rotation);
-                cube.castShadow = true;
-                cube.receiveShadow = true;
-                scene.add(cube);
-
-                // Add the cube to the Octree
-                worldOctree.fromGraphNode(cube);
-            });
-
-            instancedMesh.castShadow = true;
-            instancedMesh.receiveShadow = true;
-            scene.add(instancedMesh);
-            worldOctree.fromGraphNode(instancedMesh);
+    model.traverse(child => {
+        if (child.isMesh) {
+            geometry.push(child.geometry);
+            material.push(child.material);
         }
+    });
+
+    const verticalLevels = 5; // Number of vertical stacked racks
+    const verticalSpacing = 3.5; // Space between each level
+
+    const count = racks.length * verticalLevels;
+    instancedMesh = new THREE.InstancedMesh(geometry[0], material[0], count);
+
+    const dummy = new THREE.Object3D();
+
+    const cubeGeometry = new THREE.BoxGeometry(0.04, 3.3, 5.5);
+    const cubeMaterial = new THREE.MeshLambertMaterial({
+        color: 0xff0000,
+        opacity: 0,
+        transparent: true
+    });
+
+    let instanceIndex = 0;
+
+    racks.forEach(rack => {
+        const basePosition = new THREE.Vector3(
+            rack.Spazio_coord_draw_a / 50,
+            rack.Spazio_coord_draw_b / 50,
+            rack.Spazio_coord_draw_c / 50
+        );
+
+        const rotation = new THREE.Euler(-Math.PI / 2, 0, Math.PI / 2);
+        const scale = new THREE.Vector3(0.4, 0.4, 0.4);
+
+        for (let level = 0; level < verticalLevels; level++) {
+            const position = basePosition.clone();
+            position.y += level * verticalSpacing;
+
+            dummy.position.copy(position);
+            dummy.rotation.copy(rotation);
+            dummy.scale.copy(scale);
+            dummy.updateMatrix();
+            instancedMesh.setMatrixAt(instanceIndex++, dummy.matrix);
+
+            // Optional: create invisible cube for collision
+            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            const cubeOffset = new THREE.Vector3(1.57, 0, 0.37);
+            cube.position.copy(position.clone().add(cubeOffset));
+            cube.rotation.copy(rotation);
+            cube.castShadow = true;
+            cube.receiveShadow = true;
+            scene.add(cube);
+            worldOctree.fromGraphNode(cube);
+        }
+    });
+
+    instancedMesh.castShadow = true;
+    instancedMesh.receiveShadow = true;
+    scene.add(instancedMesh);
+    worldOctree.fromGraphNode(instancedMesh);
+}
+
 
         // cria um cubo que representa a posição do empregado
         function createEmployee() {
@@ -449,6 +456,8 @@
             employeeModel.visible = false; // Initially hide the cube
             scene.add(employeeModel);
         }
+
+        
 
         // Function to create spaces from JSON data using InstancedMesh
         async function createSpacesFromJSON() {
@@ -508,8 +517,7 @@
 
         // Fetch JSON data and start rendering
         window.onload = function () {
-            fetch('resources/data/arm01.json')
-                .then(response => response.json())
+            fetch('resources/data/arm01.json').then(response => response.json())
                 .then(data => {
                     extractDataFromJSON(data);
                 })
