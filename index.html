@@ -496,10 +496,10 @@
         scene.add(employeeModel);
       }
 
-      // Function to create spaces from JSON data using InstancedMesh
+      // Function to create spaces from JSON data using InstancedMesh ISTO É O PICKING BASICAMENTE MAS A AVERIGUAR
       function createSpacesFromJSON() {
         const spaceColor = 0x00ff00; // Verde
-        const spaceOpacity = 0.6; // Mais sólido que antes (antes era 0.3)
+        const spaceOpacity = 0.6; //
 
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const material = new THREE.MeshBasicMaterial({
@@ -570,7 +570,41 @@
         // Add the InstancedMesh to the Octree
         worldOctree.fromGraphNode(instancedMesh); */
 
-      // Extract data from JSON
+     //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
+      function createBufferFromJSON(bufferArray) {
+        const bufferColor = 0xd48c8c;
+        const bufferOpacity = 0.7;
+
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshBasicMaterial({
+          color: bufferColor,
+          transparent: true,
+          opacity: bufferOpacity,
+        });
+
+        const count = bufferArray.length;
+        const instancedMesh = new THREE.InstancedMesh(
+          geometry,
+          material,
+          count
+        );
+        const dummy = new THREE.Object3D();
+
+        bufferArray.forEach((item, i) => {
+          const x = parseFloat(item.Spazio_coord_draw_a) / 50;
+          const y = parseFloat(item.Spazio_coord_draw_b) / 50;
+          const z = parseFloat(item.Spazio_coord_draw_c) / 50;
+
+          dummy.position.set(x, y + 0.5, z);
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.set(1, 1, 1);
+          dummy.updateMatrix();
+
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+        });
+        scene.add(instancedMesh);
+        console.log(`Buffers desenhados: ${count}`);
+      }
       async function extractDataFromJSON(data) {
         racks = data.Racks;
         spaces = data.Spaces;
@@ -620,12 +654,12 @@
 
       // Fetch JSON data and start rendering
       window.onload = function () {
-        fetch("resources/data/arm5401.json")
+        fetch("resources/data/arm5701.json")
           .then((response) => response.json())
           .then(async (data) => {
             await extractDataFromJSON(data);
             createCorridorsFromJSON(data.Corridor); // -> Alteração GM
-
+            createBufferFromJSON(data.Buffer); // -> Alteração GM
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
             const largura =
