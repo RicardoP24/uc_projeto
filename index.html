@@ -1,528 +1,655 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <title>three.js - misc - octree collisions</title>
-    <meta charset=utf-8 />
-    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <link type="text/css" rel="stylesheet" href="main.css">
-</head>
-<body>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
+    <link type="text/css" rel="stylesheet" href="main.css" />
+  </head>
+  <body>
     <div id="info">
-        RATO para olhar em redor<br/>
-        WASD para mover e ESPAÇO para saltar<br/>
-        T para trocar de camera
+      RATO para olhar em redor<br />
+      WASD para mover e ESPAÇO para saltar<br />
+      T para trocar de camera
     </div>
     <div id="container"></div>
 
     <script type="importmap">
-        {
-            "imports": {
-                "three": "./three/build/three.module.js",
-                "three/addons/": "./three/examples/jsm/"
-            }
+      {
+        "imports": {
+          "three": "./three/build/three.module.js",
+          "three/addons/": "./three/examples/jsm/"
         }
+      }
     </script>
 
     <script type="module">
+      import * as THREE from "three";
+      import Stats from "three/addons/libs/stats.module.js";
+      import { Octree } from "three/addons/math/Octree.js";
+      import { OctreeHelper } from "three/addons/helpers/OctreeHelper.js";
+      import { Capsule } from "three/addons/math/Capsule.js";
+      import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      //import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'; -> GM nao quero utilizar GLTF Loaders estragam-me os FPS
 
-        import * as THREE from 'three';
-        import Stats from 'three/addons/libs/stats.module.js';
-        import { Octree } from 'three/addons/math/Octree.js';
-        import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
-        import { Capsule } from 'three/addons/math/Capsule.js';
-        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+      const clock = new THREE.Clock();
+      let wallBoundingBoxCoords;
+      let racks;
+      let spaces;
+      let boundingBoxCenter = new THREE.Vector3();
 
-        const clock = new THREE.Clock();
+      //const gltfLoader = new GLTFLoader();  -> GM nao quero utilizar GLTF Loaders estragam-me os FPS
 
-        let racks;
-        let spaces;
-        let boundingBoxCenter = new THREE.Vector3();
+      const scene = new THREE.Scene();
+      //Mudança das core GM
+      scene.background = new THREE.Color(0x252c3f);
 
-        const gltfLoader = new GLTFLoader();
+      let instancedMesh;
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x127dff);
+      const camera = new THREE.PerspectiveCamera(
+        70,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        10000
+      );
+      camera.rotation.order = "YXZ";
 
-        let instancedMesh;
+      const aspect = window.innerWidth / window.innerHeight;
+      const topCamera = new THREE.PerspectiveCamera(
+        40,
+        window.innerWidth / window.innerHeight,
+        1,
+        10000
+      );
+      //topCamera.position.set(50, 100, 50);
+      //topCamera.lookAt(50, 0, 50);
 
-        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 10000);
-        camera.rotation.order = 'YXZ';
+      let activeCamera = camera;
+      // Aumentar a illuminação Global ALTERAÇÃO GM
 
-        const aspect = window.innerWidth / window.innerHeight;
-        const topCamera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 10000);
-        //topCamera.position.set(50, 100, 50);
-        //topCamera.lookAt(50, 0, 50);
+      // Luz ambiente suave
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // luz geral
+      scene.add(ambientLight);
 
-        let activeCamera = camera;
+      // Luz direcional clara
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+      directionalLight.position.set(50, 50, 50);
+      directionalLight.castShadow = true;
+      scene.add(directionalLight);
 
-        const fillLight1 = new THREE.HemisphereLight(0x8dc1de, 0x00668d, 1.5);
-        fillLight1.position.set(2, 1, 1);
-        scene.add(fillLight1);
+      const container = document.getElementById("container");
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
-        directionalLight.position.set(-5, 25, -1);
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setAnimationLoop(animate);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.VSMShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      container.appendChild(renderer.domElement);
 
-        scene.add(directionalLight);
+      const stats = new Stats();
+      stats.domElement.style.position = "absolute";
+      stats.domElement.style.top = "0px";
+      container.appendChild(stats.domElement);
 
-        const container = document.getElementById('container');
+      const GRAVITY = 30;
+      const STEPS_PER_FRAME = 5;
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
+      const worldOctree = new Octree();
+
+      const playerCollider = new Capsule(
+        new THREE.Vector3(50, 0.35, 50),
+        new THREE.Vector3(50, 1, 50),
+        0.35
+      );
+
+      const playerVelocity = new THREE.Vector3();
+      const playerDirection = new THREE.Vector3();
+
+      let playerOnFloor = false;
+      let mouseTime = 0;
+
+      const keyStates = {};
+
+      const vector1 = new THREE.Vector3();
+      const vector2 = new THREE.Vector3();
+      const vector3 = new THREE.Vector3();
+
+      let employeeModel;
+
+      document.addEventListener("keydown", (event) => {
+        keyStates[event.code] = true;
+
+        if (event.code === "KeyT") {
+          toggleCamera();
+        }
+      });
+
+      document.addEventListener("keyup", (event) => {
+        keyStates[event.code] = false;
+      });
+
+      container.addEventListener("mousedown", () => {
+        if (activeCamera === camera) {
+          document.body.requestPointerLock();
+          mouseTime = performance.now();
+        }
+      });
+
+      document.body.addEventListener("mousemove", (event) => {
+        if (document.pointerLockElement === document.body) {
+          camera.rotation.y -= event.movementX / 500;
+          camera.rotation.x -= event.movementY / 500;
+        }
+      });
+
+      window.addEventListener("resize", onWindowResize);
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        topCamera.aspect = window.innerWidth / window.innerHeight;
+        topCamera.updateProjectionMatrix();
+
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setAnimationLoop(animate);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.VSMShadowMap;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        container.appendChild(renderer.domElement);
-
-        const stats = new Stats();
-        stats.domElement.style.position = 'absolute';
-        stats.domElement.style.top = '0px';
-        container.appendChild(stats.domElement);
-
-        const GRAVITY = 30;
-        const STEPS_PER_FRAME = 5;
-
-        const worldOctree = new Octree();
-
-        const playerCollider = new Capsule(new THREE.Vector3(50, 0.35, 50), new THREE.Vector3(50, 1, 50), 0.35);
-
-        const playerVelocity = new THREE.Vector3();
-        const playerDirection = new THREE.Vector3();
-
-        let playerOnFloor = false;
-        let mouseTime = 0;
-
-        const keyStates = {};
-
-        const vector1 = new THREE.Vector3();
-        const vector2 = new THREE.Vector3();
-        const vector3 = new THREE.Vector3();
-
-        let employeeModel;
-
-        document.addEventListener('keydown', (event) => {
-            keyStates[event.code] = true;
-
-            if (event.code === 'KeyT') {
-                toggleCamera();
-            }
-        });
-
-        document.addEventListener('keyup', (event) => {
-            keyStates[event.code] = false;
-        });
-
-        container.addEventListener('mousedown', () => {
-            if (activeCamera === camera) {
-                document.body.requestPointerLock();
-                mouseTime = performance.now();
-            }
-        });
-
-        document.body.addEventListener('mousemove', (event) => {
-            if (document.pointerLockElement === document.body) {
-                camera.rotation.y -= event.movementX / 500;
-                camera.rotation.x -= event.movementY / 500;
-            }
-        });
-
-        window.addEventListener('resize', onWindowResize);
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-
-            topCamera.aspect = window.innerWidth / window.innerHeight;
-            topCamera.updateProjectionMatrix();
-
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        // Calculate the bounding box of all the racks and the center
-        function calculateWallBoundingBox(racks) {
-            const min = new THREE.Vector3(Infinity, Infinity, Infinity);
-            const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
-
-            racks.forEach(rack => {
-                const position = new THREE.Vector3(
-                    rack.Spazio_coord_draw_a / 50,
-                    rack.Spazio_coord_draw_b / 50,
-                    rack.Spazio_coord_draw_c / 50
-                );
-
-                min.min(position);
-                max.max(position);
-            });
-
-            const center = new THREE.Vector3(
-                (min.x + max.x) / 2,
-                (min.y + max.y) / 2,
-                (min.z + max.z) / 2
-            );
-
-            return { min, max, center };
-        }
-
-        function createWall(position, size) {
-            const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
-            const material = new THREE.MeshLambertMaterial({ color: 0xd1d1d1 });
-            const wall = new THREE.Mesh(geometry, material);
-            wall.position.copy(position);
-            wall.castShadow = true;
-            wall.receiveShadow = true;
-            scene.add(wall);
-            worldOctree.fromGraphNode(wall);
-        }
-
-        // F2 change parameter name in all document
-        // Create walls around the bounding box with a margin
-        function createWallsAroundRacks(wallBoundingBoxCoords) {
-            const min = wallBoundingBoxCoords.min;
-            const max = wallBoundingBoxCoords.max;
-
-            // Parâmetros das paredes
-            const wallHeight = 5;
-            const wallThickness = 0.01;
-            const wallMargin = 10; // Adjust this value to set the margin
-
-            // Calculate adjusted min and max with margin
-            const adjustedMin = new THREE.Vector3(min.x - wallMargin, min.y, min.z - wallMargin);
-            const adjustedMax = new THREE.Vector3(max.x + wallMargin, max.y, max.z + wallMargin);
-
-            // Calculate wall positions and sizes
-            const frontWallPosition = new THREE.Vector3((adjustedMin.x + adjustedMax.x) / 2, wallHeight / 2, adjustedMin.z - wallThickness / 2);
-            const backWallPosition = new THREE.Vector3((adjustedMin.x + adjustedMax.x) / 2, wallHeight / 2, adjustedMax.z + wallThickness / 2);
-            const leftWallPosition = new THREE.Vector3(adjustedMin.x - wallThickness / 2, wallHeight / 2, (adjustedMin.z + adjustedMax.z) / 2);
-            const rightWallPosition = new THREE.Vector3(adjustedMax.x + wallThickness / 2, wallHeight / 2, (adjustedMin.z + adjustedMax.z) / 2);
-
-            const wallWidth = adjustedMax.x - adjustedMin.x + wallThickness;
-            const wallDepth = adjustedMax.z - adjustedMin.z + wallThickness;
-
-            // Create four walls
-            createWall(frontWallPosition, new THREE.Vector3(wallWidth, wallHeight, wallThickness));
-            createWall(backWallPosition, new THREE.Vector3(wallWidth, wallHeight, wallThickness));
-            createWall(leftWallPosition, new THREE.Vector3(wallThickness, wallHeight, wallDepth));
-            createWall(rightWallPosition, new THREE.Vector3(wallThickness, wallHeight, wallDepth));
-
-            // Create floor
-            const floorGeometry = new THREE.PlaneGeometry(wallWidth, wallDepth);
-            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
-            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = -Math.PI / 2;
-            floor.position.set((adjustedMin.x + adjustedMax.x) / 2, 0, (adjustedMin.z + adjustedMax.z) / 2);
-            floor.receiveShadow = true;
-            scene.add(floor);
-            worldOctree.fromGraphNode(floor);
-        }
-
-        // Update createWalls function to use bounding box
-        function createWalls(wallBoundingBoxCoords) {
-            if (racks && racks.length > 0) {
-                createWallsAroundRacks(wallBoundingBoxCoords);
-            }
-        }
-
-        // Calcula se algum vetor interseta com um bounding box
-        function playerCollisions() {
-            const result = worldOctree.capsuleIntersect(playerCollider);
-            playerOnFloor = false;
-
-            if (result) {
-                playerOnFloor = result.normal.y > 0;
-
-                if (!playerOnFloor) {
-                    playerVelocity.addScaledVector(result.normal, -result.normal.dot(playerVelocity));
-                }
-
-                playerCollider.translate(result.normal.multiplyScalar(result.depth));
-            }
-        }
-
-        // Atualizar o player a cada frame (colisões, velocidade)
-        function updatePlayer(deltaTime) {
-            let damping = Math.exp(-4 * deltaTime) - 1;
-
-            if (!playerOnFloor) {
-                playerVelocity.y -= GRAVITY * deltaTime;
-                damping *= 0.1;
-            }
-
-            playerVelocity.addScaledVector(playerVelocity, damping);
-
-            const deltaPosition = playerVelocity.clone().multiplyScalar(deltaTime);
-            playerCollider.translate(deltaPosition);
-
-            // colisões
-            playerCollisions();
-
-            camera.position.copy(playerCollider.end);
-        }
-
-        function getForwardVector() {
-            camera.getWorldDirection(playerDirection);
-            playerDirection.y = 0;
-            playerDirection.normalize();
-            return playerDirection;
-        }
-
-        function getSideVector() {
-            camera.getWorldDirection(playerDirection);
-            playerDirection.y = 0;
-            playerDirection.normalize();
-            playerDirection.cross(camera.up);
-            return playerDirection;
-        }
-
-        // Ativar movimentos com as teclas
-        function handleControls(deltaTime) {
-            const speedDelta = deltaTime * (playerOnFloor ? 25 : 8);
-
-            if (activeCamera === camera) {
-                if (keyStates['KeyW']) {
-                    playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
-                }
-
-                if (keyStates['KeyS']) {
-                    playerVelocity.add(getForwardVector().multiplyScalar(-speedDelta));
-                }
-
-                if (keyStates['KeyA']) {
-                    playerVelocity.add(getSideVector().multiplyScalar(-speedDelta));
-                }
-
-                if (keyStates['KeyD']) {
-                    playerVelocity.add(getSideVector().multiplyScalar(speedDelta));
-                }
-
-                if (playerOnFloor) {
-                    if (keyStates['Space']) {
-                        playerVelocity.y = 15;
-                    }
-                }
-            }
-        }
-
-        // wtv
-        const helper = new OctreeHelper(worldOctree);
-        helper.visible = false;
-        scene.add(helper);
-
-        // wtv
-        const gui = new GUI({ width: 200 });
-        gui.add({ debug: false }, 'debug')
-            .onChange(function (value) {
-                helper.visible = value;
-            });
-
-        // Se o personagem foge do mapa ele volta
-        function teleportPlayerIfOob() {
-            if (camera.position.y <= -25) {
-                playerCollider.start.set(boundingBoxCenter.x, boundingBoxCenter.y + 0.35, boundingBoxCenter.z);
-                playerCollider.end.set(boundingBoxCenter.x, boundingBoxCenter.y + 1, boundingBoxCenter.z);
-                playerCollider.radius = 0.35;
-                camera.position.copy(playerCollider.end);
-                camera.rotation.set(0, 0, 0);
-            }
-        }
-
-        // Alterar entre camaras
-        function toggleCamera() {
-            activeCamera = activeCamera === camera ? topCamera : camera;
-
-            if (employeeModel) {
-                employeeModel.position.copy(playerCollider.end);
-                employeeModel.visible = (activeCamera === topCamera);
-            }
-
-            if (activeCamera === camera) {
-                document.body.requestPointerLock();
-            } else {
-                document.exitPointerLock();
-            }
-        }
-
-        const orbitControls = new OrbitControls(topCamera, renderer.domElement);
-        //orbitControls.target.set(45, 10, 79.49);
-        orbitControls.screenSpacePanning = false;
-        orbitControls.minDistance = 1;
-        orbitControls.maxDistance = 10000;
-        orbitControls.maxPolarAngle = Math.PI / 2;
-        orbitControls.enablePan = false;
-        orbitControls.enableDamping = true;
-        orbitControls.enabled = true;
-
-        // Atualização da cena
-        function animate() {
-            const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
-
-            for (let i = 0; i < STEPS_PER_FRAME; i++) {
-                handleControls(deltaTime);
-                updatePlayer(deltaTime);
-                teleportPlayerIfOob();
-            }
-
-            if (employeeModel) {
-                // Toggle visibility of employee based on active camera
-                employeeModel.visible = (activeCamera === topCamera);
-            }
-
-            if (activeCamera === topCamera) {
-                orbitControls.update();
-            }
-
-            renderer.render(scene, activeCamera);
-            stats.update();
-        }
-
-        // Function to create racks (GLTF models) from JSON data using InstancedMesh
-         async function createRacksFromJSON() {
-    const gltf = await gltfLoader.loadAsync('resources/rackNova/scene.gltf');
-    const model = gltf.scene;
-    const geometry = [];
-    const material = [];
-
-    model.traverse(child => {
-        if (child.isMesh) {
-            geometry.push(child.geometry);
-            material.push(child.material);
-        }
-    });
-
-    const verticalLevels = 5; // Number of vertical stacked racks
-    const verticalSpacing = 3.5; // Space between each level
-
-    const count = racks.length * verticalLevels;
-    instancedMesh = new THREE.InstancedMesh(geometry[0], material[0], count);
-
-    const dummy = new THREE.Object3D();
-
-    const cubeGeometry = new THREE.BoxGeometry(0.04, 3.3, 5.5);
-    const cubeMaterial = new THREE.MeshLambertMaterial({
-        color: 0xff0000,
-        opacity: 0,
-        transparent: true
-    });
-
-    let instanceIndex = 0;
-
-    racks.forEach(rack => {
-        const basePosition = new THREE.Vector3(
+      }
+
+      // Calculate the bounding box of all the racks and the center
+      function calculateWallBoundingBox(racks) {
+        const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+        const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+
+        racks.forEach((rack) => {
+          const position = new THREE.Vector3(
             rack.Spazio_coord_draw_a / 50,
             rack.Spazio_coord_draw_b / 50,
             rack.Spazio_coord_draw_c / 50
+          );
+
+          min.min(position);
+          max.max(position);
+        });
+
+        const center = new THREE.Vector3(
+          (min.x + max.x) / 2,
+          (min.y + max.y) / 2,
+          (min.z + max.z) / 2
         );
 
-        const rotation = new THREE.Euler(-Math.PI / 2, 0, Math.PI / 2);
-        const scale = new THREE.Vector3(0.4, 0.4, 0.4);
+        return { min, max, center };
+      }
 
-        for (let level = 0; level < verticalLevels; level++) {
-            const position = basePosition.clone();
-            position.y += level * verticalSpacing;
+      function createWall(position, size) {
+        const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+        const material = new THREE.MeshLambertMaterial({ color: 0xd1d1d1 });
+        const wall = new THREE.Mesh(geometry, material);
+        wall.position.copy(position);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        scene.add(wall);
+        worldOctree.fromGraphNode(wall);
+      }
 
-            dummy.position.copy(position);
-            dummy.rotation.copy(rotation);
-            dummy.scale.copy(scale);
-            dummy.updateMatrix();
-            instancedMesh.setMatrixAt(instanceIndex++, dummy.matrix);
+      // F2 change parameter name in all document
+      // Create walls around the bounding box with a margin
+      function createWallsAroundRacks(wallBoundingBoxCoords) {
+        const min = wallBoundingBoxCoords.min;
+        const max = wallBoundingBoxCoords.max;
 
-            // Optional: create invisible cube for collision
-            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-            const cubeOffset = new THREE.Vector3(1.57, 0, 0.37);
-            cube.position.copy(position.clone().add(cubeOffset));
-            cube.rotation.copy(rotation);
-            cube.castShadow = true;
-            cube.receiveShadow = true;
-            scene.add(cube);
-            worldOctree.fromGraphNode(cube);
+        // Parâmetros das paredes
+        const wallHeight = 5;
+        const wallThickness = 0.01;
+        const wallMargin = 10; // Adjust this value to set the margin
+
+        // Calculate adjusted min and max with margin
+        const adjustedMin = new THREE.Vector3(
+          min.x - wallMargin,
+          min.y,
+          min.z - wallMargin
+        );
+        const adjustedMax = new THREE.Vector3(
+          max.x + wallMargin,
+          max.y,
+          max.z + wallMargin
+        );
+
+        // Calculate wall positions and sizes
+        const frontWallPosition = new THREE.Vector3(
+          (adjustedMin.x + adjustedMax.x) / 2,
+          wallHeight / 2,
+          adjustedMin.z - wallThickness / 2
+        );
+        const backWallPosition = new THREE.Vector3(
+          (adjustedMin.x + adjustedMax.x) / 2,
+          wallHeight / 2,
+          adjustedMax.z + wallThickness / 2
+        );
+        const leftWallPosition = new THREE.Vector3(
+          adjustedMin.x - wallThickness / 2,
+          wallHeight / 2,
+          (adjustedMin.z + adjustedMax.z) / 2
+        );
+        const rightWallPosition = new THREE.Vector3(
+          adjustedMax.x + wallThickness / 2,
+          wallHeight / 2,
+          (adjustedMin.z + adjustedMax.z) / 2
+        );
+
+        const wallWidth = adjustedMax.x - adjustedMin.x + wallThickness;
+        const wallDepth = adjustedMax.z - adjustedMin.z + wallThickness;
+
+        // Create four walls
+        createWall(
+          frontWallPosition,
+          new THREE.Vector3(wallWidth, wallHeight, wallThickness)
+        );
+        createWall(
+          backWallPosition,
+          new THREE.Vector3(wallWidth, wallHeight, wallThickness)
+        );
+        createWall(
+          leftWallPosition,
+          new THREE.Vector3(wallThickness, wallHeight, wallDepth)
+        );
+        createWall(
+          rightWallPosition,
+          new THREE.Vector3(wallThickness, wallHeight, wallDepth)
+        );
+
+        // Create floor
+        const floorGeometry = new THREE.PlaneGeometry(wallWidth, wallDepth);
+        //Mudança das Cores GM
+        const floorMaterial = new THREE.MeshLambertMaterial({
+          color: 0x30384f,
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.set(
+          (adjustedMin.x + adjustedMax.x) / 2,
+          0,
+          (adjustedMin.z + adjustedMax.z) / 2
+        );
+        floor.receiveShadow = true;
+        scene.add(floor);
+        worldOctree.fromGraphNode(floor);
+      }
+
+      // Update createWalls function to use bounding box
+      function createWalls(wallBoundingBoxCoords) {
+        if (racks && racks.length > 0) {
+          createWallsAroundRacks(wallBoundingBoxCoords);
         }
-    });
+      }
 
-    instancedMesh.castShadow = true;
-    instancedMesh.receiveShadow = true;
-    scene.add(instancedMesh);
-    worldOctree.fromGraphNode(instancedMesh);
-}
+      // Calcula se algum vetor interseta com um bounding box
+      function playerCollisions() {
+        const result = worldOctree.capsuleIntersect(playerCollider);
+        playerOnFloor = false;
 
+        if (result) {
+          playerOnFloor = result.normal.y > 0;
 
-        // cria um cubo que representa a posição do empregado
-        function createEmployee() {
-            const geometry = new THREE.BoxGeometry(1, 1, 1); // Adjust size as needed
-            const material = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Adjust color and material as needed
-            employeeModel = new THREE.Mesh(geometry, material);
-            employeeModel.position.copy(playerCollider.end); // Position the cube where the employee model would be
-            employeeModel.visible = false; // Initially hide the cube
-            scene.add(employeeModel);
+          if (!playerOnFloor) {
+            playerVelocity.addScaledVector(
+              result.normal,
+              -result.normal.dot(playerVelocity)
+            );
+          }
+
+          playerCollider.translate(result.normal.multiplyScalar(result.depth));
+        }
+      }
+
+      // Atualizar o player a cada frame (colisões, velocidade)
+      function updatePlayer(deltaTime) {
+        let damping = Math.exp(-4 * deltaTime) - 1;
+
+        if (!playerOnFloor) {
+          playerVelocity.y -= GRAVITY * deltaTime;
+          damping *= 0.1;
         }
 
-        
+        playerVelocity.addScaledVector(playerVelocity, damping);
 
-        // Function to create spaces from JSON data using InstancedMesh
-        async function createSpacesFromJSON() {
-            // Create geometry and material for cubes
-            const cubeGeometry = new THREE.BoxGeometry(1, 1, 1); // 1x1x1 cubes
-            const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red color
+        const deltaPosition = playerVelocity.clone().multiplyScalar(deltaTime);
+        playerCollider.translate(deltaPosition);
 
-            const count = spaces.length; // Assuming spaces is an array of data
+        // colisões
+        playerCollisions();
 
-            // Create InstancedMesh with cube geometry and material
-            instancedMesh = new THREE.InstancedMesh(cubeGeometry, cubeMaterial, count);
+        camera.position.copy(playerCollider.end);
+      }
 
-            const dummy = new THREE.Object3D();
+      function getForwardVector() {
+        camera.getWorldDirection(playerDirection);
+        playerDirection.y = 0;
+        playerDirection.normalize();
+        return playerDirection;
+      }
 
-            spaces.forEach((item, i) => {
-                const position = new THREE.Vector3(
-                    item.Spazio_coord_draw_a / 50,
-                    item.Spazio_coord_draw_b / 50,
-                    item.Spazio_coord_draw_c / 50
-                );
+      function getSideVector() {
+        camera.getWorldDirection(playerDirection);
+        playerDirection.y = 0;
+        playerDirection.normalize();
+        playerDirection.cross(camera.up);
+        return playerDirection;
+      }
 
-                // Set position only, no rotation or scaling
-                dummy.position.copy(position);
-                dummy.rotation.set(0, 0, 0); // No rotation
-                dummy.scale.set(1, 1, 1); // Default scale
-                dummy.updateMatrix();
-                instancedMesh.setMatrixAt(i, dummy.matrix);
-            });
+      // Ativar movimentos com as teclas
+      function handleControls(deltaTime) {
+        const speedDelta = deltaTime * (playerOnFloor ? 25 : 8);
 
-            instancedMesh.castShadow = true;
-            instancedMesh.receiveShadow = true;
-            scene.add(instancedMesh);
+        if (activeCamera === camera) {
+          if (keyStates["KeyW"]) {
+            playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
+          }
 
-            // Add the InstancedMesh to the Octree
-            worldOctree.fromGraphNode(instancedMesh);
+          if (keyStates["KeyS"]) {
+            playerVelocity.add(getForwardVector().multiplyScalar(-speedDelta));
+          }
+
+          if (keyStates["KeyA"]) {
+            playerVelocity.add(getSideVector().multiplyScalar(-speedDelta));
+          }
+
+          if (keyStates["KeyD"]) {
+            playerVelocity.add(getSideVector().multiplyScalar(speedDelta));
+          }
+
+          if (playerOnFloor) {
+            if (keyStates["Space"]) {
+              playerVelocity.y = 15;
+            }
+          }
+        }
+      }
+
+      // wtv
+      const helper = new OctreeHelper(worldOctree);
+      helper.visible = false;
+      scene.add(helper);
+
+      // wtv
+      const gui = new GUI({ width: 200 });
+      gui.add({ debug: false }, "debug").onChange(function (value) {
+        helper.visible = value;
+      });
+
+      // Se o personagem foge do mapa ele volta
+      function teleportPlayerIfOob() {
+        if (camera.position.y <= -25) {
+          playerCollider.start.set(
+            boundingBoxCenter.x,
+            boundingBoxCenter.y + 0.35,
+            boundingBoxCenter.z
+          );
+          playerCollider.end.set(
+            boundingBoxCenter.x,
+            boundingBoxCenter.y + 1,
+            boundingBoxCenter.z
+          );
+          playerCollider.radius = 0.35;
+          camera.position.copy(playerCollider.end);
+          camera.rotation.set(0, 0, 0);
+        }
+      }
+
+      // Alterar entre camaras
+      function toggleCamera() {
+        activeCamera = activeCamera === camera ? topCamera : camera;
+
+        if (employeeModel) {
+          employeeModel.position.copy(playerCollider.end);
+          employeeModel.visible = activeCamera === topCamera;
         }
 
-        // Extract data from JSON
-        async function extractDataFromJSON(data) {
-            racks = data.Racks;
-            spaces = data.Spaces;
-            const wallBoundingBoxCoords = calculateWallBoundingBox(racks);
-            boundingBoxCenter.copy(wallBoundingBoxCoords.center);
+        if (activeCamera === camera) {
+          document.body.requestPointerLock();
+        } else {
+          document.exitPointerLock();
+        }
+      }
 
-            // coloca o collider do player no centro da bounding box do armazém
-            playerCollider.start.set(boundingBoxCenter.x, 0 ,boundingBoxCenter.z);
-            playerCollider.end.set(boundingBoxCenter.x, 1 ,boundingBoxCenter.z);
+      const orbitControls = new OrbitControls(topCamera, renderer.domElement);
+      //orbitControls.target.set(45, 10, 79.49);
+      orbitControls.screenSpacePanning = false;
+      orbitControls.minDistance = 1;
+      orbitControls.maxDistance = 10000;
+      orbitControls.maxPolarAngle = Math.PI / 2;
+      orbitControls.enablePan = false;
+      orbitControls.enableDamping = true;
+      orbitControls.enabled = true;
 
-            // Set the topCamera position to the center of the bounding box
-            orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
+      // Atualização da cena
+      function animate() {
+        const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
 
-            await createRacksFromJSON();
-            await createSpacesFromJSON();
-            createWalls(wallBoundingBoxCoords);
-            createEmployee()
+        for (let i = 0; i < STEPS_PER_FRAME; i++) {
+          handleControls(deltaTime);
+          updatePlayer(deltaTime);
+          teleportPlayerIfOob();
         }
 
-        // Fetch JSON data and start rendering
-        window.onload = function () {
-            fetch('resources/data/arm01.json').then(response => response.json())
-                .then(data => {
-                    extractDataFromJSON(data);
-                })
-                .catch(error => console.error('Error fetching JSON:', error));
-        };
+        if (employeeModel) {
+          // Toggle visibility of employee based on active camera
+          employeeModel.visible = activeCamera === topCamera;
+        }
+
+        if (activeCamera === topCamera) {
+          orbitControls.update();
+        }
+
+        renderer.render(scene, activeCamera);
+        stats.update();
+      }
+
+      // Function to create racks (GLTF models) from JSON data using InstancedMesh         FUNÇÃO TOTALMENTE ALTERADA POR GM
+      async function createRacksFromJSON() {
+        racks.forEach((rack) => {
+          const x = parseFloat(rack.Spazio_coord_draw_a) / 50;
+          const y = parseFloat(rack.Spazio_coord_draw_b) / 50;
+          const z = parseFloat(rack.Spazio_coord_draw_c) / 50;
+
+          const largura = 4; // largura da rack
+          const altura = 5; // altura visual
+          const profundidade = 2; // profundidade visual
+
+          const posicao = new THREE.Vector3(x, y + altura / 2, z);
+
+          // Caixa translúcida
+          const geometry = new THREE.BoxGeometry(largura, altura, profundidade);
+          const material = new THREE.MeshBasicMaterial({
+            color: 0x5865f2,
+            transparent: true,
+            opacity: 0.2,
+          });
+
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.position.copy(posicao);
+
+          // Bordas brancas
+          const edges = new THREE.EdgesGeometry(geometry);
+          const line = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0xffffff })
+          );
+          line.position.copy(posicao);
+
+          scene.add(mesh);
+          scene.add(line);
+        });
+      }
+
+      // cria um cubo que representa a posição do empregado
+      function createEmployee() {
+        const geometry = new THREE.BoxGeometry(1, 1, 1); // Adjust size as needed
+        const material = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Adjust color and material as needed
+        employeeModel = new THREE.Mesh(geometry, material);
+        employeeModel.position.copy(playerCollider.end); // Position the cube where the employee model would be
+        employeeModel.visible = false; // Initially hide the cube
+        scene.add(employeeModel);
+      }
+
+      // Function to create spaces from JSON data using InstancedMesh
+      function createSpacesFromJSON() {
+        const spaceColor = 0x00ff00; // Verde
+        const spaceOpacity = 0.6; // Mais sólido que antes (antes era 0.3)
+
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshBasicMaterial({
+          color: spaceColor,
+          transparent: true,
+          opacity: spaceOpacity,
+        });
+
+        const count = spaces.length;
+        const instancedMesh = new THREE.InstancedMesh(
+          geometry,
+          material,
+          count
+        );
+        const dummy = new THREE.Object3D();
+
+        spaces.forEach((space, i) => {
+          const x = parseFloat(space.Spazio_coord_draw_a) / 50;
+          const y = parseFloat(space.Spazio_coord_draw_b) / 50;
+          const z = parseFloat(space.Spazio_coord_draw_c) / 50;
+
+          dummy.position.set(x, y + 0.5, z);
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.set(1, 1, 1);
+          dummy.updateMatrix();
+
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+        });
+
+        scene.add(instancedMesh);
+        console.log(`Spaces desenhados: ${count}`);
+      }
+
+      // Create geometry and material for cubes
+      /*const cubeGeometry = new THREE.BoxGeometry(1, 1, 1); // 1x1x1 cubes
+        const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red color
+
+        const count = spaces.length; // Assuming spaces is an array of data
+
+        // Create InstancedMesh with cube geometry and material
+        instancedMesh = new THREE.InstancedMesh(
+          cubeGeometry,
+          cubeMaterial,
+          count
+        );
+
+        const dummy = new THREE.Object3D();
+
+        spaces.forEach((item, i) => {
+          const position = new THREE.Vector3(
+            item.Spazio_coord_draw_a / 50,
+            item.Spazio_coord_draw_b / 50,
+            item.Spazio_coord_draw_c / 50
+          );
+
+          // Set position only, no rotation or scaling
+          dummy.position.copy(position);
+          dummy.rotation.set(0, 0, 0); // No rotation
+          dummy.scale.set(1, 1, 1); // Default scale
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+        });
+
+        instancedMesh.castShadow = true;
+        instancedMesh.receiveShadow = true;
+        scene.add(instancedMesh);
+
+        // Add the InstancedMesh to the Octree
+        worldOctree.fromGraphNode(instancedMesh); */
+
+      // Extract data from JSON
+      async function extractDataFromJSON(data) {
+        racks = data.Racks;
+        spaces = data.Spaces;
+        wallBoundingBoxCoords = calculateWallBoundingBox(racks);
+        boundingBoxCenter.copy(wallBoundingBoxCoords.center);
+
+        // coloca o collider do player no centro da bounding box do armazém
+        playerCollider.start.set(boundingBoxCenter.x, 0, boundingBoxCenter.z);
+        playerCollider.end.set(boundingBoxCenter.x, 1, boundingBoxCenter.z);
+
+        // Set the topCamera position to the center of the bounding box
+        orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
+
+        await createRacksFromJSON();
+        await createSpacesFromJSON();
+        createWalls(wallBoundingBoxCoords);
+        createEmployee();
+      }
+      //Nova função realizada por GM para representar os espaços
+      function createCorridorsFromJSON(corridors) {
+        const height = 0.01;
+        const corridorMaterial = new THREE.MeshBasicMaterial({
+          color: 0x3399ff,
+          transparent: true,
+          opacity: 0.2,
+        });
+
+        corridors.forEach((corridor) => {
+          const x = parseFloat(corridor.Spazio_coord_draw_a) / 50;
+          const z = parseFloat(corridor.Spazio_coord_draw_c) / 50;
+
+          // Largura do corredor (ajustada ao tamanho visual da rack)
+          const width = 4; // mesma largura que usas nas racks
+          const depth = 2; // mesma profundidade que usas nas racks
+
+          const geometry = new THREE.PlaneGeometry(width, depth);
+          const mesh = new THREE.Mesh(geometry, corridorMaterial);
+          mesh.rotation.x = -Math.PI / 2;
+
+          // Posiciona o plano centrado como as racks
+          mesh.position.set(x, height, z);
+          scene.add(mesh);
+        });
+
+        console.log(`Corredores desenhados: ${corridors.length}`);
+      }
+
+      // Fetch JSON data and start rendering
+      window.onload = function () {
+        fetch("resources/data/arm5401.json")
+          .then((response) => response.json())
+          .then(async (data) => {
+            await extractDataFromJSON(data);
+            createCorridorsFromJSON(data.Corridor); // -> Alteração GM
+
+            //ALTERAÇAO GM
+            // Adicionar o GridHelper com base no tamanho real do armazém
+            const largura =
+              wallBoundingBoxCoords.max.x - wallBoundingBoxCoords.min.x + 20;
+            const profundidade =
+              wallBoundingBoxCoords.max.z - wallBoundingBoxCoords.min.z + 20;
+            const gridSize = Math.max(largura, profundidade);
+            const gridDivisions = Math.floor(gridSize / 5);
+
+            const gridHelper = new THREE.GridHelper(
+              gridSize,
+              gridDivisions,
+              0x555a66,
+              0x555a66
+            );
+            gridHelper.position.set(
+              wallBoundingBoxCoords.center.x,
+              0.01,
+              wallBoundingBoxCoords.center.z
+            );
+            scene.add(gridHelper);
+          })
+          .catch((error) => console.error("Error fetching JSON:", error));
+      };
     </script>
-</body>
+  </body>
 </html>
