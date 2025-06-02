@@ -106,6 +106,22 @@
       </div>
     </div>
 
+    <div
+      id="tooltip"
+      style="
+        position: absolute;
+        color: white;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 6px 10px;
+        border-radius: 5px;
+        font-size: 14px;
+        pointer-events: none;
+        z-index: 999;
+        display: none;
+        font-family: sans-serif;
+      "
+    ></div>
+
     <div id="container"></div>
 
     <script type="importmap">
@@ -136,6 +152,7 @@
       let racks;
       let spaces;
       let boundingBoxCenter = new THREE.Vector3();
+      let rackMeshes = []; // Add this at the top of your script
 
       //const gltfLoader = new GLTFLoader();  -> GM nao quero utilizar GLTF Loaders estragam-me os FPS
 
@@ -240,6 +257,8 @@
 
       let employeeModel;
 
+      const tooltip = document.getElementById("tooltip");
+
       document.addEventListener("keydown", (event) => {
         keyStates[event.code] = true;
 
@@ -253,9 +272,16 @@
       });
 
       container.addEventListener("mousedown", () => {
-        if (activeCamera === camera) {
-          document.body.requestPointerLock();
-          mouseTime = performance.now();
+        if (
+          activeCamera === camera &&
+          document.pointerLockElement !== document.body
+        ) {
+          try {
+            document.body.requestPointerLock();
+            mouseTime = performance.now();
+          } catch (e) {
+            console.warn("Pointer lock request failed:", e);
+          }
         }
       });
 
@@ -600,7 +626,6 @@
 
       // Function to create racks (GLTF models) from JSON data using InstancedMesh         FUNÇÃO TOTALMENTE ALTERADA POR GM
       async function createRacksFromJSON() {
-
         racks.forEach((rack, index) => {
           const x = parseFloat(rack.Spazio_coord_draw_a) / 50;
           const y = parseFloat(rack.Spazio_coord_draw_b) / 50;
@@ -622,9 +647,11 @@
 
           const mesh = new THREE.Mesh(geometry, material);
           mesh.position.copy(posicao);
-          mesh.name = `Rack ${index + 1}`; // Nome útil no tooltip
-
+          mesh.name = `Rack ${index + 1}`;
+          mesh.userData.isRack = true; // Flag to identify it
           scene.add(mesh);
+
+          rackMeshes.push(mesh);
           racks.push(mesh); // <-- ESSENCIAL
 
           // Bordas brancas
@@ -638,6 +665,39 @@
           scene.add(line);
         });
       }
+
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      let hoveredRack = null;
+
+      function onMouseMove(event) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, activeCamera);
+        const intersects = raycaster.intersectObjects(rackMeshes);
+
+        if (intersects.length > 0) {
+          const first = intersects[0].object;
+
+          if (hoveredRack !== first) {
+            hoveredRack = first;
+            document.body.style.cursor = "pointer";
+          }
+
+          // Show tooltip near cursor
+          tooltip.style.left = event.clientX + 10 + "px";
+          tooltip.style.top = event.clientY + 10 + "px";
+          tooltip.innerText = first.name || "Rack";
+          tooltip.style.display = "block";
+        } else {
+          hoveredRack = null;
+          document.body.style.cursor = "default";
+          tooltip.style.display = "none";
+        }
+      }
+
+      window.addEventListener("mousemove", onMouseMove);
 
       // cria um cubo que representa a posição do empregado
       function createEmployee() {
