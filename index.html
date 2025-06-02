@@ -624,7 +624,6 @@
         stats.update();
       }
 
-      // Function to create racks (GLTF models) from JSON data using InstancedMesh         FUNÇÃO TOTALMENTE ALTERADA POR GM
       async function createRacksFromJSON(racks, buffers) {
         const largura = 2.5;
         const profundidade = 1;
@@ -632,7 +631,7 @@
 
         const count = racks.length;
         // para cada rack no JSON
-        racks.forEach((rack) => {
+        racks.forEach((rack, index) => {
           const xRack = parseFloat(rack.Spazio_coord_draw_a) / 100;
           const zRack = parseFloat(rack.Spazio_coord_draw_c) / 100;
 
@@ -660,17 +659,6 @@
 
           const altura = (yMaisAlto + 70) / 100;
           const posicaoY = altura / 2;
-      async function createRacksFromJSON() {
-        racks.forEach((rack, index) => {
-          const x = parseFloat(rack.Spazio_coord_draw_a) / 50;
-          const y = parseFloat(rack.Spazio_coord_draw_b) / 50;
-          const z = parseFloat(rack.Spazio_coord_draw_c) / 50;
-
-          const largura = 4; // largura da rack
-          const altura = 5; // altura visual
-          const profundidade = 2; // profundidade visual
-
-          const posicao = new THREE.Vector3(x, y + altura / 2, z);
 
           // criar a rack
           const geometry = new THREE.BoxGeometry(largura, altura, profundidade);
@@ -681,16 +669,9 @@
           });
 
           const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.copy(posicao);
-          mesh.name = `Rack ${index + 1}`;
-          mesh.userData.isRack = true; // Flag to identify it
-          scene.add(mesh);
-
-          rackMeshes.push(mesh);
-          racks.push(mesh); // <-- ESSENCIAL
-
-          // Bordas brancas
           mesh.position.set(xRack, posicaoY, zRack);
+        mesh.name = `Rack ${index + 1}`;
+          mesh.userData.isRack = true; // Flag to identify it
           mesh.rotation.y = Math.PI / 2;
 
           const edges = new THREE.EdgesGeometry(geometry);
@@ -702,8 +683,7 @@
           line.rotation.y = Math.PI / 2;
 
           scene.add(mesh);
-
-          line.position.copy(posicao);
+          rackMeshes.push(mesh);
           scene.add(line);
           console.log(`Racks desenhadas: ${count}`);
         });
@@ -712,7 +692,6 @@
       const raycaster = new THREE.Raycaster();
       const mouse = new THREE.Vector2();
       let hoveredRack = null;
-
       function onMouseMove(event) {
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -882,8 +861,6 @@
 
         // Set the topCamera position to the center of the bounding box
         orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
-
-        await createRacksFromJSON();
 
         await createRacksFromJSON(racks, data.Buffer);
         await createSpacesFromJSON();
