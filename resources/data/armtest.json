@@ -1,0 +1,90 @@
+{
+  "wareHouse": "TESTE01",
+  "Corridor": [
+    {
+      "Spazio_tipo": "02",
+      "Spazio": "C001",
+      "Spazio_coord_draw_a": "1000",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "1000"
+    },
+    {
+      "Spazio_tipo": "02",
+      "Spazio": "C002",
+      "Spazio_coord_draw_a": "2000",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "1000"
+    }
+  ],
+  "Racks": [
+    {
+      "Spazio_tipo": "03",
+      "Spazio": "R001",
+      "Spazio_coord_draw_a": "1000",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "1500"
+    },
+    {
+      "Spazio_tipo": "03",
+      "Spazio": "R002",
+      "Spazio_coord_draw_a": "2000",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "1500"
+    }
+  ],
+  "Spaces": [
+    {
+      "Spazio_tipo": "04",
+      "Spazio": "P001",
+      "Spazio_coord_draw_a": "1000",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "1600"
+    },
+    {
+      "Spazio_tipo": "04",
+      "Spazio": "P002",
+      "Spazio_coord_draw_a": "2000",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "1600"
+    }
+  ],
+  "Buffer": [
+    {
+      "Spazio_tipo": "05",
+      "Spazio": "B001",
+      "Spazio_coord_draw_a": "1000",
+      "Spazio_coord_draw_b": "200",
+      "Spazio_coord_draw_c": "1600"
+    },
+    {
+      "Spazio_tipo": "05",
+      "Spazio": "B002",
+      "Spazio_coord_draw_a": "1000",
+      "Spazio_coord_draw_b": "400",
+      "Spazio_coord_draw_c": "1600"
+    },
+    {
+      "Spazio_tipo": "05",
+      "Spazio": "B003",
+      "Spazio_coord_draw_a": "1000",
+      "Spazio_coord_draw_b": "600",
+      "Spazio_coord_draw_c": "1600"
+    }
+  ],
+  "Cais": [
+    {
+      "Spazio_tipo": "06",
+      "Spazio": "CAIS1",
+      "Spazio_coord_draw_a": "0",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "0"
+    },
+    {
+      "Spazio_tipo": "06",
+      "Spazio": "CAIS2",
+      "Spazio_coord_draw_a": "0",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "1000"
+    }
+  ]
+}
