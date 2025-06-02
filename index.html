@@ -73,6 +73,34 @@
         background-color: rgba(51, 153, 255, 0.2);
         border: 1px solid #3399ff;
       }
+
+      #view-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 102;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 12px 14px;
+        border-radius: 8px;
+        font-family: sans-serif;
+        font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      #view-controls .label {
+        font-weight: bold;
+        margin-bottom: 6px;
+      }
+
+      #view-controls label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -124,6 +152,16 @@
     ></div>
 
     <div id="container"></div>
+
+    <div id="view-controls">
+      <span class="label">Visibilidade:</span>
+      <label><input type="checkbox" value="racks" checked /> Racks</label>
+      <label
+        ><input type="checkbox" value="corridors" checked /> Corridors</label
+      >
+      <label><input type="checkbox" value="buffers" checked /> Buffers</label>
+      <label><input type="checkbox" value="spaces" checked /> Picking</label>
+    </div>
 
     <script type="importmap">
       {
@@ -197,6 +235,22 @@
 
       //Resetar a top camera ao default
       const resetTopCamBtn = document.getElementById("reset-topcam");
+
+const viewCheckboxes = document.querySelectorAll('#view-controls input[type="checkbox"]');
+
+viewCheckboxes.forEach((checkbox) => {
+  checkbox.addEventListener("change", () => {
+    const selected = Array.from(viewCheckboxes)
+      .filter(cb => cb.checked)
+      .map(cb => cb.value);
+
+    rackGroup.visible = selected.includes("racks");
+    corridorGroup.visible = selected.includes("corridors");
+    bufferGroup.visible = selected.includes("buffers");
+    spaceGroup.visible = selected.includes("spaces");
+  });
+});
+
 
       resetTopCamBtn.addEventListener("click", () => {
         if (activeCamera === topCamera) {
@@ -276,6 +330,12 @@
       const vector3 = new THREE.Vector3();
 
       let employeeModel;
+
+      let rackGroup = new THREE.Group();
+      let corridorGroup = new THREE.Group();
+      let bufferGroup = new THREE.Group();
+      let spaceGroup = new THREE.Group();
+      scene.add(rackGroup, corridorGroup, bufferGroup, spaceGroup);
 
       const tooltip = document.getElementById("tooltip");
 
@@ -708,9 +768,11 @@
           line.position.set(xRack, posicaoY, zRack);
           line.rotation.y = Math.PI / 2;
 
-          scene.add(mesh);
+          rackGroup.add(mesh);
+
           rackMeshes.push(mesh);
-          scene.add(line);
+          rackGroup.add(line);
+
           console.log(`Racks desenhadas: ${count}`);
         });
       }
@@ -824,7 +886,8 @@
           instancedMesh.setMatrixAt(i, dummy.matrix);
         });
 
-        scene.add(instancedMesh);
+        spaceGroup.add(instancedMesh);
+
         console.log(`Spaces desenhados: ${count}`);
       }
 
@@ -898,7 +961,8 @@
 
           instancedMesh.setMatrixAt(i, dummy.matrix);
         });
-        scene.add(instancedMesh);
+        bufferGroup.add(instancedMesh);
+
         console.log(`Buffers desenhados: ${count}`);
       }
       async function extractDataFromJSON(data) {
@@ -950,7 +1014,7 @@
 
           // Posiciona o plano centrado como as racks
           mesh.position.set(x, height, z);
-          scene.add(mesh);
+          corridorGroup.add(mesh);
         });
 
         console.log(`Corredores desenhados: ${corridors.length}`);
