@@ -8,6 +8,72 @@
       content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
     />
     <link type="text/css" rel="stylesheet" href="main.css" />
+    <style>
+      #legend {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        background-color: rgba(40, 40, 40, 0.8);
+        color: white;
+        font-size: 14px;
+        padding: 10px;
+        border-radius: 8px;
+        z-index: 100;
+        font-family: sans-serif;
+      }
+
+      #zoom-controls {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        z-index: 101;
+      }
+
+      #zoom-controls button {
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        font-size: 18px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      #zoom-controls button:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+
+      .legend-color {
+        width: 16px;
+        height: 16px;
+        margin-right: 8px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+      }
+
+      .rack {
+        background-color: rgba(88, 101, 242, 0.2);
+      }
+      .space {
+        background-color: rgba(0, 255, 0, 0.2);
+      }
+      .buffer {
+        background-color: rgba(212, 140, 140, 0.7);
+      }
+      .corridor {
+        background-color: rgba(51, 153, 255, 0.2);
+        border: 1px solid #3399ff;
+      }
+    </style>
   </head>
   <body>
     <div id="info">
@@ -15,6 +81,31 @@
       WASD para mover e ESPAÇO para saltar<br />
       T para trocar de camera
     </div>
+    <div id="container"></div>
+    <div id="zoom-controls">
+      <button id="zoom-in">+</button>
+      <button id="zoom-out">−</button>
+    </div>
+
+    <div id="legend">
+      <div class="legend-item">
+        <div class="legend-color rack"></div>
+        Racks (caixas azuis translúcidas)
+      </div>
+      <div class="legend-item">
+        <div class="legend-color space"></div>
+        Picking(verde)
+      </div>
+      <div class="legend-item">
+        <div class="legend-color buffer"></div>
+        Buffers (rosa)
+      </div>
+      <div class="legend-item">
+        <div class="legend-color corridor"></div>
+        Corridors (planos azuis semi-translúcidos)
+      </div>
+    </div>
+
     <div id="container"></div>
 
     <script type="importmap">
@@ -35,6 +126,10 @@
       import { GUI } from "three/addons/libs/lil-gui.module.min.js";
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
       //import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'; -> GM nao quero utilizar GLTF Loaders estragam-me os FPS
+      import {
+        CSS2DRenderer,
+        CSS2DObject,
+      } from "./three/examples/jsm/renderers/CSS2DRenderer.js";
 
       const clock = new THREE.Clock();
       let wallBoundingBoxCoords;
@@ -56,20 +151,43 @@
         0.1,
         10000
       );
+      camera.position.set(50, 1, 50); // ou boundingBoxCenter quando disponível
+      camera.rotation.set(0, 0, 0); // olhe para frente
+      camera.up.set(0, 1, 0);
+
       camera.rotation.order = "YXZ";
 
       const aspect = window.innerWidth / window.innerHeight;
       const topCamera = new THREE.PerspectiveCamera(
-        40,
+        20,
         window.innerWidth / window.innerHeight,
         1,
         10000
       );
-      //topCamera.position.set(50, 100, 50);
-      //topCamera.lookAt(50, 0, 50);
+
+      // Zoom control logic
+      const zoomInBtn = document.getElementById("zoom-in");
+      const zoomOutBtn = document.getElementById("zoom-out");
 
       let activeCamera = camera;
       // Aumentar a illuminação Global ALTERAÇÃO GM
+
+      zoomInBtn.addEventListener("click", () => {
+        if (activeCamera === topCamera) {
+          topCamera.fov = Math.max(10, topCamera.fov - 5); // Min FOV = more zoom
+          topCamera.updateProjectionMatrix();
+        }
+      });
+
+      zoomOutBtn.addEventListener("click", () => {
+        if (activeCamera === topCamera) {
+          topCamera.fov = Math.min(100, topCamera.fov + 5); // Max FOV = less zoom
+          topCamera.updateProjectionMatrix();
+        }
+      });
+
+      //topCamera.position.set(50, 100, 50);
+      //topCamera.lookAt(50, 0, 50);
 
       // Luz ambiente suave
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // luz geral
@@ -142,9 +260,25 @@
       });
 
       document.body.addEventListener("mousemove", (event) => {
-        if (document.pointerLockElement === document.body) {
-          camera.rotation.y -= event.movementX / 500;
-          camera.rotation.x -= event.movementY / 500;
+        if (
+          document.pointerLockElement === document.body &&
+          activeCamera === camera
+        ) {
+          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+          if (document.pointerLockElement === document.body) {
+            const sensitivity = 0.002;
+            camera.rotation.y -= event.movementX * sensitivity;
+            camera.rotation.x -= event.movementY * sensitivity;
+
+            // Limita o olhar vertical (evita loop)
+            const maxPitch = Math.PI / 2 - 0.1; // ligeiramente menos que 90°
+            const minPitch = -Math.PI / 2 + 0.1; // ligeiramente mais que -90°
+            camera.rotation.x = Math.max(
+              minPitch,
+              Math.min(maxPitch, camera.rotation.x)
+            );
+          }
         }
       });
 
@@ -324,6 +458,12 @@
         playerCollisions();
 
         camera.position.copy(playerCollider.end);
+        camera.position.copy(playerCollider.end);
+
+        // Evita que a câmera continue a olhar para baixo após colisões
+        if (!document.pointerLockElement) {
+          camera.rotation.set(0, 0, 0); // só se não estiver no modo pointerlock
+        }
       }
 
       function getForwardVector() {
@@ -396,7 +536,8 @@
           );
           playerCollider.radius = 0.35;
           camera.position.copy(playerCollider.end);
-          camera.rotation.set(0, 0, 0);
+          camera.rotation.set(0, Math.PI, 0); // reinicia com rotação para frente
+          playerVelocity.set(0, 0, 0); // zera velocidade também
         }
       }
 
@@ -444,6 +585,14 @@
         if (activeCamera === topCamera) {
           orbitControls.update();
         }
+        if (activeCamera === camera) {
+          const maxPitch = Math.PI / 2 - 0.1;
+          const minPitch = -Math.PI / 2 + 0.1;
+          camera.rotation.x = Math.max(
+            minPitch,
+            Math.min(maxPitch, camera.rotation.x)
+          );
+        }
 
         renderer.render(scene, activeCamera);
         stats.update();
@@ -451,7 +600,8 @@
 
       // Function to create racks (GLTF models) from JSON data using InstancedMesh         FUNÇÃO TOTALMENTE ALTERADA POR GM
       async function createRacksFromJSON() {
-        racks.forEach((rack) => {
+
+        racks.forEach((rack, index) => {
           const x = parseFloat(rack.Spazio_coord_draw_a) / 50;
           const y = parseFloat(rack.Spazio_coord_draw_b) / 50;
           const z = parseFloat(rack.Spazio_coord_draw_c) / 50;
@@ -472,16 +622,19 @@
 
           const mesh = new THREE.Mesh(geometry, material);
           mesh.position.copy(posicao);
-          console.log("Permission denied");
+          mesh.name = `Rack ${index + 1}`; // Nome útil no tooltip
+
+          scene.add(mesh);
+          racks.push(mesh); // <-- ESSENCIAL
+
           // Bordas brancas
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(
             edges,
             new THREE.LineBasicMaterial({ color: 0xffffff })
           );
-          line.position.copy(posicao);
 
-          scene.add(mesh);
+          line.position.copy(posicao);
           scene.add(line);
         });
       }
@@ -570,7 +723,7 @@
         // Add the InstancedMesh to the Octree
         worldOctree.fromGraphNode(instancedMesh); */
 
-     //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
+      //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
       function createBufferFromJSON(bufferArray) {
         const bufferColor = 0xd48c8c;
         const bufferOpacity = 0.7;
@@ -608,17 +761,26 @@
       async function extractDataFromJSON(data) {
         racks = data.Racks;
         spaces = data.Spaces;
-        wallBoundingBoxCoords = calculateWallBoundingBox(racks);
+        wallBoundingBoxCoords = calculateWallBoundingBox(data.Racks);
         boundingBoxCenter.copy(wallBoundingBoxCoords.center);
 
-        // coloca o collider do player no centro da bounding box do armazém
-        playerCollider.start.set(boundingBoxCenter.x, 0, boundingBoxCenter.z);
+        // coloca o collider do player ligeiramente acima do chão para evitar colisão imediata
+        playerCollider.start.set(
+          boundingBoxCenter.x,
+          0.35,
+          boundingBoxCenter.z
+        );
         playerCollider.end.set(boundingBoxCenter.x, 1, boundingBoxCenter.z);
+
+        // atualiza também a posição e rotação da câmera para garantir que começa corretamente
+        camera.position.copy(playerCollider.end);
+        camera.rotation.set(0, Math.PI, 0); // Olha para "frente" (ajusta se necessário)
 
         // Set the topCamera position to the center of the bounding box
         orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
 
         await createRacksFromJSON();
+
         await createSpacesFromJSON();
         createWalls(wallBoundingBoxCoords);
         createEmployee();
