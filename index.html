@@ -182,6 +182,9 @@
         10000
       );
 
+      topCamera.position.set(50, 100, 50); // Starting high above the warehouse
+      topCamera.lookAt(50, 0, 50);
+
       // Zoom control logic
       const zoomInBtn = document.getElementById("zoom-in");
       const zoomOutBtn = document.getElementById("zoom-out");
@@ -581,17 +584,20 @@
         } else {
           document.exitPointerLock();
         }
+        orbitControls.target.copy(playerCollider.end);
+        orbitControls.update();
       }
 
       const orbitControls = new OrbitControls(topCamera, renderer.domElement);
       //orbitControls.target.set(45, 10, 79.49);
-      orbitControls.screenSpacePanning = false;
+      orbitControls.screenSpacePanning = true;
       orbitControls.minDistance = 1;
       orbitControls.maxDistance = 10000;
       orbitControls.maxPolarAngle = Math.PI / 2;
       orbitControls.enablePan = false;
       orbitControls.enableDamping = true;
       orbitControls.enabled = true;
+      orbitControls.dampingFactor = 0.05;
 
       // Atualização da cena
       function animate() {
@@ -670,7 +676,7 @@
 
           const mesh = new THREE.Mesh(geometry, material);
           mesh.position.set(xRack, posicaoY, zRack);
-        mesh.name = `Rack ${index + 1}`;
+          mesh.name = `Rack ${index + 1}`;
           mesh.userData.isRack = true; // Flag to identify it
           mesh.rotation.y = Math.PI / 2;
 
