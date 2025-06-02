@@ -59809,29 +59809,228 @@
       "Spazio_coord_draw_c": "5672"
     }
   ],
-  "Cais": [
+  "Cais": [   
+  {
+      "Spazio_tipo": "90",
+      "Spazio": "DOCK_RECEIVING_01",
+      "Spazio_coord_draw_a": "7200",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "2000",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#d4c38c"
+    },
     {
-    "Spazio_tipo": "90",
-    "Spazio": "DOCK_RECEIVING_01",
-    "Spazio_coord_draw_a": "0",
-    "Spazio_coord_draw_b": "0",
-    "Spazio_coord_draw_c": "0",
-    "largura": 1000,
-    "altura": 1,
-    "profundidade": 600,
-    "cor": "#d4c38c"
-},
-{
-  "Spazio_tipo": "91",
-  "Spazio": "DOCK_SHIPPING_01",
-  "Spazio_coord_draw_a": "1000",
-  "Spazio_coord_draw_b": "0",
-  "Spazio_coord_draw_c": "0",
-  "largura": 1000,
-  "altura": 1,
-  "profundidade": 600,
-  "cor": "#004488"
-}
+      "Spazio_tipo": "91",
+      "Spazio": "DOCK_SHIPPING_01",
+      "Spazio_coord_draw_a": "7900",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "2000",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#004488"
+    },
+    {
+      "Spazio_tipo": "90",
+      "Spazio": "DOCK_RECEIVING_02",
+      "Spazio_coord_draw_a": "7200",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "2500",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#d4c38c"
+    },
+    {
+      "Spazio_tipo": "91",
+      "Spazio": "DOCK_SHIPPING_02",
+      "Spazio_coord_draw_a": "7900",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "2500",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#004488"
+    },
+    {
+      "Spazio_tipo": "90",
+      "Spazio": "DOCK_RECEIVING_03",
+      "Spazio_coord_draw_a": "7200",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "3000",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#d4c38c"
+    },
+    {
+      "Spazio_tipo": "91",
+      "Spazio": "DOCK_SHIPPING_03",
+      "Spazio_coord_draw_a": "7900",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "3000",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#004488"
+    },
+    {
+      "Spazio_tipo": "90",
+      "Spazio": "DOCK_RECEIVING_04",
+      "Spazio_coord_draw_a": "7200",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "3500",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#d4c38c"
+    },
+    {
+      "Spazio_tipo": "91",
+      "Spazio": "DOCK_SHIPPING_04",
+      "Spazio_coord_draw_a": "7900",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "3500",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#004488"
+    },
+    {
+      "Spazio_tipo": "90",
+      "Spazio": "DOCK_RECEIVING_05",
+      "Spazio_coord_draw_a": "7200",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "4000",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#d4c38c"
+    },
+    {
+      "Spazio_tipo": "91",
+      "Spazio": "DOCK_SHIPPING_05",
+      "Spazio_coord_draw_a": "7900",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "4000",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#004488"
+    },
+    {
+      "Spazio_tipo": "90",
+      "Spazio": "DOCK_RECEIVING_06",
+      "Spazio_coord_draw_a": "7200",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "4500",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#d4c38c"
+    },
+    {
+      "Spazio_tipo": "91",
+      "Spazio": "DOCK_SHIPPING_06",
+      "Spazio_coord_draw_a": "7900",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "4500",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#004488"
+    },
+    {
+      "Spazio_tipo": "90",
+      "Spazio": "DOCK_RECEIVING_07",
+      "Spazio_coord_draw_a": "7200",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "5000",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#d4c38c"
+    },
+    {
+      "Spazio_tipo": "91",
+      "Spazio": "DOCK_SHIPPING_07",
+      "Spazio_coord_draw_a": "7900",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "5000",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#004488"
+    },
+    {
+      "Spazio_tipo": "90",
+      "Spazio": "DOCK_RECEIVING_08",
+      "Spazio_coord_draw_a": "7200",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "5500",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#d4c38c"
+    },
+    {
+      "Spazio_tipo": "91",
+      "Spazio": "DOCK_SHIPPING_08",
+      "Spazio_coord_draw_a": "7900",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "5500",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#004488"
+    },
+    {
+      "Spazio_tipo": "90",
+      "Spazio": "DOCK_RECEIVING_09",
+      "Spazio_coord_draw_a": "7200",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "6000",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#d4c38c"
+    },
+    {
+      "Spazio_tipo": "91",
+      "Spazio": "DOCK_SHIPPING_09",
+      "Spazio_coord_draw_a": "7900",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "6000",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#004488"
+    },
+    {
+      "Spazio_tipo": "90",
+      "Spazio": "DOCK_RECEIVING_10",
+      "Spazio_coord_draw_a": "7200",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "6500",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#d4c38c"
+    },
+    {
+      "Spazio_tipo": "91",
+      "Spazio": "DOCK_SHIPPING_10",
+      "Spazio_coord_draw_a": "7900",
+      "Spazio_coord_draw_b": "0",
+      "Spazio_coord_draw_c": "6500",
+      "largura": 600,
+      "altura": 1,
+      "profundidade": 400,
+      "cor": "#004488"
+    }
+
 
   ],
   "DriveIn": [
