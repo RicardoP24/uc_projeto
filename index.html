@@ -167,9 +167,9 @@
 
         racks.forEach((rack) => {
           const position = new THREE.Vector3(
-            rack.Spazio_coord_draw_a / 50,
-            rack.Spazio_coord_draw_b / 50,
-            rack.Spazio_coord_draw_c / 50
+            rack.Spazio_coord_draw_a / 100,
+            rack.Spazio_coord_draw_b / 100,
+            rack.Spazio_coord_draw_c / 100
           );
 
           min.min(position);
@@ -450,19 +450,43 @@
       }
 
       // Function to create racks (GLTF models) from JSON data using InstancedMesh         FUNÇÃO TOTALMENTE ALTERADA POR GM
-      async function createRacksFromJSON() {
+      async function createRacksFromJSON(racks, buffers) {
+        const largura = 2.5;
+        const profundidade = 1;
+        const tolerancia = 0.5;
+
+        const count = racks.length;
+        // para cada rack no JSON
         racks.forEach((rack) => {
-          const x = parseFloat(rack.Spazio_coord_draw_a) / 50;
-          const y = parseFloat(rack.Spazio_coord_draw_b) / 50;
-          const z = parseFloat(rack.Spazio_coord_draw_c) / 50;
+          const xRack = parseFloat(rack.Spazio_coord_draw_a) / 100;
+          const zRack = parseFloat(rack.Spazio_coord_draw_c) / 100;
 
-          const largura = 4; // largura da rack
-          const altura = 5; // altura visual
-          const profundidade = 2; // profundidade visual
+          // encontrar todos os buffers "em cima" dessa rack (mesmo X/Z)
+          const buffersAcima = buffers.filter((buffer) => {
+            const x = parseFloat(buffer.Spazio_coord_draw_a) / 100;
+            const z = parseFloat(buffer.Spazio_coord_draw_c) / 100;
+            return (
+              Math.abs(x - xRack) <= tolerancia &&
+              Math.abs(z - zRack) <= tolerancia
+            );
+          });
 
-          const posicao = new THREE.Vector3(x, y + altura / 2, z);
+          // se não há buffers nessa zona, ignora
+          if (buffersAcima.length === 0) return;
 
-          // Caixa translúcida
+          // encontrar o Y (altura) mais alto dos buffers
+          let yMaisAlto = 0;
+          buffersAcima.forEach((buffer) => {
+            const y = parseFloat(buffer.Spazio_coord_draw_b);
+            if (y > yMaisAlto) {
+              yMaisAlto = y;
+            }
+          });
+
+          const altura = (yMaisAlto + 70) / 100;
+          const posicaoY = altura / 2;
+
+          // criar a rack
           const geometry = new THREE.BoxGeometry(largura, altura, profundidade);
           const material = new THREE.MeshBasicMaterial({
             color: 0x5865f2,
@@ -471,24 +495,26 @@
           });
 
           const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.copy(posicao);
-        
-          // Bordas brancas
+          mesh.position.set(xRack, posicaoY, zRack);
+          mesh.rotation.y = Math.PI / 2;
+
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(
             edges,
             new THREE.LineBasicMaterial({ color: 0xffffff })
           );
-          line.position.copy(posicao);
+          line.position.set(xRack, posicaoY, zRack);
+          line.rotation.y = Math.PI / 2;
 
           scene.add(mesh);
           scene.add(line);
+          console.log(`Racks desenhadas: ${count}`);
         });
       }
 
       // cria um cubo que representa a posição do empregado
       function createEmployee() {
-        const geometry = new THREE.BoxGeometry(1, 1, 1); // Adjust size as needed
+        const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.6); // Adjust size as needed
         const material = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Adjust color and material as needed
         employeeModel = new THREE.Mesh(geometry, material);
         employeeModel.position.copy(playerCollider.end); // Position the cube where the employee model would be
@@ -499,9 +525,9 @@
       // Function to create spaces from JSON data using InstancedMesh ISTO É O PICKING BASICAMENTE MAS A AVERIGUAR
       function createSpacesFromJSON() {
         const spaceColor = 0x00ff00; // Verde
-        const spaceOpacity = 0.6; //
+        const spaceOpacity = 0.95; //
 
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const geometry = new THREE.BoxGeometry(0.6, 1, 0.6);
         const material = new THREE.MeshBasicMaterial({
           color: spaceColor,
           transparent: true,
@@ -517,9 +543,9 @@
         const dummy = new THREE.Object3D();
 
         spaces.forEach((space, i) => {
-          const x = parseFloat(space.Spazio_coord_draw_a) / 50;
-          const y = parseFloat(space.Spazio_coord_draw_b) / 50;
-          const z = parseFloat(space.Spazio_coord_draw_c) / 50;
+          const x = parseFloat(space.Spazio_coord_draw_a) / 100;
+          const y = parseFloat(space.Spazio_coord_draw_b) / 100;
+          const z = parseFloat(space.Spazio_coord_draw_c) / 100;
 
           dummy.position.set(x, y + 0.5, z);
           dummy.rotation.set(0, 0, 0);
@@ -570,12 +596,12 @@
         // Add the InstancedMesh to the Octree
         worldOctree.fromGraphNode(instancedMesh); */
 
-     //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
+      //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
       function createBufferFromJSON(bufferArray) {
         const bufferColor = 0xd48c8c;
-        const bufferOpacity = 0.7;
+        const bufferOpacity = 0.95;
 
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const geometry = new THREE.BoxGeometry(0.5, 1, 0.6);
         const material = new THREE.MeshBasicMaterial({
           color: bufferColor,
           transparent: true,
@@ -591,9 +617,9 @@
         const dummy = new THREE.Object3D();
 
         bufferArray.forEach((item, i) => {
-          const x = parseFloat(item.Spazio_coord_draw_a) / 50;
-          const y = parseFloat(item.Spazio_coord_draw_b) / 50;
-          const z = parseFloat(item.Spazio_coord_draw_c) / 50;
+          const x = parseFloat(item.Spazio_coord_draw_a) / 100;
+          const y = parseFloat(item.Spazio_coord_draw_b) / 100;
+          const z = parseFloat(item.Spazio_coord_draw_c) / 100;
 
           dummy.position.set(x, y + 0.5, z);
           dummy.rotation.set(0, 0, 0);
@@ -618,7 +644,7 @@
         // Set the topCamera position to the center of the bounding box
         orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
 
-        await createRacksFromJSON();
+        await createRacksFromJSON(racks, data.Buffer);
         await createSpacesFromJSON();
         createWalls(wallBoundingBoxCoords);
         createEmployee();
@@ -633,8 +659,8 @@
         });
 
         corridors.forEach((corridor) => {
-          const x = parseFloat(corridor.Spazio_coord_draw_a) / 50;
-          const z = parseFloat(corridor.Spazio_coord_draw_c) / 50;
+          const x = parseFloat(corridor.Spazio_coord_draw_a) / 100;
+          const z = parseFloat(corridor.Spazio_coord_draw_c) / 100;
 
           // Largura do corredor (ajustada ao tamanho visual da rack)
           const width = 4; // mesma largura que usas nas racks
@@ -652,14 +678,50 @@
         console.log(`Corredores desenhados: ${corridors.length}`);
       }
 
+      //FUNÇÃO PARA CRIAÇÃO DE CAIS ALTERAÇÃO GM
+      async function createDockFromJSON(docks) {
+        docks.forEach((dock) => {
+          const x = parseFloat(dock.Spazio_coord_draw_a) / 100;
+          const z = parseFloat(dock.Spazio_coord_draw_c) / 100;
+
+          const width = parseFloat(dock.largura) / 100;
+          const height = Math.max(parseFloat(dock.altura) / 100, 0.01); // garante mínimo visível
+          const depth = parseFloat(dock.profundidade) / 100;
+
+          const geometry = new THREE.BoxGeometry(width, height, depth);
+          const material = new THREE.MeshStandardMaterial({
+            color: dock.cor || "#ffa500",
+            transparent: true,
+            opacity: 0.9,
+            depthWrite: true,
+          });
+
+          const mesh = new THREE.Mesh(geometry, material);
+
+          // Y mínimo para aparecer no chão mas sem afundar
+          mesh.position.set(x + width / 2, height / 2, z + depth / 2);
+
+          scene.add(mesh);
+
+          const edges = new THREE.EdgesGeometry(geometry);
+          const line = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0xffffff })
+          );
+          line.position.copy(mesh.position);
+          scene.add(line);
+        });
+      }
+
       // Fetch JSON data and start rendering
       window.onload = function () {
-        fetch("resources/data/arm5701.json")
+        fetch("resources/data/arm5701_pt.json")
           .then((response) => response.json())
           .then(async (data) => {
             await extractDataFromJSON(data);
             createCorridorsFromJSON(data.Corridor); // -> Alteração GM
             createBufferFromJSON(data.Buffer); // -> Alteração GM
+            createDockFromJSON(data.Cais); // -> Alteração GM
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
             const largura =
