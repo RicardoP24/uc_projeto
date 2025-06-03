@@ -890,7 +890,6 @@ viewCheckboxes.forEach((checkbox) => {
 
         console.log(`Spaces desenhados: ${count}`);
       }
-
       // Create geometry and material for cubes
       /*const cubeGeometry = new THREE.BoxGeometry(1, 1, 1); // 1x1x1 cubes
         const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red color
@@ -1055,6 +1054,40 @@ viewCheckboxes.forEach((checkbox) => {
         });
       }
 
+      //ESTA FUNÇA USADA PARA GERAR AS PILHAS -> GM ALTERAÇÃO
+      async function createStacksFromJSON(stacks) {
+        stacks.forEach((stack) => {
+          const x = parseFloat(stack.Spazio_coord_draw_a) / 100;
+          const y = parseFloat(stack.Spazio_coord_draw_b) / 100;
+          const z = parseFloat(stack.Spazio_coord_draw_c) / 100;
+
+          const width = parseFloat(stack.largura) / 100;
+          const height = parseFloat(stack.altura) / 100;
+          const depth = parseFloat(stack.profundidade) / 100;
+
+          const geometry = new THREE.BoxGeometry(width, height, depth);
+          const material = new THREE.MeshBasicMaterial({
+            color: stack.color || "#9966ff",
+            transparent: true,
+            opacity: 0.95,
+            depthWrite: true,
+          });
+
+          const mesh = new THREE.Mesh(geometry, material);
+
+          mesh.position.set(x + width / 2, y + height / 2, z + depth / 2);
+          scene.add(mesh);
+
+          const edges = new THREE.EdgesGeometry(geometry);
+          const line = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0xffffff })
+          );
+          line.position.copy(mesh.position);
+          scene.add(line);
+        });
+      }
+
       // Fetch JSON data and start rendering
       window.onload = function () {
         fetch("resources/data/arm5701_pt.json")
@@ -1064,6 +1097,7 @@ viewCheckboxes.forEach((checkbox) => {
             createCorridorsFromJSON(data.Corridor); // -> Alteração GM
             createBufferFromJSON(data.Buffer); // -> Alteração GM
             createDockFromJSON(data.Cais); // -> Alteração GM
+            createStacksFromJSON(data.Pilhas); // -> Alteração GM
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
             const largura =
