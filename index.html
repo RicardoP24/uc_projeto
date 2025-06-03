@@ -1087,7 +1087,42 @@ viewCheckboxes.forEach((checkbox) => {
           scene.add(line);
         });
       }
+      //ESTA FUNÇÃO É USADA PARA GERAR DRIVE-INS
+      async function createDriveInsFromJSON(driveIns) {
+        driveIns.forEach(driveIn => {
+          const x = parseFloat(driveIn.Spazio_coord_draw_a) /100;
+          const y = parseFloat(driveIn.Spazio_coord_draw_b) /100;
+          const z = parseFloat(driveIn.Spazio_coord_draw_c) /100;
 
+
+          const width = parseFloat(driveIn.largura) /100;
+          const height = parseFloat(driveIn.altura) /100;
+          const depth = parseFloat(driveIn.profundidade) / 100;
+
+
+          const geometry = new THREE.BoxGeometry(width,height,depth);
+          const material = new THREE.MeshBasicMaterial({
+            color: driveIn.cor || "#00ccff",
+            transparent: true,
+            opacity: 0.95,
+            depthWrite: true
+          });
+
+          const mesh = new THREE.Mesh(geometry,material);
+          mesh.position.set(x + width / 2, y + height / 2, z + depth / 2);
+
+          scene.add(mesh);
+
+          const edges = new THREE.EdgesGeometry(geometry);
+          const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
+
+          line.position.copy(mesh.position);
+          scene.add(line);
+        });
+
+        console.log(`Drive-ins desenhados: ${driveIns.length}`);
+        
+      }
       // Fetch JSON data and start rendering
       window.onload = function () {
         fetch("resources/data/arm5701_pt.json")
@@ -1098,6 +1133,7 @@ viewCheckboxes.forEach((checkbox) => {
             createBufferFromJSON(data.Buffer); // -> Alteração GM
             createDockFromJSON(data.Cais); // -> Alteração GM
             createStacksFromJSON(data.Pilhas); // -> Alteração GM
+            createDriveInsFromJSON(data.DriveIn); // -> Alteração GM
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
             const largura =

@@ -83892,18 +83892,196 @@
     }
   ],
   "DriveIn": [
-    {
-      "Spazio_tipo": "91",
-      "Spazio": "DRIVEIN001",
-      "Spazio_coord_draw_a": "400",
-      "Spazio_coord_draw_b": "0",
-      "Spazio_coord_draw_c": "100",
-      "largura": 200,
-      "altura": 150,
-      "profundidade": 200,
-      "cor": "#00ccff"
-    }
-  ],
+  
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN004",
+    "Spazio_coord_draw_a": "2650",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN005",
+    "Spazio_coord_draw_a": "2900",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN006",
+    "Spazio_coord_draw_a": "3150",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN007",
+    "Spazio_coord_draw_a": "3400",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN008",
+    "Spazio_coord_draw_a": "3650",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN009",
+    "Spazio_coord_draw_a": "3900",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN010",
+    "Spazio_coord_draw_a": "4150",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN011",
+    "Spazio_coord_draw_a": "4400",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN012",
+    "Spazio_coord_draw_a": "4650",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN013",
+    "Spazio_coord_draw_a": "4900",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN014",
+    "Spazio_coord_draw_a": "5150",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN015",
+    "Spazio_coord_draw_a": "5400",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN016",
+    "Spazio_coord_draw_a": "5650",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN017",
+    "Spazio_coord_draw_a": "5900",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN018",
+    "Spazio_coord_draw_a": "6150",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN019",
+    "Spazio_coord_draw_a": "6400",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  },
+  {
+    "Spazio_tipo": "91",
+    "Spazio": "DRIVEIN020",
+    "Spazio_coord_draw_a": "6650",
+    "Spazio_coord_draw_b": "0",
+    "Spazio_coord_draw_c": "6900",
+    "largura": 200,
+    "altura": 720,
+    "profundidade": 720,
+    "cor": "#00ccff"
+  }
+],
+
   "Pilhas": [
     {
       "Spazio_tipo": "92",
