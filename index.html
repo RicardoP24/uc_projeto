@@ -133,6 +133,15 @@
         <div class="legend-color corridor"></div>
         Corridors (planos azuis semi-translúcidos)
       </div>
+
+      <div class="legend-item">
+        <div class="legend-color dock" style="background-color: #ffa500"></div>
+        Cais (laranja)
+      </div>
+      <div class="legend-item">
+        <div class="legend-color stack" style="background-color: #9966ff"></div>
+        Pilhas (roxo)
+      </div>
     </div>
 
     <div
@@ -161,6 +170,8 @@
       >
       <label><input type="checkbox" value="buffers" checked /> Buffers</label>
       <label><input type="checkbox" value="spaces" checked /> Picking</label>
+      <label><input type="checkbox" value="docks" checked /> Cais</label>
+      <label><input type="checkbox" value="stacks" checked /> Pilhas</label>
     </div>
 
     <script type="importmap">
@@ -236,21 +247,24 @@
       //Resetar a top camera ao default
       const resetTopCamBtn = document.getElementById("reset-topcam");
 
-const viewCheckboxes = document.querySelectorAll('#view-controls input[type="checkbox"]');
+      const viewCheckboxes = document.querySelectorAll(
+        '#view-controls input[type="checkbox"]'
+      );
 
-viewCheckboxes.forEach((checkbox) => {
-  checkbox.addEventListener("change", () => {
-    const selected = Array.from(viewCheckboxes)
-      .filter(cb => cb.checked)
-      .map(cb => cb.value);
+      viewCheckboxes.forEach((checkbox) => {
+        checkbox.addEventListener("change", () => {
+          const selected = Array.from(viewCheckboxes)
+            .filter((cb) => cb.checked)
+            .map((cb) => cb.value);
 
-    rackGroup.visible = selected.includes("racks");
-    corridorGroup.visible = selected.includes("corridors");
-    bufferGroup.visible = selected.includes("buffers");
-    spaceGroup.visible = selected.includes("spaces");
-  });
-});
-
+          rackGroup.visible = selected.includes("racks");
+          corridorGroup.visible = selected.includes("corridors");
+          bufferGroup.visible = selected.includes("buffers");
+          spaceGroup.visible = selected.includes("spaces");
+          dockGroup.visible = selected.includes("docks");
+          stackGroup.visible = selected.includes("stacks");
+        });
+      });
 
       resetTopCamBtn.addEventListener("click", () => {
         if (activeCamera === topCamera) {
@@ -335,7 +349,17 @@ viewCheckboxes.forEach((checkbox) => {
       let corridorGroup = new THREE.Group();
       let bufferGroup = new THREE.Group();
       let spaceGroup = new THREE.Group();
-      scene.add(rackGroup, corridorGroup, bufferGroup, spaceGroup);
+      let dockGroup = new THREE.Group();
+      let stackGroup = new THREE.Group();
+
+      scene.add(
+        rackGroup,
+        corridorGroup,
+        bufferGroup,
+        spaceGroup,
+        dockGroup,
+        stackGroup
+      );
 
       const tooltip = document.getElementById("tooltip");
 
@@ -1042,7 +1066,7 @@ viewCheckboxes.forEach((checkbox) => {
           // Y mínimo para aparecer no chão mas sem afundar
           mesh.position.set(x + width / 2, height / 2, z + depth / 2);
 
-          scene.add(mesh);
+          dockGroup.add(mesh);
 
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(
@@ -1050,7 +1074,7 @@ viewCheckboxes.forEach((checkbox) => {
             new THREE.LineBasicMaterial({ color: 0xffffff })
           );
           line.position.copy(mesh.position);
-          scene.add(line);
+          dockGroup.add(line);
         });
       }
 
@@ -1076,7 +1100,7 @@ viewCheckboxes.forEach((checkbox) => {
           const mesh = new THREE.Mesh(geometry, material);
 
           mesh.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          scene.add(mesh);
+          stackGroup.add(mesh);
 
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(
@@ -1084,7 +1108,7 @@ viewCheckboxes.forEach((checkbox) => {
             new THREE.LineBasicMaterial({ color: 0xffffff })
           );
           line.position.copy(mesh.position);
-          scene.add(line);
+          stackGroup.add(line);
         });
       }
 
