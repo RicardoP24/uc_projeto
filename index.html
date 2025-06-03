@@ -101,6 +101,23 @@
         gap: 6px;
         cursor: pointer;
       }
+
+      #level-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-family: sans-serif;
+        font-size: 14px;
+        z-index: 103;
+      }
+      #level-controls select {
+        margin-left: 5px;
+        padding: 3px;
+      }
     </style>
   </head>
   <body>
@@ -174,6 +191,22 @@
       <label><input type="checkbox" value="stacks" checked /> Pilhas</label>
     </div>
 
+    <div id="level-controls">
+      <label for="buffer-level">Nível máximo de buffers por rack:</label>
+      <select id="buffer-level">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10" selected>10</option>
+      </select>
+    </div>
+
     <script type="importmap">
       {
         "imports": {
@@ -203,6 +236,9 @@
       let spaces;
       let boundingBoxCenter = new THREE.Vector3();
       let rackMeshes = []; // Add this at the top of your script
+      let dockMeshes = [];
+      let stackMeshes = [];
+      let corridorMeshes = [];
 
       //const gltfLoader = new GLTFLoader();  -> GM nao quero utilizar GLTF Loaders estragam-me os FPS
 
@@ -250,6 +286,92 @@
       const viewCheckboxes = document.querySelectorAll(
         '#view-controls input[type="checkbox"]'
       );
+
+      const bufferLevelSelect = document.getElementById("buffer-level");
+      let currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
+
+      bufferLevelSelect.addEventListener("change", () => {
+        currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
+        updateBufferLevels(currentMaxBufferLevel);
+      });
+      function updateBufferLevels(maxLevel) {
+        if (!bufferGroup || bufferGroup.children.length === 0) return;
+
+        const instancedMesh = bufferGroup.children.find(
+          (child) => child.isInstancedMesh
+        );
+        if (!instancedMesh) return;
+
+        const dummy = new THREE.Object3D();
+        const count = instancedMesh.count;
+
+        const tolerance = 0.1; // Para agrupar por (x,z)
+        const yTolerance = 0.05; // Para agrupar níveis em Y
+
+        // Agrupar buffers por rack (x,z)
+        const rackBuckets = [];
+
+        for (let i = 0; i < count; i++) {
+          instancedMesh.getMatrixAt(i, dummy.matrix);
+          dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+          const pos = dummy.position;
+          let bucket = rackBuckets.find(
+            (b) =>
+              Math.abs(b.x - pos.x) < tolerance &&
+              Math.abs(b.z - pos.z) < tolerance
+          );
+
+          if (!bucket) {
+            bucket = { x: pos.x, z: pos.z, buffers: [] };
+            rackBuckets.push(bucket);
+          }
+
+          bucket.buffers.push({ index: i, y: pos.y });
+        }
+
+        // Lógica por rack
+        rackBuckets.forEach((bucket) => {
+          const buffers = bucket.buffers;
+
+          // Agrupar níveis únicos (mesmo que variação de Y pequena)
+          const levels = [];
+
+          buffers.forEach((buf) => {
+            let found = levels.find(
+              (levelY) => Math.abs(levelY - buf.y) < yTolerance
+            );
+            if (!found) {
+              levels.push(buf.y);
+            }
+          });
+
+          // Ordenar os níveis de baixo para cima
+          levels.sort((a, b) => a - b);
+
+          // Mostrar buffers se estão em nível permitido
+          buffers.forEach((buf) => {
+            instancedMesh.getMatrixAt(buf.index, dummy.matrix);
+            dummy.matrix.decompose(
+              dummy.position,
+              dummy.quaternion,
+              dummy.scale
+            );
+
+            // Descobrir qual nível este buffer pertence
+            const logicalLevel = levels.findIndex(
+              (y) => Math.abs(y - buf.y) < yTolerance
+            );
+
+            const show = logicalLevel >= 0 && logicalLevel < maxLevel;
+            dummy.scale.setScalar(show ? 1 : 0.0001);
+            dummy.updateMatrix();
+            instancedMesh.setMatrixAt(buf.index, dummy.matrix);
+          });
+        });
+
+        instancedMesh.instanceMatrix.needsUpdate = true;
+      }
 
       viewCheckboxes.forEach((checkbox) => {
         checkbox.addEventListener("change", () => {
@@ -648,10 +770,10 @@
       scene.add(helper);
 
       // wtv
-      const gui = new GUI({ width: 200 });
-      gui.add({ debug: false }, "debug").onChange(function (value) {
-        helper.visible = value;
-      });
+      // const gui = new GUI({ width: 200 });
+      // gui.add({ debug: false }, "debug").onChange(function (value) {
+      //   helper.visible = value;
+      // });
 
       // Se o personagem foge do mapa ele volta
       function teleportPlayerIfOob() {
@@ -810,7 +932,13 @@
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
         raycaster.setFromCamera(mouse, activeCamera);
-        const intersects = raycaster.intersectObjects(rackMeshes);
+        const hoverTargets = [
+          ...rackMeshes,
+          ...dockMeshes,
+          ...stackMeshes,
+          ...corridorMeshes,
+        ];
+        const intersects = raycaster.intersectObjects(hoverTargets);
 
         if (intersects.length > 0) {
           const first = intersects[0].object;
@@ -824,10 +952,16 @@
           tooltip.style.left = event.clientX + 10 + "px";
           tooltip.style.top = event.clientY + 10 + "px";
           const pos = first.position;
-          tooltip.innerHTML = `<strong>${first.name || "Rack"}</strong><br>
-<strong>X</strong>: ${pos.x.toFixed(2)} 
-<strong>Y</strong>: ${pos.y.toFixed(2)} 
-<strong>Z</strong>: ${pos.z.toFixed(2)}`;
+          let type = "Objeto";
+          if (rackMeshes.includes(first)) type = "Rack";
+          else if (dockMeshes.includes(first)) type = "Cais";
+          else if (stackMeshes.includes(first)) type = "Pilha";
+          else if (corridorMeshes.includes(first)) type = "Corredor";
+
+          tooltip.innerHTML = `<strong>${type}</strong><br>
+          <strong>X</strong>: ${pos.x.toFixed(2)} 
+          <strong>Y</strong>: ${pos.y.toFixed(2)} 
+          <strong>Z</strong>: ${pos.z.toFixed(2)}`;
 
           tooltip.style.display = "block";
         } else {
@@ -1038,6 +1172,7 @@
           // Posiciona o plano centrado como as racks
           mesh.position.set(x, height, z);
           corridorGroup.add(mesh);
+          corridorMeshes.push(mesh);
         });
 
         console.log(`Corredores desenhados: ${corridors.length}`);
@@ -1074,6 +1209,8 @@
             new THREE.LineBasicMaterial({ color: 0xffffff })
           );
           line.position.copy(mesh.position);
+          dockMeshes.push(mesh);
+
           dockGroup.add(line);
         });
       }
@@ -1108,6 +1245,8 @@
             new THREE.LineBasicMaterial({ color: 0xffffff })
           );
           line.position.copy(mesh.position);
+          stackMeshes.push(mesh);
+
           stackGroup.add(line);
         });
       }
