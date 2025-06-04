@@ -862,51 +862,24 @@
         stats.update();
       }
 
-      async function createRacksFromJSON(racks, buffers) {
-        const tolerance = 0.5;
-
-        // Group racks by X and Z to avoid drawing duplicates
-        const rackMap = new Map();
-
+      async function createRacksFromJSON(racks) {
         racks.forEach((rack) => {
           const x = parseFloat(rack.Spazio_coord_draw_a) / 100;
+          const y = parseFloat(rack.Spazio_coord_draw_b) / 100;
           const z = parseFloat(rack.Spazio_coord_draw_c) / 100;
-          const key = `${x.toFixed(2)}|${z.toFixed(2)}`;
 
-          if (!rackMap.has(key)) {
-            rackMap.set(key, []);
+          let width = parseFloat(rack.Spazio_coord_largo || 120) / 100;
+          const height = parseFloat(rack.Spazio_coord_alto || 925) / 100;
+          let depth = parseFloat(rack.Spazio_coord_fondo || 320) / 100;
+
+          // Respeitar a orientação (1 = X, 2 = Z)
+          const orientation = rack.Spazio_orientamento;
+          if (orientation === "1") {
+            const temp = width;
+            width = depth;
+            depth = temp;
           }
-          rackMap.get(key).push(rack);
-        });
 
-        rackMap.forEach((rackGroupData, key) => {
-          const [xRack, zRack] = key.split("|").map(parseFloat);
-
-          // Find all buffers at this rack position (same X/Z)
-          const buffersAbove = buffers.filter((buffer) => {
-            const x = parseFloat(buffer.Spazio_coord_draw_a) / 100;
-            const z = parseFloat(buffer.Spazio_coord_draw_c) / 100;
-            return (
-              Math.abs(x - xRack) <= tolerance &&
-              Math.abs(z - zRack) <= tolerance
-            );
-          });
-
-          if (buffersAbove.length === 0) return;
-
-          // Lowest Y value from the group of racks (rack base)
-          const yBase =
-            Math.min(
-              ...rackGroupData.map((r) => parseFloat(r.Spazio_coord_draw_b))
-            ) / 100;
-
-          // Use first rack in group for dimensions
-          const refRack = rackGroupData[0];
-          const width = parseFloat(refRack.Spazio_coord_largo || 120) / 100;
-          const height = parseFloat(refRack.Spazio_coord_alto || 925) / 100;
-          const depth = parseFloat(refRack.Spazio_coord_fondo || 320) / 100;
-
-          // Create the rack mesh
           const geometry = new THREE.BoxGeometry(width, height, depth);
           const material = new THREE.MeshBasicMaterial({
             color: 0x5865f2,
@@ -915,18 +888,13 @@
           });
 
           const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.set(
-            xRack + width / 2,
-            yBase + height / 2,
-            zRack + depth / 2
-          );
+          mesh.position.set(x + width / 2, y + height / 2, z + depth / 2);
           mesh.name = "Rack";
           mesh.userData.isRack = true;
 
-          rackGroup.add(mesh); //
+          rackGroup.add(mesh);
           rackMeshes.push(mesh);
 
-          // Add white outline
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(
             edges,
@@ -936,7 +904,7 @@
           rackGroup.add(line);
         });
 
-        console.log(`Racks created: ${rackMap.size}`);
+        console.log(`Racks desenhadas: ${racks.length}`);
       }
 
       const raycaster = new THREE.Raycaster();
@@ -1064,9 +1032,16 @@
           const y = parseFloat(space.Spazio_coord_draw_b) / 100;
           const z = parseFloat(space.Spazio_coord_draw_c) / 100;
 
-          const width = parseFloat(space.Spazio_coord_largo || 80) / 100;
+          let width = parseFloat(space.Spazio_coord_largo || 80) / 100;
           const height = parseFloat(space.Spazio_coord_alto || 180) / 100;
-          const depth = parseFloat(space.Spazio_coord_fondo || 120) / 100;
+          let depth = parseFloat(space.Spazio_coord_fondo || 120) / 100;
+
+          const orientation = String(space.Spazio_orientamento).trim();
+          if (orientation === "1") {
+            const temp = width;
+            width = depth;
+            depth = temp;
+          }
 
           const px = x + width / 2;
           const py = y + height / 2;
@@ -1151,18 +1126,24 @@
           const y = parseFloat(item.Spazio_coord_draw_b) / 100;
           const z = parseFloat(item.Spazio_coord_draw_c) / 100;
 
-          const largura = parseFloat(item.Spazio_coord_largo || 80) / 100;
-          const altura = parseFloat(item.Spazio_coord_alto || 180) / 100;
-          const profundidade = parseFloat(item.Spazio_coord_fondo || 120) / 100;
+          let width = parseFloat(item.Spazio_coord_largo || 80) / 100;
+          const height= parseFloat(item.Spazio_coord_alto || 180) / 100;
+          let depth = parseFloat(item.Spazio_coord_fondo || 120) / 100;
 
-          const scaleX = largura * shrinkFactor;
-          const scaleY = altura * shrinkFactor;
-          const scaleZ = profundidade * shrinkFactor;
+          const orientation = String(item.Spazio_orientamento).trim();
+          if (orientation === "1") {
+            const temp = width;
+            width = depth;
+            depth = temp;
+          }
+          const scaleX = width * shrinkFactor;
+          const scaleY = height * shrinkFactor;
+          const scaleZ = depth * shrinkFactor;
 
           dummy.position.set(
-            x + largura / 2,
-            y + altura / 2,
-            z + profundidade / 2
+            x + width / 2,
+            y + height / 2,
+            z + depth / 2
           );
           dummy.rotation.set(0, 0, 0);
           dummy.scale.set(scaleX, scaleY, scaleZ);
@@ -1204,29 +1185,37 @@
       }
       //Nova função realizada por GM para representar os espaços
       function createCorridorsFromJSON(corridors) {
-        const height = 0.01;
+        const height = 0.02;
         const corridorMaterial = new THREE.MeshBasicMaterial({
           color: 0x3399ff,
           transparent: true,
-          opacity: 0.2,
+          opacity: 0.95,
+          depthWrite: false,
         });
 
         corridors.forEach((corridor) => {
           const x = parseFloat(corridor.Spazio_coord_draw_a) / 100;
           const z = parseFloat(corridor.Spazio_coord_draw_c) / 100;
 
-          // Largura do corredor (ajustada ao tamanho visual da rack)
-          const width = 4; // mesma largura que usas nas racks
-          const depth = 2; // mesma profundidade que usas nas racks
+          let width = parseFloat(corridor.Spazio_coord_largo) / 100; // mesma largura que usas nas racks
+          let depth = parseFloat(corridor.Spazio_coord_fondo) / 100; // mesma profundidade que usas nas racks
 
+          const orientation = String(corridor.Spazio_orientamento).trim();
+          if (orientation === "1") {
+            const temp = width;
+            width = depth;
+            depth = temp;
+          }
           const geometry = new THREE.PlaneGeometry(width, depth);
           const mesh = new THREE.Mesh(geometry, corridorMaterial);
           mesh.rotation.x = -Math.PI / 2;
 
           // Posiciona o plano centrado como as racks
-          mesh.position.set(x, height, z);
+          mesh.position.set(x + width / 2, height, z + depth / 2);
           corridorGroup.add(mesh);
           corridorMeshes.push(mesh);
+
+          
         });
 
         console.log(`Corredores desenhados: ${corridors.length}`);
@@ -1238,21 +1227,27 @@
           const x = parseFloat(dock.Spazio_coord_draw_a) / 100;
           const z = parseFloat(dock.Spazio_coord_draw_c) / 100;
 
-          const width = parseFloat(dock.Spazio_coord_largo) / 100;
-          const depth = parseFloat(dock.Spazio_coord_fondo) / 100;
+          let width = parseFloat(dock.Spazio_coord_largo) / 100;
+          let depth = parseFloat(dock.Spazio_coord_fondo) / 100;
 
+          const orientation = String(dock.Spazio_orientamento).trim();
+          if (orientation === "1") {
+            const temp = width;
+            width = depth;
+            depth = temp;
+          }
           const geometry = new THREE.BoxGeometry(width, 0, depth);
           const material = new THREE.MeshStandardMaterial({
-            color: dock.cor || "#ffa500",
+            color: dock.cor || "#73a7f5",
             transparent: true,
             opacity: 0.9,
-            depthWrite: true,
+            depthWrite: false,
           });
 
           const mesh = new THREE.Mesh(geometry, material);
 
           // Y mínimo para aparecer no chão mas sem afundar
-          mesh.position.set(x + width / 2, 0, z + depth / 2);
+          mesh.position.set(x + width / 2, 0.03, z + depth / 2);
 
           dockGroup.add(mesh);
 
@@ -1279,10 +1274,16 @@
           const y = parseFloat(stack.Spazio_coord_draw_b) / 100;
           const z = parseFloat(stack.Spazio_coord_draw_c) / 100;
 
-          const width = parseFloat(stack.Spazio_coord_largo) / 100;
+          let width = parseFloat(stack.Spazio_coord_largo) / 100;
           const height = parseFloat(stack.Spazio_coord_alto) / 100;
-          const depth = parseFloat(stack.Spazio_coord_fondo) / 100;
+          let depth = parseFloat(stack.Spazio_coord_fondo) / 100;
 
+          const orientation = String(stack.Spazio_orientamento).trim();
+          if (orientation === "1") {
+            const temp = width;
+            width = depth;
+            depth = temp;
+          }
           const numBoxes = Math.floor(height / boxHeight);
           const geometry = new THREE.BoxGeometry(width, boxHeight, depth);
           const material = new THREE.MeshBasicMaterial({
@@ -1348,13 +1349,20 @@
           const y = parseFloat(driveIn.Spazio_coord_draw_b) / 100;
           const z = parseFloat(driveIn.Spazio_coord_draw_c) / 100;
 
-          const width = parseFloat(driveIn.Spazio_coord_largo) / 100;
+          let width = parseFloat(driveIn.Spazio_coord_largo) / 100;
           const height = parseFloat(driveIn.Spazio_coord_alto) / 100;
-          const depth = parseFloat(driveIn.Spazio_coord_fondo) / 100;
+          let depth = parseFloat(driveIn.Spazio_coord_fondo) / 100;
 
+
+          const orientation = String(driveIn.Spazio_orientamento).trim();
+          if (orientation === "1") {
+            const temp = width;
+            width = depth;
+            depth = temp;
+          }
           const geometry = new THREE.BoxGeometry(width, height, depth);
           const material = new THREE.MeshBasicMaterial({
-            color: driveIn.cor || "#00ccff",
+            color: driveIn.cor || "#f7e36a",
             transparent: true,
             opacity: 0.95,
             depthWrite: true,
@@ -1380,7 +1388,7 @@
       }
       // Fetch JSON data and start rendering
       window.onload = function () {
-        fetch("resources/data/armcarlos.json")
+        fetch("resources/data/armcarlos1.json")
           .then((response) => response.json())
           .then(async (data) => {
             await extractDataFromJSON(data);
@@ -1412,7 +1420,7 @@
             const centerZ = (adjustedMin.z + adjustedMax.z) / 2;
 
             const gridSize = Math.max(largura, profundidade);
-            const gridDivisions = Math.floor(gridSize / 1); // mais preciso
+            const gridDivisions = Math.floor(gridSize / 5);
 
             const gridHelper = new THREE.GridHelper(
               gridSize,
