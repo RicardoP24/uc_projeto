@@ -1219,7 +1219,7 @@
           }
           const geometry = new THREE.BoxGeometry(width, 0, depth);
           const material = new THREE.MeshStandardMaterial({
-            color: dock.cor || "#ffa500",
+            color: dock.cor || "#73a7f5",
             transparent: true,
             opacity: 0.9,
             depthWrite: false,
@@ -1341,7 +1341,7 @@
           }
           const geometry = new THREE.BoxGeometry(width, height, depth);
           const material = new THREE.MeshBasicMaterial({
-            color: driveIn.cor || "#00ccff",
+            color: driveIn.cor || "#f7e36a",
             transparent: true,
             opacity: 0.95,
             depthWrite: true,
@@ -1369,7 +1369,7 @@
       }
       // Fetch JSON data and start rendering
       window.onload = function () {
-        fetch("resources/data/armcarlos.json")
+        fetch("resources/data/armcarlos1.json")
           .then((response) => response.json())
           .then(async (data) => {
             await extractDataFromJSON(data);
