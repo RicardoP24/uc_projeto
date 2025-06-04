@@ -856,51 +856,16 @@
         stats.update();
       }
 
-      async function createRacksFromJSON(racks, buffers) {
-        const tolerance = 0.5;
-
-        // Group racks by X and Z to avoid drawing duplicates
-        const rackMap = new Map();
-
+      async function createRacksFromJSON(racks) {
         racks.forEach((rack) => {
           const x = parseFloat(rack.Spazio_coord_draw_a) / 100;
+          const y = parseFloat(rack.Spazio_coord_draw_b) / 100;
           const z = parseFloat(rack.Spazio_coord_draw_c) / 100;
-          const key = `${x.toFixed(2)}|${z.toFixed(2)}`;
 
-          if (!rackMap.has(key)) {
-            rackMap.set(key, []);
-          }
-          rackMap.get(key).push(rack);
-        });
+          const width = parseFloat(rack.Spazio_coord_largo || 120) / 100;
+          const height = parseFloat(rack.Spazio_coord_alto || 925) / 100;
+          const depth = parseFloat(rack.Spazio_coord_fondo || 320) / 100;
 
-        rackMap.forEach((rackGroupData, key) => {
-          const [xRack, zRack] = key.split("|").map(parseFloat);
-
-          // Find all buffers at this rack position (same X/Z)
-          const buffersAbove = buffers.filter((buffer) => {
-            const x = parseFloat(buffer.Spazio_coord_draw_a) / 100;
-            const z = parseFloat(buffer.Spazio_coord_draw_c) / 100;
-            return (
-              Math.abs(x - xRack) <= tolerance &&
-              Math.abs(z - zRack) <= tolerance
-            );
-          });
-
-          if (buffersAbove.length === 0) return;
-
-          // Lowest Y value from the group of racks (rack base)
-          const yBase =
-            Math.min(
-              ...rackGroupData.map((r) => parseFloat(r.Spazio_coord_draw_b))
-            ) / 100;
-
-          // Use first rack in group for dimensions
-          const refRack = rackGroupData[0];
-          const width = parseFloat(refRack.Spazio_coord_largo || 120) / 100;
-          const height = parseFloat(refRack.Spazio_coord_alto || 925) / 100;
-          const depth = parseFloat(refRack.Spazio_coord_fondo || 320) / 100;
-
-          // Create the rack mesh
           const geometry = new THREE.BoxGeometry(width, height, depth);
           const material = new THREE.MeshBasicMaterial({
             color: 0x5865f2,
@@ -909,18 +874,13 @@
           });
 
           const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.set(
-            xRack + width / 2,
-            yBase + height / 2,
-            zRack + depth / 2
-          );
+          mesh.position.set(x + width / 2, y + height / 2, z + depth / 2);
           mesh.name = "Rack";
           mesh.userData.isRack = true;
 
-          rackGroup.add(mesh); //
+          rackGroup.add(mesh);
           rackMeshes.push(mesh);
 
-          // Add white outline
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(
             edges,
@@ -930,7 +890,7 @@
           rackGroup.add(line);
         });
 
-        console.log(`Racks created: ${rackMap.size}`);
+        console.log(`Racks desenhadas: ${racks.length}`);
       }
 
       const raycaster = new THREE.Raycaster();
@@ -1177,7 +1137,7 @@
 
         // Set the topCamera position to the center of the bounding box
         orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
-        
+
         await createRacksFromJSON(racks, data.Buffer);
         await createSpacesFromJSON(racks);
         createWalls(wallBoundingBoxCoords);
@@ -1185,27 +1145,27 @@
       }
       //Nova função realizada por GM para representar os espaços
       function createCorridorsFromJSON(corridors) {
-        const height = 0.01;
+        const height = 0.02;
         const corridorMaterial = new THREE.MeshBasicMaterial({
           color: 0x3399ff,
           transparent: true,
-          opacity: 0.2,
+          opacity: 0.95,
+          depthWrite: false,
         });
 
         corridors.forEach((corridor) => {
           const x = parseFloat(corridor.Spazio_coord_draw_a) / 100;
           const z = parseFloat(corridor.Spazio_coord_draw_c) / 100;
 
-          // Largura do corredor (ajustada ao tamanho visual da rack)
-          const width = 4; // mesma largura que usas nas racks
-          const depth = 2; // mesma profundidade que usas nas racks
+          const width = parseFloat(corridor.Spazio_coord_largo) / 100; // mesma largura que usas nas racks
+          const depth = parseFloat(corridor.Spazio_coord_fondo) / 100; // mesma profundidade que usas nas racks
 
           const geometry = new THREE.PlaneGeometry(width, depth);
           const mesh = new THREE.Mesh(geometry, corridorMaterial);
           mesh.rotation.x = -Math.PI / 2;
 
           // Posiciona o plano centrado como as racks
-          mesh.position.set(x, height, z);
+          mesh.position.set(x + width / 2, height, z + depth / 2);
           corridorGroup.add(mesh);
           corridorMeshes.push(mesh);
         });
@@ -1227,13 +1187,13 @@
             color: dock.cor || "#ffa500",
             transparent: true,
             opacity: 0.9,
-            depthWrite: true,
+            depthWrite: false,
           });
 
           const mesh = new THREE.Mesh(geometry, material);
 
           // Y mínimo para aparecer no chão mas sem afundar
-          mesh.position.set(x + width / 2, 0, z + depth / 2);
+          mesh.position.set(x + width / 2, 0.03, z + depth / 2);
 
           dockGroup.add(mesh);
 
@@ -1378,7 +1338,7 @@
               wallBoundingBoxCoords.max.z - wallBoundingBoxCoords.min.z + 20;
             const gridSize = Math.max(largura, profundidade);
             const gridDivisions = Math.floor(gridSize / 5);
-            
+
             const gridHelper = new THREE.GridHelper(
               gridSize,
               gridDivisions,
