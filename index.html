@@ -590,90 +590,87 @@
         scene.add(wall);
         worldOctree.fromGraphNode(wall);
       }
+      function createWarehouseAreaFromComponentsAll() {
+        const allMeshes = [
+          ...rackMeshes,
+          ...dockMeshes,
+          ...stackMeshes,
+          ...corridorMeshes,
+          ...driveInMeshes,
+        ];
 
-      // F2 change parameter name in all document
-      // Create walls around the bounding box with a margin
-      function createWallsAroundRacks(wallBoundingBoxCoords) {
-        const min = wallBoundingBoxCoords.min;
-        const max = wallBoundingBoxCoords.max;
+        if (allMeshes.length === 0) return;
 
-        // Parâmetros das paredes
+        const bounds = new THREE.Box3();
+        allMeshes.forEach((mesh) => bounds.expandByObject(mesh));
+
+        const min = bounds.min;
+        const max = bounds.max;
+
         const wallHeight = 5;
-        const wallThickness = 0.01;
-        const wallMargin = 10; // Adjust this value to set the margin
+        const wallThickness = 0.05;
+        const originalMargin = 10;
+        const wallMargin = originalMargin * 2;
 
-        // Calculate adjusted min and max with margin
-        const adjustedMin = new THREE.Vector3(
-          min.x - wallMargin,
-          min.y,
-          min.z - wallMargin
-        );
-        const adjustedMax = new THREE.Vector3(
-          max.x + wallMargin,
-          max.y,
-          max.z + wallMargin
-        );
+        const adjustedMin = min.clone().subScalar(wallMargin);
+        const adjustedMax = max.clone().addScalar(wallMargin);
 
-        // Calculate wall positions and sizes
-        const frontWallPosition = new THREE.Vector3(
-          (adjustedMin.x + adjustedMax.x) / 2,
-          wallHeight / 2,
-          adjustedMin.z - wallThickness / 2
-        );
-        const backWallPosition = new THREE.Vector3(
-          (adjustedMin.x + adjustedMax.x) / 2,
-          wallHeight / 2,
-          adjustedMax.z + wallThickness / 2
-        );
-        const leftWallPosition = new THREE.Vector3(
-          adjustedMin.x - wallThickness / 2,
-          wallHeight / 2,
-          (adjustedMin.z + adjustedMax.z) / 2
-        );
-        const rightWallPosition = new THREE.Vector3(
-          adjustedMax.x + wallThickness / 2,
-          wallHeight / 2,
-          (adjustedMin.z + adjustedMax.z) / 2
+        const width = adjustedMax.x - adjustedMin.x;
+        const depth = adjustedMax.z - adjustedMin.z;
+
+        const centerX = (adjustedMin.x + adjustedMax.x) / 2;
+        const centerZ = (adjustedMin.z + adjustedMax.z) / 2;
+
+        // ✅ Transladar os grupos para centralizar o armazém
+        const currentCenterX = bounds.getCenter(new THREE.Vector3()).x;
+        const currentCenterZ = bounds.getCenter(new THREE.Vector3()).z;
+        const offsetX = centerX - currentCenterX;
+        const offsetZ = centerZ - currentCenterZ;
+
+        const offset = new THREE.Vector3(offsetX, 0, offsetZ);
+
+        [rackGroup, dockGroup, stackGroup, corridorGroup, driveInGroup].forEach(
+          (group) => {
+            group.position.add(offset);
+          }
         );
 
-        const wallWidth = adjustedMax.x - adjustedMin.x + wallThickness;
-        const wallDepth = adjustedMax.z - adjustedMin.z + wallThickness;
+        // ✅ Atualiza o centro lógico do armazém após a translação
+        boundingBoxCenter.add(offset);
 
-        // Create four walls
+        // ✅ Criar as paredes
         createWall(
-          frontWallPosition,
-          new THREE.Vector3(wallWidth, wallHeight, wallThickness)
+          new THREE.Vector3(centerX, wallHeight / 2, adjustedMin.z),
+          new THREE.Vector3(width + wallThickness, wallHeight, wallThickness)
         );
         createWall(
-          backWallPosition,
-          new THREE.Vector3(wallWidth, wallHeight, wallThickness)
+          new THREE.Vector3(centerX, wallHeight / 2, adjustedMax.z),
+          new THREE.Vector3(width + wallThickness, wallHeight, wallThickness)
         );
         createWall(
-          leftWallPosition,
-          new THREE.Vector3(wallThickness, wallHeight, wallDepth)
+          new THREE.Vector3(adjustedMin.x, wallHeight / 2, centerZ),
+          new THREE.Vector3(wallThickness, wallHeight, depth + wallThickness)
         );
         createWall(
-          rightWallPosition,
-          new THREE.Vector3(wallThickness, wallHeight, wallDepth)
+          new THREE.Vector3(adjustedMax.x, wallHeight / 2, centerZ),
+          new THREE.Vector3(wallThickness, wallHeight, depth + wallThickness)
         );
 
-        // Create floor
-        const floorGeometry = new THREE.PlaneGeometry(wallWidth, wallDepth);
-        //Mudança das Cores GM
+        // ✅ Criar chão
+        const floorGeometry = new THREE.PlaneGeometry(width, depth);
         const floorMaterial = new THREE.MeshLambertMaterial({
           color: 0x30384f,
         });
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
-        floor.position.set(
-          (adjustedMin.x + adjustedMax.x) / 2,
-          0,
-          (adjustedMin.z + adjustedMax.z) / 2
-        );
+        floor.position.set(centerX, 0, centerZ);
         floor.receiveShadow = true;
         scene.add(floor);
         worldOctree.fromGraphNode(floor);
       }
+
+      // F2 change parameter name in all document
+      // Create walls around the bounding box with a margin
 
       // Update createWalls function to use bounding box
       function createWalls(wallBoundingBoxCoords) {
@@ -1201,7 +1198,8 @@
 
         await createRacksFromJSON(racks, data.Buffer);
         await createSpacesFromJSON();
-        createWalls(wallBoundingBoxCoords);
+        createWarehouseAreaFromComponentsAll();
+
         createEmployee();
       }
       //Nova função realizada por GM para representar os espaços
@@ -1393,12 +1391,28 @@
             createDriveInsFromJSON(data.DriveIn); // -> Alteração GM
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
-            const largura =
-              wallBoundingBoxCoords.max.x - wallBoundingBoxCoords.min.x + 20;
-            const profundidade =
-              wallBoundingBoxCoords.max.z - wallBoundingBoxCoords.min.z + 20;
+            const bounds = new THREE.Box3();
+            [
+              ...rackMeshes,
+              ...dockMeshes,
+              ...stackMeshes,
+              ...corridorMeshes,
+              ...driveInMeshes,
+            ].forEach((mesh) => bounds.expandByObject(mesh));
+
+            const originalMargin = 10;
+            const wallMargin = originalMargin * 2;
+
+            const adjustedMin = bounds.min.clone().subScalar(wallMargin);
+            const adjustedMax = bounds.max.clone().addScalar(wallMargin);
+
+            const largura = adjustedMax.x - adjustedMin.x;
+            const profundidade = adjustedMax.z - adjustedMin.z;
+            const centerX = (adjustedMin.x + adjustedMax.x) / 2;
+            const centerZ = (adjustedMin.z + adjustedMax.z) / 2;
+
             const gridSize = Math.max(largura, profundidade);
-            const gridDivisions = Math.floor(gridSize / 5);
+            const gridDivisions = Math.floor(gridSize / 1); // mais preciso
 
             const gridHelper = new THREE.GridHelper(
               gridSize,
@@ -1406,11 +1420,7 @@
               0x555a66,
               0x555a66
             );
-            gridHelper.position.set(
-              wallBoundingBoxCoords.center.x,
-              0.01,
-              wallBoundingBoxCoords.center.z
-            );
+            gridHelper.position.set(centerX, 0.01, centerZ);
             scene.add(gridHelper);
           })
           .catch((error) => console.error("Error fetching JSON:", error));
