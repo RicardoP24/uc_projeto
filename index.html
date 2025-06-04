@@ -189,6 +189,7 @@
       <label><input type="checkbox" value="spaces" checked /> Picking</label>
       <label><input type="checkbox" value="docks" checked /> Cais</label>
       <label><input type="checkbox" value="stacks" checked /> Pilhas</label>
+      <label><input type="checkbox" value="driveins" checked /> DriveIns</label>
     </div>
 
     <div id="level-controls">
@@ -239,6 +240,7 @@
       let dockMeshes = [];
       let stackMeshes = [];
       let corridorMeshes = [];
+      let driveInMeshes = [];
 
       //const gltfLoader = new GLTFLoader();  -> GM nao quero utilizar GLTF Loaders estragam-me os FPS
 
@@ -385,6 +387,7 @@
           spaceGroup.visible = selected.includes("spaces");
           dockGroup.visible = selected.includes("docks");
           stackGroup.visible = selected.includes("stacks");
+          driveInGroup.visible = selected.includes("driveins");
         });
       });
 
@@ -473,6 +476,7 @@
       let spaceGroup = new THREE.Group();
       let dockGroup = new THREE.Group();
       let stackGroup = new THREE.Group();
+      let driveInGroup = new THREE.Group();
 
       scene.add(
         rackGroup,
@@ -480,7 +484,8 @@
         bufferGroup,
         spaceGroup,
         dockGroup,
-        stackGroup
+        stackGroup,
+        driveInGroup
       );
 
       const tooltip = document.getElementById("tooltip");
@@ -937,6 +942,15 @@
       const mouse = new THREE.Vector2();
       let hoveredRack = null;
 
+      function isFullyVisible(obj) {
+        if (!obj.visible) return false;
+        let parent = obj.parent;
+        while (parent) {
+          if (!parent.visible) return false;
+          parent = parent.parent;
+        }
+        return true;
+      }
       function onMouseMove(event) {
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -947,8 +961,12 @@
           ...dockMeshes,
           ...stackMeshes,
           ...corridorMeshes,
+          ...driveInMeshes,
         ];
-        const intersects = raycaster.intersectObjects(hoverTargets);
+
+        // ✅ Só considerar objetos visíveis
+        const visibleTargets = hoverTargets.filter(isFullyVisible);
+        const intersects = raycaster.intersectObjects(visibleTargets);
 
         if (intersects.length > 0) {
           const first = intersects[0].object;
@@ -958,7 +976,6 @@
             document.body.style.cursor = "pointer";
           }
 
-          // Show tooltip near cursor
           tooltip.style.left = event.clientX + 10 + "px";
           tooltip.style.top = event.clientY + 10 + "px";
           const pos = first.position;
@@ -967,12 +984,12 @@
           else if (dockMeshes.includes(first)) type = "Cais";
           else if (stackMeshes.includes(first)) type = "Pilha";
           else if (corridorMeshes.includes(first)) type = "Corredor";
+          else if (driveInMeshes.includes(first)) type = "DriveIn";
 
           tooltip.innerHTML = `<strong>${type}</strong><br>
-          <strong>X</strong>: ${pos.x.toFixed(2)} 
-          <strong>Y</strong>: ${pos.y.toFixed(2)} 
-          <strong>Z</strong>: ${pos.z.toFixed(2)}`;
-
+    <strong>X</strong>: ${pos.x.toFixed(2)} 
+    <strong>Y</strong>: ${pos.y.toFixed(2)} 
+    <strong>Z</strong>: ${pos.z.toFixed(2)}`;
           tooltip.style.display = "block";
         } else {
           hoveredRack = null;
@@ -1177,9 +1194,9 @@
 
         // Set the topCamera position to the center of the bounding box
         orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
-        
+
         await createRacksFromJSON(racks, data.Buffer);
-        await createSpacesFromJSON(racks);
+        await createSpacesFromJSON();
         createWalls(wallBoundingBoxCoords);
         createEmployee();
       }
@@ -1253,7 +1270,6 @@
       async function createStacksFromJSON(stacks) {
         const stackColor = 0x9966ff;
         const stackOpacity = 0.95;
-
         const boxHeight = 0.6; // altura de cada caixa empilhada (em metros)
 
         stacks.forEach((stack) => {
@@ -1280,7 +1296,10 @@
               y + boxHeight / 2 + i * boxHeight,
               z + depth / 2
             );
-            scene.add(box);
+            box.userData.type = "Pilha"; // ✅ define o tipo corretamente
+
+            stackGroup.add(box);
+            stackMeshes.push(box); // ✅ necessário para o hover funcionar
 
             const edges = new THREE.EdgesGeometry(geometry);
             const line = new THREE.LineSegments(
@@ -1288,14 +1307,13 @@
               new THREE.LineBasicMaterial({ color: 0xffffff })
             );
             line.position.copy(box.position);
-            scene.add(line);
+            stackGroup.add(line);
           }
 
-          // Adicionar 4 linhas verticais na frente e atrás
+          // Adiciona 4 linhas verticais na frente e atrás para visual
           for (let i = 1; i < 4; i++) {
             const offset = (width / 4) * i;
 
-            // Lado da frente
             const geometryFront = new THREE.BufferGeometry().setFromPoints([
               new THREE.Vector3(x + offset, y, z),
               new THREE.Vector3(x + offset, y + height, z),
@@ -1304,9 +1322,8 @@
               geometryFront,
               new THREE.LineBasicMaterial({ color: 0xffffff })
             );
-            scene.add(lineFront);
+            stackGroup.add(lineFront);
 
-            // Lado de trás
             const geometryBack = new THREE.BufferGeometry().setFromPoints([
               new THREE.Vector3(x + offset, y, z + depth),
               new THREE.Vector3(x + offset, y + height, z + depth),
@@ -1315,9 +1332,11 @@
               geometryBack,
               new THREE.LineBasicMaterial({ color: 0xffffff })
             );
-            scene.add(lineBack);
+            stackGroup.add(lineBack);
           }
         });
+
+        console.log(`Pilhas desenhadas: ${stacks.length}`);
       }
 
       //ESTA FUNÇÃO É USADA PARA GERAR DRIVE-INS
@@ -1341,9 +1360,7 @@
 
           const mesh = new THREE.Mesh(geometry, material);
           mesh.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          stackGroup.add(mesh);
-
-          scene.add(mesh);
+          driveInGroup.add(mesh);
 
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(
@@ -1352,9 +1369,9 @@
           );
 
           line.position.copy(mesh.position);
-          stackMeshes.push(mesh);
+          driveInMeshes.push(mesh);
 
-          stackGroup.add(line);
+          driveInGroup.add(line);
         });
 
         console.log(`Drive-ins desenhados: ${driveIns.length}`);
@@ -1378,7 +1395,7 @@
               wallBoundingBoxCoords.max.z - wallBoundingBoxCoords.min.z + 20;
             const gridSize = Math.max(largura, profundidade);
             const gridDivisions = Math.floor(gridSize / 5);
-            
+
             const gridHelper = new THREE.GridHelper(
               gridSize,
               gridDivisions,
@@ -1394,6 +1411,16 @@
           })
           .catch((error) => console.error("Error fetching JSON:", error));
       };
+
+      function isNotHidden(obj) {
+        if (obj.userData.hidden) return false;
+        let parent = obj.parent;
+        while (parent) {
+          if (parent.userData && parent.userData.hidden) return false;
+          parent = parent.parent;
+        }
+        return true;
+      }
     </script>
   </body>
 </html>
