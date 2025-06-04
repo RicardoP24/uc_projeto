@@ -283,10 +283,8 @@
       //Resetar a top camera ao default
       const resetTopCamBtn = document.getElementById("reset-topcam");
 
-            const viewCheckboxes = document.querySelectorAll(
-        
+      const viewCheckboxes = document.querySelectorAll(
         '#view-controls input[type="checkbox"]'
-      
       );
 
       const bufferLevelSelect = document.getElementById("buffer-level");
@@ -859,43 +857,51 @@
       }
 
       async function createRacksFromJSON(racks, buffers) {
-        const largura = 2.5;
-        const profundidade = 1;
-        const tolerancia = 0.5;
+        const tolerance = 0.5;
 
-        const count = racks.length;
-        // para cada rack no JSON
-        racks.forEach((rack, index) => {
-          const xRack = parseFloat(rack.Spazio_coord_draw_a) / 100;
-          const zRack = parseFloat(rack.Spazio_coord_draw_c) / 100;
+        // Group racks by X and Z to avoid drawing duplicates
+        const rackMap = new Map();
 
-          // encontrar todos os buffers "em cima" dessa rack (mesmo X/Z)
-          const buffersAcima = buffers.filter((buffer) => {
+        racks.forEach((rack) => {
+          const x = parseFloat(rack.Spazio_coord_draw_a) / 100;
+          const z = parseFloat(rack.Spazio_coord_draw_c) / 100;
+          const key = `${x.toFixed(2)}|${z.toFixed(2)}`;
+
+          if (!rackMap.has(key)) {
+            rackMap.set(key, []);
+          }
+          rackMap.get(key).push(rack);
+        });
+
+        rackMap.forEach((rackGroupData, key) => {
+          const [xRack, zRack] = key.split("|").map(parseFloat);
+
+          // Find all buffers at this rack position (same X/Z)
+          const buffersAbove = buffers.filter((buffer) => {
             const x = parseFloat(buffer.Spazio_coord_draw_a) / 100;
             const z = parseFloat(buffer.Spazio_coord_draw_c) / 100;
             return (
-              Math.abs(x - xRack) <= tolerancia &&
-              Math.abs(z - zRack) <= tolerancia
+              Math.abs(x - xRack) <= tolerance &&
+              Math.abs(z - zRack) <= tolerance
             );
           });
 
-          // se não há buffers nessa zona, ignora
-          if (buffersAcima.length === 0) return;
+          if (buffersAbove.length === 0) return;
 
-          // encontrar o Y (altura) mais alto dos buffers
-          let yMaisAlto = 0;
-          buffersAcima.forEach((buffer) => {
-            const y = parseFloat(buffer.Spazio_coord_draw_b);
-            if (y > yMaisAlto) {
-              yMaisAlto = y;
-            }
-          });
+          // Lowest Y value from the group of racks (rack base)
+          const yBase =
+            Math.min(
+              ...rackGroupData.map((r) => parseFloat(r.Spazio_coord_draw_b))
+            ) / 100;
 
-          const altura = (yMaisAlto + 70) / 100;
-          const posicaoY = altura / 2;
+          // Use first rack in group for dimensions
+          const refRack = rackGroupData[0];
+          const width = parseFloat(refRack.Spazio_coord_largo || 120) / 100;
+          const height = parseFloat(refRack.Spazio_coord_alto || 925) / 100;
+          const depth = parseFloat(refRack.Spazio_coord_fondo || 320) / 100;
 
-          // criar a rack
-          const geometry = new THREE.BoxGeometry(largura, altura, profundidade);
+          // Create the rack mesh
+          const geometry = new THREE.BoxGeometry(width, height, depth);
           const material = new THREE.MeshBasicMaterial({
             color: 0x5865f2,
             transparent: true,
@@ -903,26 +909,28 @@
           });
 
           const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.set(xRack, posicaoY, zRack);
-          mesh.name = `Rack`;
-          mesh.userData.isRack = true; // Flag to identify it
-          mesh.rotation.y = Math.PI / 2;
+          mesh.position.set(
+            xRack + width / 2,
+            yBase + height / 2,
+            zRack + depth / 2
+          );
+          mesh.name = "Rack";
+          mesh.userData.isRack = true;
 
+          rackGroup.add(mesh); //
+          rackMeshes.push(mesh);
+
+          // Add white outline
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(
             edges,
             new THREE.LineBasicMaterial({ color: 0xffffff })
           );
-          line.position.set(xRack, posicaoY, zRack);
-          line.rotation.y = Math.PI / 2;
-
-          rackGroup.add(mesh);
-
-          rackMeshes.push(mesh);
+          line.position.copy(mesh.position);
           rackGroup.add(line);
-
-          console.log(`Racks desenhadas: ${count}`);
         });
+
+        console.log(`Racks created: ${rackMap.size}`);
       }
 
       const raycaster = new THREE.Raycaster();
@@ -1017,20 +1025,19 @@
       function createSpacesFromJSON() {
         const spaceColor = 0x00ff00;
         const spaceOpacity = 0.95;
-        const shrinkFactor = 0.65; // Para deixar espaço entre os elementos
+        const shrinkFactor = 0.65;
 
-        const geometry = new THREE.BoxGeometry(1, 1, 1); // unidade base
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
         const material = new THREE.MeshBasicMaterial({
           color: spaceColor,
           transparent: true,
           opacity: spaceOpacity,
         });
 
-        const count = spaces.length;
         const instancedMesh = new THREE.InstancedMesh(
           geometry,
           material,
-          count
+          spaces.length
         );
         const dummy = new THREE.Object3D();
 
@@ -1039,30 +1046,27 @@
           const y = parseFloat(space.Spazio_coord_draw_b) / 100;
           const z = parseFloat(space.Spazio_coord_draw_c) / 100;
 
-          const largura = parseFloat(space.largura || 80) / 100;
-          const altura = parseFloat(space.altura || 180) / 100;
-          const profundidade = parseFloat(space.profundidade || 120) / 100;
+          const width = parseFloat(space.Spazio_coord_largo || 80) / 100;
+          const height = parseFloat(space.Spazio_coord_alto || 180) / 100;
+          const depth = parseFloat(space.Spazio_coord_fondo || 120) / 100;
 
-          // Aplicar redução nas dimensões para evitar colar uns aos outros
-          const scaleX = largura * shrinkFactor;
-          const scaleY = altura * shrinkFactor;
-          const scaleZ = profundidade * shrinkFactor;
+          const px = x + width / 2;
+          const py = y + height / 2;
+          const pz = z + depth / 2;
 
-          // Posicionar com base no centro (corrigindo para compensar o tamanho real)
-          dummy.position.set(
-            x + largura / 2,
-            y + altura / 2,
-            z + profundidade / 2
+          dummy.position.set(px, py, pz);
+          dummy.scale.set(
+            width * shrinkFactor,
+            height * shrinkFactor,
+            depth * shrinkFactor
           );
-          dummy.rotation.set(0, 0, 0);
-          dummy.scale.set(scaleX, scaleY, scaleZ);
-          dummy.updateMatrix();
 
+          dummy.updateMatrix();
           instancedMesh.setMatrixAt(i, dummy.matrix);
         });
 
         spaceGroup.add(instancedMesh);
-        console.log(`Spaces desenhados: ${count}`);
+        console.log(`Spaces created: ${spaces.length}`);
       }
 
       // Create geometry and material for cubes
@@ -1129,9 +1133,9 @@
           const y = parseFloat(item.Spazio_coord_draw_b) / 100;
           const z = parseFloat(item.Spazio_coord_draw_c) / 100;
 
-          const largura = parseFloat(item.largura || 80) / 100;
-          const altura = parseFloat(item.altura || 180) / 100;
-          const profundidade = parseFloat(item.profundidade || 120) / 100;
+          const largura = parseFloat(item.Spazio_coord_largo || 80) / 100;
+          const altura = parseFloat(item.Spazio_coord_alto || 180) / 100;
+          const profundidade = parseFloat(item.Spazio_coord_fondo || 120) / 100;
 
           const scaleX = largura * shrinkFactor;
           const scaleY = altura * shrinkFactor;
@@ -1173,9 +1177,9 @@
 
         // Set the topCamera position to the center of the bounding box
         orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
-
+        
         await createRacksFromJSON(racks, data.Buffer);
-        await createSpacesFromJSON();
+        await createSpacesFromJSON(racks);
         createWalls(wallBoundingBoxCoords);
         createEmployee();
       }
@@ -1215,11 +1219,10 @@
           const x = parseFloat(dock.Spazio_coord_draw_a) / 100;
           const z = parseFloat(dock.Spazio_coord_draw_c) / 100;
 
-          const width = parseFloat(dock.largura) / 100;
-          const height = Math.max(parseFloat(dock.altura) / 100, 0.01); // garante mínimo visível
-          const depth = parseFloat(dock.profundidade) / 100;
+          const width = parseFloat(dock.Spazio_coord_largo) / 100;
+          const depth = parseFloat(dock.Spazio_coord_fondo) / 100;
 
-          const geometry = new THREE.BoxGeometry(width, height, depth);
+          const geometry = new THREE.BoxGeometry(width, 0, depth);
           const material = new THREE.MeshStandardMaterial({
             color: dock.cor || "#ffa500",
             transparent: true,
@@ -1230,7 +1233,7 @@
           const mesh = new THREE.Mesh(geometry, material);
 
           // Y mínimo para aparecer no chão mas sem afundar
-          mesh.position.set(x + width / 2, height / 2, z + depth / 2);
+          mesh.position.set(x + width / 2, 0, z + depth / 2);
 
           dockGroup.add(mesh);
 
@@ -1258,9 +1261,9 @@
           const y = parseFloat(stack.Spazio_coord_draw_b) / 100;
           const z = parseFloat(stack.Spazio_coord_draw_c) / 100;
 
-          const width = parseFloat(stack.largura) / 100;
-          const height = parseFloat(stack.altura) / 100;
-          const depth = parseFloat(stack.profundidade) / 100;
+          const width = parseFloat(stack.Spazio_coord_largo) / 100;
+          const height = parseFloat(stack.Spazio_coord_alto) / 100;
+          const depth = parseFloat(stack.Spazio_coord_fondo) / 100;
 
           const numBoxes = Math.floor(height / boxHeight);
           const geometry = new THREE.BoxGeometry(width, boxHeight, depth);
@@ -1324,9 +1327,9 @@
           const y = parseFloat(driveIn.Spazio_coord_draw_b) / 100;
           const z = parseFloat(driveIn.Spazio_coord_draw_c) / 100;
 
-          const width = parseFloat(driveIn.largura) / 100;
-          const height = parseFloat(driveIn.altura) / 100;
-          const depth = parseFloat(driveIn.profundidade) / 100;
+          const width = parseFloat(driveIn.Spazio_coord_largo) / 100;
+          const height = parseFloat(driveIn.Spazio_coord_alto) / 100;
+          const depth = parseFloat(driveIn.Spazio_coord_fondo) / 100;
 
           const geometry = new THREE.BoxGeometry(width, height, depth);
           const material = new THREE.MeshBasicMaterial({
@@ -1358,7 +1361,7 @@
       }
       // Fetch JSON data and start rendering
       window.onload = function () {
-        fetch("resources/data/arm5701_pt.json")
+        fetch("resources/data/armcarlos.json")
           .then((response) => response.json())
           .then(async (data) => {
             await extractDataFromJSON(data);
@@ -1375,7 +1378,7 @@
               wallBoundingBoxCoords.max.z - wallBoundingBoxCoords.min.z + 20;
             const gridSize = Math.max(largura, profundidade);
             const gridDivisions = Math.floor(gridSize / 5);
-
+            
             const gridHelper = new THREE.GridHelper(
               gridSize,
               gridDivisions,
