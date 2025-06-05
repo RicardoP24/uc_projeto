@@ -300,6 +300,13 @@
         currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
         updateBufferLevels(currentMaxBufferLevel);
       });
+
+      //FUNCTION formatSpazioLabel(spazio) MADE MY GM
+      function formatSpazioLabel(spazio) {
+        const s = String(spazio).padStart(4, "0");
+        return `${s.slice(0, 2)}.${s.slice(2)}`;
+      }
+
       function updateBufferLevels(maxLevel) {
         if (!bufferGroup || bufferGroup.children.length === 0) return;
 
@@ -436,6 +443,16 @@
       const container = document.getElementById("container");
 
       const renderer = new THREE.WebGLRenderer({ antialias: true });
+
+      //Corridor label render
+      const labelRenderer = new CSS2DRenderer();
+      labelRenderer.setSize(window.innerWidth, window.innerHeight);
+      labelRenderer.domElement.style.position = "absolute";
+      labelRenderer.domElement.style.top = "0px";
+      labelRenderer.domElement.style.pointerEvents = "none";
+      document.body.appendChild(labelRenderer.domElement);
+
+
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setAnimationLoop(animate);
@@ -553,6 +570,8 @@
         topCamera.updateProjectionMatrix();
 
         renderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+
       }
 
       // Calculate the bounding box of all the racks and the center
@@ -859,6 +878,8 @@
         }
 
         renderer.render(scene, activeCamera);
+        labelRenderer.render(scene, activeCamera);
+
         stats.update();
       }
 
@@ -885,7 +906,7 @@
             color: 0x5865f2,
             transparent: true,
             opacity: 0.2,
-            depthWrite: false
+            depthWrite: false,
           });
 
           const mesh = new THREE.Mesh(geometry, material);
@@ -1013,7 +1034,6 @@
         const spaceColor = 0x00ff00;
         const spaceOpacity = 0.95;
         const shrinkFactor = 0.65;
-        
 
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const material = new THREE.MeshBasicMaterial({
@@ -1021,9 +1041,9 @@
           transparent: true,
           opacity: spaceOpacity,
           depthWrite: true,
-          side: THREE.DoubleSide
+          side: THREE.DoubleSide,
         });
-        
+
         const instancedMesh = new THREE.InstancedMesh(
           geometry,
           material,
@@ -1215,6 +1235,21 @@
           mesh.position.set(x + width / 2, height, z + depth / 2);
           corridorGroup.add(mesh);
           corridorMeshes.push(mesh);
+
+          const labelDiv = document.createElement("div");
+          labelDiv.className = "label";
+          labelDiv.textContent = formatSpazioLabel(corridor.Spazio);
+          labelDiv.style.color = "white";
+          labelDiv.style.fontSize = "12px";
+          labelDiv.style.fontWeight = "w-600";
+          labelDiv.style.pointerEvents = "none";
+          labelDiv.style.backgroundColor = "transparent";
+          labelDiv.style.padding = "2px 4px";
+          labelDiv.style.borderRadius = "4px";
+
+          const label = new CSS2DObject(labelDiv);
+          label.position.set(0, 0.1, 0); //meti uma altura ligeiramente acima do plano
+          mesh.add(label);
 
           //Adicionar contorno preto
           const edgeGeometry = new THREE.EdgesGeometry(geometry);
