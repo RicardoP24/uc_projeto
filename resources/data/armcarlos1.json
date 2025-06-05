@@ -77,28 +77,6 @@
       "Spazio_coord_largo": 1280,
       "Spazio_coord_fondo": 2720,
       "Spazio_orientamento": "2"
-    },
-    {
-      "Spazio_tipo": "2",
-      "Spazio": "110",
-      "Spazio_coord_draw_a": "6417",
-      "Spazio_coord_draw_c": "1800",
-      "Spazio_coord_draw_b": "0",
-      "Spazio_coord_alto": 900,
-      "Spazio_coord_largo": 1280,
-      "Spazio_coord_fondo": 2720,
-      "Spazio_orientamento": "2"
-    },
-    {
-      "Spazio_tipo": "2",
-      "Spazio": "111",
-      "Spazio_coord_draw_a": "7697",
-      "Spazio_coord_draw_c": "1800",
-      "Spazio_coord_draw_b": "0",
-      "Spazio_coord_alto": 900,
-      "Spazio_coord_largo": 1280,
-      "Spazio_coord_fondo": 2720,
-      "Spazio_orientamento": "2"
     }
   ],
   "Racks": [
