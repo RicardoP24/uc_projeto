@@ -885,6 +885,7 @@
             color: 0x5865f2,
             transparent: true,
             opacity: 0.2,
+            depthWrite: false
           });
 
           const mesh = new THREE.Mesh(geometry, material);
@@ -1012,19 +1013,23 @@
         const spaceColor = 0x00ff00;
         const spaceOpacity = 0.95;
         const shrinkFactor = 0.65;
+        
 
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const material = new THREE.MeshBasicMaterial({
           color: spaceColor,
           transparent: true,
           opacity: spaceOpacity,
+          depthWrite: true,
+          side: THREE.DoubleSide
         });
-
+        
         const instancedMesh = new THREE.InstancedMesh(
           geometry,
           material,
           spaces.length
         );
+
         const dummy = new THREE.Object3D();
 
         spaces.forEach((space, i) => {
@@ -1127,7 +1132,7 @@
           const z = parseFloat(item.Spazio_coord_draw_c) / 100;
 
           let width = parseFloat(item.Spazio_coord_largo || 80) / 100;
-          const height= parseFloat(item.Spazio_coord_alto || 180) / 100;
+          const height = parseFloat(item.Spazio_coord_alto || 180) / 100;
           let depth = parseFloat(item.Spazio_coord_fondo || 120) / 100;
 
           const orientation = String(item.Spazio_orientamento).trim();
@@ -1140,11 +1145,7 @@
           const scaleY = height * shrinkFactor;
           const scaleZ = depth * shrinkFactor;
 
-          dummy.position.set(
-            x + width / 2,
-            y + height / 2,
-            z + depth / 2
-          );
+          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
           dummy.rotation.set(0, 0, 0);
           dummy.scale.set(scaleX, scaleY, scaleZ);
           dummy.updateMatrix();
@@ -1215,7 +1216,17 @@
           corridorGroup.add(mesh);
           corridorMeshes.push(mesh);
 
-          
+          //Adicionar contorno preto
+          const edgeGeometry = new THREE.EdgesGeometry(geometry);
+          const edgeMaterial = new THREE.LineBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            opacity: 0.6, // mais suave
+          });
+          const line = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+          line.rotation.x = -Math.PI / 2;
+          line.position.set(x + width / 2, height + 0.001, z + depth / 2);
+          corridorGroup.add(line);
         });
 
         console.log(`Corredores desenhados: ${corridors.length}`);
@@ -1352,7 +1363,6 @@
           let width = parseFloat(driveIn.Spazio_coord_largo) / 100;
           const height = parseFloat(driveIn.Spazio_coord_alto) / 100;
           let depth = parseFloat(driveIn.Spazio_coord_fondo) / 100;
-
 
           const orientation = String(driveIn.Spazio_orientamento).trim();
           if (orientation === "1") {
