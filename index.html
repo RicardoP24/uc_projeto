@@ -555,6 +555,94 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
 
+      function flipInstancedMeshX(instancedMesh, centerX) {
+        const count = instancedMesh.count;
+        const dummy = new THREE.Object3D();
+        const flipped = new THREE.InstancedMesh(
+          instancedMesh.geometry,
+          instancedMesh.material,
+          count
+        );
+
+        for (let i = 0; i < count; i++) {
+          instancedMesh.getMatrixAt(i, dummy.matrix);
+          dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+          dummy.position.x = 2 * centerX - dummy.position.x;
+          dummy.scale.x *= -1;
+
+          dummy.updateMatrix();
+          flipped.setMatrixAt(i, dummy.matrix);
+        }
+
+        flipped.instanceMatrix.needsUpdate = true;
+        return flipped;
+      }
+
+      function flipWarehouseHorizontally() {
+        const allGroups = [
+          rackGroup,
+          corridorGroup,
+          bufferGroup,
+          spaceGroup,
+          dockGroup,
+          stackGroup,
+          driveInGroup,
+        ];
+
+        // Calcula limites do armazém
+        const bounds = new THREE.Box3();
+        allGroups.forEach((group) => {
+          group.children.forEach((obj) => {
+            bounds.expandByObject(obj);
+          });
+        });
+
+        const minX = bounds.min.x;
+        const maxX = bounds.max.x;
+        const centerX = (minX + maxX) / 2;
+
+        allGroups.forEach((group) => {
+          const newChildren = [];
+
+          for (let i = group.children.length - 1; i >= 0; i--) {
+            const obj = group.children[i];
+
+            if (obj.isInstancedMesh) {
+              const flipped = flipInstancedMeshX(obj, centerX);
+              group.remove(obj);
+              obj.dispose?.();
+              newChildren.push(flipped);
+            } else {
+              // Remove qualquer geometria duplicada (linhas de contorno por ex.)
+              if (obj.userData?.skipFlip) continue;
+
+              obj.position.x = 2 * centerX - obj.position.x;
+
+              if (obj.geometry?.type === "PlaneGeometry") {
+                obj.rotation.y += Math.PI;
+              }
+
+              obj.updateMatrix();
+            }
+          }
+
+          // Adiciona novos InstancedMeshes
+          newChildren.forEach((m) => group.add(m));
+        });
+
+        // Ajusta posição da câmera e do player
+        camera.position.x = 2 * centerX - camera.position.x;
+        camera.lookAt(centerX, camera.position.y, boundingBoxCenter.z);
+
+        if (employeeModel) {
+          employeeModel.position.x = 2 * centerX - employeeModel.position.x;
+        }
+
+        // Atualiza centro
+        boundingBoxCenter.x = 2 * centerX - boundingBoxCenter.x;
+      }
+
       // Calculate the bounding box of all the racks and the center
       function calculateWallBoundingBox(racks) {
         const min = new THREE.Vector3(Infinity, Infinity, Infinity);
@@ -888,6 +976,7 @@
             new THREE.LineBasicMaterial({ color: 0xffffff })
           );
           line.position.copy(mesh.position);
+
           rackGroup.add(line);
         });
 
@@ -1139,6 +1228,56 @@
         console.log(`Buffers desenhados: ${count}`);
       }
 
+      function mirrorDataXCoordinates(data) {
+        const centerX = getLayoutCenterX(data);
+
+        const mirrorArray = (arr) => {
+          arr?.forEach((item) => {
+            let x = parseFloat(item.Spazio_coord_draw_a || "0");
+            let width = parseFloat(item.Spazio_coord_largo || "0");
+            let depth = parseFloat(item.Spazio_coord_fondo || "0");
+
+            const orientation = String(item.Spazio_orientamento || "").trim();
+
+            // Flip width/depth if orientation is along X
+            if (orientation === "1") {
+              [width, depth] = [depth, width];
+            }
+
+            const objectCenterX = x + width / 2;
+            const mirroredCenterX = 2 * centerX - objectCenterX;
+
+            item.Spazio_coord_draw_a = (mirroredCenterX - width / 2).toFixed(2);
+          });
+        };
+
+        mirrorArray(data.Racks);
+        mirrorArray(data.Spaces);
+        mirrorArray(data.Buffer);
+        mirrorArray(data.Cais);
+        mirrorArray(data.Pilhas);
+        mirrorArray(data.DriveIn);
+        mirrorArray(data.Corridor);
+      }
+
+      function getLayoutCenterX(data) {
+        const allX = [
+          ...data.Racks,
+          ...data.Spaces,
+          ...data.Buffer,
+          ...data.Cais,
+          ...data.Pilhas,
+          ...data.DriveIn,
+          ...data.Corridor,
+        ]
+          .map((item) => parseFloat(item.Spazio_coord_draw_a))
+          .filter((x) => !isNaN(x));
+
+        const minX = Math.min(...allX);
+        const maxX = Math.max(...allX);
+        return (minX + maxX) / 2;
+      }
+ 
       async function extractDataFromJSON(data) {
         racks = data.Racks;
         spaces = data.Spaces;
@@ -1168,7 +1307,7 @@
         await createStacksFromJSON(data.Pilhas);
         await createDriveInsFromJSON(data.DriveIn);
         createWarehouseAreaFromComponentsAll();
-
+        // flipWarehouseHorizontally();
         createEmployee();
       }
       //Nova função realizada por GM para representar os espaços
@@ -1376,6 +1515,8 @@
         fetch("resources/data/armcarlos1.json")
           .then((response) => response.json())
           .then(async (data) => {
+            mirrorDataXCoordinates(data);
+
             await extractDataFromJSON(data);
             createCorridorsFromJSON(data.Corridor); // -> Alteração GM
             createBufferFromJSON(data.Buffer); // -> Alteração GM
