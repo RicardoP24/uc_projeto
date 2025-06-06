@@ -3487,7 +3487,7 @@
   "Cais": [
     {
       "Spazio_tipo": "6",
-      "Spazio": "",
+      "Spazio": "111",
       "Spazio_coord_draw_a": "1000",
       "Spazio_coord_draw_c": "0",
       "Spazio_coord_draw_b": "0",
@@ -3498,7 +3498,7 @@
     },
     {
       "Spazio_tipo": "6",
-      "Spazio": "",
+      "Spazio": "222",
       "Spazio_coord_draw_a": "1760",
       "Spazio_coord_draw_c": "0",
       "Spazio_coord_draw_b": "0",
@@ -3509,7 +3509,7 @@
     },
     {
       "Spazio_tipo": "6",
-      "Spazio": "",
+      "Spazio": "333",
       "Spazio_coord_draw_a": "2480",
       "Spazio_coord_draw_c": "0",
       "Spazio_coord_draw_b": "0",

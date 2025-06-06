@@ -239,6 +239,11 @@
       let wallBoundingBoxCoords;
       let racks;
       let spaces;
+      let docks;
+      let stacks;
+      let driveIns;
+      let corredor;
+      let buffers;
       let boundingBoxCenter = new THREE.Vector3();
       let rackMeshes = []; // Add this at the top of your script
       let dockMeshes = [];
@@ -300,6 +305,106 @@
         currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
         updateBufferLevels(currentMaxBufferLevel);
       });
+
+      function createLabelToggleMenu() {
+        const menu = document.createElement("div");
+        menu.style.position = "fixed";
+        menu.style.top = "60px";
+        menu.style.left = "10px";
+        menu.style.background = "#333";
+        menu.style.color = "white";
+        menu.style.padding = "10px";
+        menu.style.borderRadius = "4px";
+        menu.style.fontSize = "14px";
+        menu.style.zIndex = 9999;
+
+        const types = [
+          "racks",
+          "docks",
+          "stacks",
+          "driveins",
+          "buffers",
+          "corridors",
+          "picking",
+        ];
+
+        types.forEach((type) => {
+          const wrapper = document.createElement("div");
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.id = `toggle-labels-${type}`;
+          checkbox.checked = type === "corridors";
+
+          const label = document.createElement("label");
+          label.htmlFor = checkbox.id;
+          label.textContent = ` ${type}`;
+
+          // Adiciona ao DOM antes de usá-lo
+          wrapper.appendChild(checkbox);
+          wrapper.appendChild(label);
+          menu.appendChild(wrapper);
+
+          // ✅ Só aqui é seguro aplicar visibilidade
+          labelRenderer.domElement
+            .querySelectorAll(`.toggle-label-${type}`)
+            .forEach((el) => {
+              el.style.visibility = checkbox.checked ? "visible" : "hidden";
+            });
+
+          let labelsCreated = new Set(); // manter o rastreamento dos tipos já criados
+
+          checkbox.addEventListener("change", (e) => {
+            const isVisible = e.target.checked;
+
+            // Cria as labels se ainda não foram criadas
+            if (isVisible && !labelsCreated.has(type)) {
+              switch (type) {
+                case "racks":
+                  racks?.forEach((r) =>
+                    addLabelForSingleComponent(r, "racks", "")
+                  );
+                  break;
+                case "docks":
+                  docks?.forEach((d) =>
+                    addLabelForSingleComponent(d, "docks", "")
+                  );
+                  break;
+                case "stacks":
+                  stacks?.forEach((s) =>
+                    addLabelForSingleComponent(s, "stacks", "")
+                  );
+                  break;
+                case "driveins":
+                  driveIns?.forEach((d) =>
+                    addLabelForSingleComponent(d, "driveins", "")
+                  );
+                  break;
+                case "buffers":
+                  buffers?.forEach((b) =>
+                    addLabelForSingleComponent(b, "buffers", "buffer")
+                  );
+                  break;
+                case "picking":
+                  spaces?.forEach((s) =>
+                    addLabelForSingleComponent(s, "picking", "picking")
+                  );
+                  break;
+              }
+
+              labelsCreated.add(type);
+            }
+
+            // Controlar a visibilidade
+            labelRenderer.domElement
+              .querySelectorAll(`.toggle-label-${type}`)
+              .forEach((el) => {
+                el.style.visibility = isVisible ? "visible" : "hidden";
+              });
+          });
+        });
+
+        document.body.appendChild(menu);
+      }
 
       //FUNCTION formatSpazioLabel(spazio) MADE MY GM
       function formatSpazioLabel(spazio) {
@@ -451,7 +556,6 @@
       labelRenderer.domElement.style.top = "0px";
       labelRenderer.domElement.style.pointerEvents = "none";
       document.body.appendChild(labelRenderer.domElement);
-
 
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1161,45 +1265,46 @@
         console.log(`Spaces created: ${spaces.length}`);
       }
 
-      // Create geometry and material for cubes
-      /*const cubeGeometry = new THREE.BoxGeometry(1, 1, 1); // 1x1x1 cubes
-        const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red color
+      function addLabelForSingleComponent(component, type = "", name = "") {
+        if (!component || !component.Spazio) return;
 
-        const count = spaces.length; // Assuming spaces is an array of data
+        const label = formatSpazioLabel(component.Spazio);
 
-        // Create InstancedMesh with cube geometry and material
-        instancedMesh = new THREE.InstancedMesh(
-          cubeGeometry,
-          cubeMaterial,
-          count
-        );
+        const x = parseFloat(component.Spazio_coord_draw_a) / 100;
+        const y = parseFloat(component.Spazio_coord_draw_b) / 100;
+        const z = parseFloat(component.Spazio_coord_draw_c) / 100;
+
+        const width = parseFloat(component.Spazio_coord_largo || 0) / 100;
+        const height = parseFloat(component.Spazio_coord_alto || 0) / 100;
+        const depth = parseFloat(component.Spazio_coord_fondo || 0) / 100;
+
+        const labelDiv = document.createElement("div");
+        labelDiv.className = `label toggle-label toggle-label-${type}`;
+        labelDiv.textContent = label;
+        labelDiv.style.color = "white";
+        labelDiv.style.fontSize = "12px";
+        labelDiv.style.fontWeight = "bold";
+        labelDiv.style.pointerEvents = "none";
+        labelDiv.style.backgroundColor = "transparent";
+        labelDiv.style.padding = "2px 4px";
+        labelDiv.style.borderRadius = "4px";
+
+        const labelObj = new CSS2DObject(labelDiv);
+        labelObj.position.set(0, 0.05, 0);
+        labelObj.rotation.x = -Math.PI / 2;
 
         const dummy = new THREE.Object3D();
+        if (name == "corredor")
+          dummy.position.set(x + width / 2, 0, z + depth / 2);
+        else if (name == "buffer" || name == "picking")
+          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+        else dummy.position.set(x + width / 2, y + height, z + depth / 2);
 
-        spaces.forEach((item, i) => {
-          const position = new THREE.Vector3(
-            item.Spazio_coord_draw_a / 50,
-            item.Spazio_coord_draw_b / 50,
-            item.Spazio_coord_draw_c / 50
-          );
+        dummy.add(labelObj);
 
-          // Set position only, no rotation or scaling
-          dummy.position.copy(position);
-          dummy.rotation.set(0, 0, 0); // No rotation
-          dummy.scale.set(1, 1, 1); // Default scale
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-        });
+        scene.add(dummy);
+      }
 
-        instancedMesh.castShadow = true;
-        instancedMesh.receiveShadow = true;
-        scene.add(instancedMesh);
-
-        // Add the InstancedMesh to the Octree
-        worldOctree.fromGraphNode(instancedMesh); */
-
-      //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
-      //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
       function createBufferFromJSON(bufferArray) {
         const bufferColor = 0xd48c8c;
         const bufferOpacity = 0.95;
@@ -1301,10 +1406,50 @@
         const maxX = Math.max(...allX);
         return (minX + maxX) / 2;
       }
- 
+
+      function addFlatLabelToObject(object, text, type = "") {
+        const labelDiv = document.createElement("div");
+        labelDiv.className = `label toggle-label toggle-label-${type}`;
+        labelDiv.textContent = text;
+        labelDiv.style.color = "white";
+        labelDiv.style.fontSize = "12px";
+        labelDiv.style.fontWeight = "bold";
+        labelDiv.style.pointerEvents = "none";
+        labelDiv.style.backgroundColor = "transparent";
+        labelDiv.style.padding = "2px 4px";
+        labelDiv.style.borderRadius = "4px";
+
+        const label = new CSS2DObject(labelDiv);
+        label.position.set(0, 0.05, 0);
+        label.rotation.x = -Math.PI / 2;
+
+        object.add(label);
+      }
+
+      function addFlatLabelsToWarehouse() {
+        // racks?.forEach((r) => addLabelForSingleComponent(r, "racks", ""));
+        // docks?.forEach((d) => addLabelForSingleComponent(d, "docks", ""));
+        // stacks?.forEach((s) => addLabelForSingleComponent(s, "stacks", ""));
+        // driveIns?.forEach((d) => addLabelForSingleComponent(d, "driveins", ""));
+        // buffers?.forEach((b) =>
+        //   addLabelForSingleComponent(b, "buffers", "buffer")
+        // );
+        corredor?.forEach((c) =>
+          addLabelForSingleComponent(c, "corridors", "corredor")
+        );
+        // spaces?.forEach((s) =>
+        //   addLabelForSingleComponent(s, "spaces", "picking")
+        // );
+      }
+
       async function extractDataFromJSON(data) {
         racks = data.Racks;
         spaces = data.Spaces;
+        docks = data.Cais;
+        stacks = data.Pilhas;
+        driveIns = data.DriveIn;
+        buffers = data.Buffer;
+        corredor = data.Corridor;
         wallBoundingBoxCoords = calculateWallBoundingBox(data.Racks);
         boundingBoxCenter.copy(wallBoundingBoxCoords.center);
 
@@ -1330,8 +1475,13 @@
         await createDockFromJSON(data.Cais);
         await createStacksFromJSON(data.Pilhas);
         await createDriveInsFromJSON(data.DriveIn);
+
         createWarehouseAreaFromComponentsAll();
-        // flipWarehouseHorizontally();
+        addFlatLabelsToWarehouse();
+
+        createLabelToggleMenu();
+        applyInitialLabelVisibilityFromMenu();
+
         createEmployee();
       }
       //Nova função realizada por GM para representar os espaços
@@ -1365,21 +1515,6 @@
           mesh.position.set(x + width / 2, height, z + depth / 2);
           corridorGroup.add(mesh);
           corridorMeshes.push(mesh);
-
-          const labelDiv = document.createElement("div");
-          labelDiv.className = "label";
-          labelDiv.textContent = formatSpazioLabel(corridor.Spazio);
-          labelDiv.style.color = "white";
-          labelDiv.style.fontSize = "12px";
-          labelDiv.style.fontWeight = "w-600";
-          labelDiv.style.pointerEvents = "none";
-          labelDiv.style.backgroundColor = "transparent";
-          labelDiv.style.padding = "2px 4px";
-          labelDiv.style.borderRadius = "4px";
-
-          const label = new CSS2DObject(labelDiv);
-          label.position.set(0, 0.1, 0); //meti uma altura ligeiramente acima do plano
-          mesh.add(label);
 
           //Adicionar contorno preto
           const edgeGeometry = new THREE.EdgesGeometry(geometry);
@@ -1562,6 +1697,31 @@
         console.log(`Drive-ins desenhados: ${driveIns.length}`);
       }
       // Fetch JSON data and start rendering
+
+      function applyInitialLabelVisibilityFromMenu() {
+        const types = [
+          "racks",
+          "docks",
+          "stacks",
+          "driveins",
+          "buffers",
+          "corridors",
+          "spaces",
+        ];
+
+        types.forEach((type) => {
+          const checkbox = document.getElementById(`toggle-labels-${type}`);
+          const visible = checkbox?.checked;
+          const labels = labelRenderer.domElement.querySelectorAll(
+            `.toggle-label-${type}`
+          );
+
+          labels.forEach((el) => {
+            el.style.visibility = visible ? "visible" : "hidden";
+          });
+        });
+      }
+
       window.onload = function () {
         fetch("resources/data/armcarlos1.json")
           .then((response) => response.json())
@@ -1574,6 +1734,7 @@
             createDockFromJSON(data.Cais); // -> Alteração GM
             createStacksFromJSON(data.Pilhas); // -> Alteração GM
             createDriveInsFromJSON(data.DriveIn); // -> Alteração GM
+
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
             const bounds = new THREE.Box3();
@@ -1609,16 +1770,6 @@
           })
           .catch((error) => console.error("Error fetching JSON:", error));
       };
-
-      function isNotHidden(obj) {
-        if (obj.userData.hidden) return false;
-        let parent = obj.parent;
-        while (parent) {
-          if (parent.userData && parent.userData.hidden) return false;
-          parent = parent.parent;
-        }
-        return true;
-      }
     </script>
   </body>
 </html>
