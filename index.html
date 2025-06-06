@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
     <title>three.js - misc - octree collisions</title>
     <meta charset="utf-8" />
     <meta
@@ -8,7 +10,304 @@
       content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
     />
     <link type="text/css" rel="stylesheet" href="main.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
+      /* CSS DO HEADER*/
+      /* HEADER FIXO E RESPONSIVO */
+      body {
+        overflow-x: hidden;
+        font-family: "Inter", sans-serif;
+      }
+      #top-nav {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        height: 55px;
+        background: #1c1f2e;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 16px;
+        z-index: 1000;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        color: white;
+        font-family: sans-serif;
+        box-sizing: border-box;
+      }
+
+      .nav-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .nav-left .logo {
+        height: 100px;
+        width: auto;
+        max-height: 100%;
+      }
+
+      .nav-left .title {
+        font-size: 18px;
+        font-weight: bold;
+        white-space: nowrap;
+      }
+
+      .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+
+      /* Botões */
+      .toggle {
+        display: flex;
+        align-items: center;
+      }
+
+      .toggle .slider {
+        background: #2563eb;
+        color: white;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-weight: 500;
+        font-size: 14px;
+      }
+
+      #tutorial-btn {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 14px;
+      }
+
+      #tutorial-btn:hover {
+        background: #3b82f6;
+      }
+
+      /* RESPONSIVIDADE */
+      @media (max-width: 768px) {
+        #top-nav {
+          flex-direction: column;
+          align-items: flex-start;
+          height: auto;
+          padding: 8px;
+        }
+
+        .nav-left,
+        .nav-right {
+          width: 100%;
+          justify-content: space-between;
+        }
+
+        #tutorial-btn,
+        .toggle .slider {
+          font-size: 12px;
+          padding: 5px 8px;
+        }
+
+        .nav-left .title {
+          font-size: 16px;
+        }
+      }
+
+      #tutorial-tooltip {
+        position: absolute;
+        top: 60px;
+        right: 10px;
+        background: #1c1f2e; /* Igual ao header */
+        color: white;
+        padding: 10px 14px;
+        border-radius: 6px;
+        z-index: 9999;
+        font-size: 14px;
+        max-width: 90vw;
+        box-sizing: border-box;
+        font-family: sans-serif;
+
+        /* Animação */
+        display: block;
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        pointer-events: none;
+      }
+
+      #tutorial-tooltip.show {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+
+      /* FIM DO CSS DO HEADER*/
+
+      /* INICIO DO CSS DO SIDEBAR */
+      #sidebar {
+        font-family: "Inter", sans-serif;
+        position: fixed;
+        top: 55px; /* altura do header */
+        left: 0;
+        width: 250px;
+        max-width: 100vw;
+        height: calc(100% - 55px); /* para não ultrapassar o fundo da página */
+        background-color: #1c1f2e;
+        color: white;
+        padding: 16px;
+        box-sizing: border-box;
+        z-index: 999; /* abaixo do header que é 1000 */
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+      #sidebar h2,
+      #sidebar label,
+      #sidebar select,
+      #sidebar input,
+      #sidebar summary,
+      #sidebar ul,
+      #sidebar li {
+        font-family: "Inter", sans-serif;
+      }
+
+      #sidebar-toggle {
+        position: fixed;
+        top: calc(
+          50% + 27.5px
+        ); /* 50% da altura do ecrã + metade da altura do header (55px) */
+        left: 250px; /* mesma largura da sidebar */
+        transform: translateY(-50%);
+        width: 30px;
+        height: 40px;
+        background-color: #1c1f2e;
+        color: white;
+        border: none;
+        border-radius: 0 6px 6px 0;
+        cursor: pointer;
+        font-size: 16px;
+        z-index: 1001;
+        transition: left 0.3s ease;
+      }
+
+      #sidebar h2 {
+        margin-top: 0;
+        font-size: 18px;
+      }
+
+      .section {
+        margin-bottom: 24px;
+        font-family: "Inter", sans-serif;
+      }
+
+      .dropdown-group {
+        background: transparent;
+        border: none;
+        padding: 0;
+      }
+
+      .dropdown-group summary {
+        font-weight: 600;
+        font-size: 14px;
+        color: white;
+        cursor: pointer;
+        padding: 8px 0;
+        list-style: none;
+        user-select: none;
+      }
+
+      .dropdown-group summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .dropdown-group ul {
+        padding: 4px 0 0 0;
+        margin: 0;
+        list-style: none;
+      }
+
+      .dropdown-group li {
+        padding: 6px 0;
+        font-size: 15px;
+        font-weight: 500;
+        color: white;
+        transition: 0.2s ease;
+      }
+
+      .dropdown-group li label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+
+      .dropdown-group input[type="checkbox"] {
+        accent-color: #3b82f6;
+        width: 16px;
+        height: 16px;
+      }
+
+      .dropdown-group li:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        padding-left: 4px;
+      }
+
+      select,
+      input[type="checkbox"] {
+        margin-top: 6px;
+      }
+
+      .buffer-select {
+        width: 90%;
+        margin-left: 0;
+        padding: 6px 10px;
+        background-color: #2a2f45;
+        color: white;
+        border: 1px solid #444;
+        border-radius: 6px;
+        font-family: "Inter", sans-serif;
+        font-size: 14px;
+      }
+      .checkbox-list {
+        padding-left: 0;
+        list-style: none;
+      }
+
+      .checkbox-list li {
+        padding: 6px 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: white;
+        text-transform: uppercase;
+      }
+
+      .checkbox-list label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        padding: 8px 0;
+      }
+
+      .checkbox-list input[type="checkbox"] {
+        accent-color: #3b82f6;
+        width: 16px;
+        height: 16px;
+      }
+      .ph {
+        font-size: 16px;
+        color: white;
+      }
+
+      /* FIM DO CSS DO SIDEBAR */
       #legend {
         position: absolute;
         bottom: 10px;
@@ -21,14 +320,14 @@
         z-index: 100;
         font-family: sans-serif;
       }
-
       #zoom-controls {
         position: absolute;
-        bottom: 10px;
-        right: 10px;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
         display: flex;
-        flex-direction: column;
-        gap: 6px;
+        flex-direction: row;
+        gap: 10px;
         z-index: 101;
       }
 
@@ -104,7 +403,7 @@
 
       #level-controls {
         position: absolute;
-        top: 10px;
+        bottom: 10px;
         right: 10px;
         background: rgba(0, 0, 0, 0.8);
         color: white;
@@ -121,18 +420,34 @@
     </style>
   </head>
   <body>
-    <div id="info">
-      RATO para olhar em redor<br />
-      WASD para mover e ESPAÇO para saltar<br />
-      T para trocar de camera
+    <!-- HEADER NAVIGATION -->
+    <div id="top-nav">
+      <div class="nav-left">
+        <img src="resources/imgs/Eve_Icon.png" class="logo" />
+        <span class="title">Warehouse 3D</span>
+      </div>
+      <div class="nav-right">
+        <!--<label class="toggle">
+          <input type="checkbox" disabled />
+          <span class="slider">3D</span>
+        </label> -->
+        <button id="tutorial-btn">Tutorial</button>
+      </div>
     </div>
-    <div id="container"></div>
+
+    <div id="tutorial-tooltip">
+      <strong>Controlers:</strong><br />
+      "MOUSE 1" to look around <br />
+      "WASD" to move <br />
+      "T" to toggle freecam <br />
+      "MOUSE SCROLL" to amplify
+    </div>
     <div id="zoom-controls">
       <button id="zoom-in">+</button>
       <button id="zoom-out">−</button>
       <button id="reset-topcam">↺</button>
     </div>
-
+    <!-- END OF HEADER NAVIGATION -->
     <div id="legend">
       <div class="legend-item">
         <div class="legend-color rack"></div>
@@ -182,35 +497,103 @@
     ></div>
 
     <div id="container"></div>
+    <button id="sidebar-toggle">❮</button>
 
-    <div id="view-controls">
-      <span class="label">Visibilidade:</span>
-      <label><input type="checkbox" value="racks" checked /> Racks</label>
-      <label
-        ><input type="checkbox" value="corridors" checked /> Corridors</label
-      >
-      <label><input type="checkbox" value="buffers" checked /> Buffers</label>
-      <label><input type="checkbox" value="spaces" checked /> Picking</label>
-      <label><input type="checkbox" value="docks" checked /> Cais</label>
-      <label><input type="checkbox" value="stacks" checked /> Pilhas</label>
-      <label><input type="checkbox" value="driveins" checked /> DriveIns</label>
+    <!-- Sidebar HTML -->
+    <div id="sidebar">
+      <h2>Armazém Alpha</h2>
+
+      <div class="section">
+        <details class="dropdown-group" open>
+          <summary>
+            <span style="display: flex; align-items: center; gap: 6px">
+              <i class="ph ph-layout"></i>
+              <span>LAYOUT</span>
+            </span>
+          </summary>
+
+          <ul>
+            <li>
+              <label
+                ><input type="checkbox" value="racks" checked /> Racks</label
+              >
+            </li>
+            <li>
+              <label
+                ><input type="checkbox" value="corridors" checked />
+                Corredores</label
+              >
+            </li>
+            <li>
+              <label
+                ><input type="checkbox" value="buffers" checked />
+                Buffers</label
+              >
+            </li>
+            <li>
+              <label
+                ><input type="checkbox" value="spaces" checked /> Picking</label
+              >
+            </li>
+            <li>
+              <label
+                ><input type="checkbox" value="docks" checked /> Cais</label
+              >
+            </li>
+            <li>
+              <label
+                ><input type="checkbox" value="stacks" checked /> Pilhas</label
+              >
+            </li>
+            <li>
+              <label
+                ><input type="checkbox" value="driveins" checked />
+                DriveIns</label
+              >
+            </li>
+          </ul>
+        </details>
+      </div>
+
+      <!-- DROPDOWN BUFFER LEVELS ESTILIZADO -->
+      <details class="dropdown-group" open>
+        <summary>
+          <span style="display: flex; align-items: center; gap: 6px">
+            <i class="ph ph-sliders-horizontal"></i>
+            <span>BUFFER LEVELS</span>
+          </span>
+        </summary>
+
+        <div>
+          <select id="buffer-level" class="buffer-select">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10" selected>10</option>
+          </select>
+        </div>
+      </details>
+
+      <!-- CHECKBOX CAPTIONS SIMPLES E ALINHADO -->
+      <div class="section">
+        <ul class="checkbox-list">
+          <li>
+            <label style="display: flex; align-items: center; gap: 8px">
+              <i class="ph ph-warehouse"></i>
+              TOGGLE CAPTIONS
+            </label>
+          </li>
+        </ul>
+      </div>
     </div>
 
-    <div id="level-controls">
-      <label for="buffer-level">Nível máximo de buffers por rack:</label>
-      <select id="buffer-level">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-        <option value="7">7</option>
-        <option value="8">8</option>
-        <option value="9">9</option>
-        <option value="10" selected>10</option>
-      </select>
-    </div>
+    <!-- FIM DO HTML DO SIDEBAR-->
 
     <script type="importmap">
       {
@@ -290,7 +673,7 @@
       const resetTopCamBtn = document.getElementById("reset-topcam");
 
       const viewCheckboxes = document.querySelectorAll(
-        '#view-controls input[type="checkbox"]'
+        '#sidebar input[type="checkbox"]'
       );
 
       const bufferLevelSelect = document.getElementById("buffer-level");
@@ -452,7 +835,6 @@
       labelRenderer.domElement.style.pointerEvents = "none";
       document.body.appendChild(labelRenderer.domElement);
 
-
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setAnimationLoop(animate);
@@ -462,8 +844,16 @@
       container.appendChild(renderer.domElement);
 
       const stats = new Stats();
-      stats.domElement.style.position = "absolute";
-      stats.domElement.style.top = "0px";
+
+      stats.domElement.style.position = "fixed";
+      stats.domElement.style.bottom = "10px";
+      stats.domElement.style.right = "10px";
+      stats.domElement.style.left = ""; // limpa se existir
+      stats.domElement.style.top = ""; // limpa para não se sobrepor
+      stats.domElement.style.zIndex = "9999";
+
+      document.body.appendChild(stats.domElement);
+
       container.appendChild(stats.domElement);
 
       const GRAVITY = 30;
@@ -1052,9 +1442,9 @@
           else if (driveInMeshes.includes(first)) type = "DriveIn";
 
           tooltip.innerHTML = `<strong>${type}</strong><br>
-    <strong>X</strong>: ${pos.x.toFixed(2)} 
-    <strong>Y</strong>: ${pos.y.toFixed(2)} 
-    <strong>Z</strong>: ${pos.z.toFixed(2)}`;
+      <strong>X</strong>: ${pos.x.toFixed(2)}
+      <strong>Y</strong>: ${pos.y.toFixed(2)}
+      <strong>Z</strong>: ${pos.z.toFixed(2)}`;
           tooltip.style.display = "block";
         } else {
           hoveredRack = null;
@@ -1163,40 +1553,40 @@
 
       // Create geometry and material for cubes
       /*const cubeGeometry = new THREE.BoxGeometry(1, 1, 1); // 1x1x1 cubes
-        const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red color
+          const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red color
 
-        const count = spaces.length; // Assuming spaces is an array of data
+          const count = spaces.length; // Assuming spaces is an array of data
 
-        // Create InstancedMesh with cube geometry and material
-        instancedMesh = new THREE.InstancedMesh(
-          cubeGeometry,
-          cubeMaterial,
-          count
-        );
-
-        const dummy = new THREE.Object3D();
-
-        spaces.forEach((item, i) => {
-          const position = new THREE.Vector3(
-            item.Spazio_coord_draw_a / 50,
-            item.Spazio_coord_draw_b / 50,
-            item.Spazio_coord_draw_c / 50
+          // Create InstancedMesh with cube geometry and material
+          instancedMesh = new THREE.InstancedMesh(
+            cubeGeometry,
+            cubeMaterial,
+            count
           );
 
-          // Set position only, no rotation or scaling
-          dummy.position.copy(position);
-          dummy.rotation.set(0, 0, 0); // No rotation
-          dummy.scale.set(1, 1, 1); // Default scale
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-        });
+          const dummy = new THREE.Object3D();
 
-        instancedMesh.castShadow = true;
-        instancedMesh.receiveShadow = true;
-        scene.add(instancedMesh);
+          spaces.forEach((item, i) => {
+            const position = new THREE.Vector3(
+              item.Spazio_coord_draw_a / 50,
+              item.Spazio_coord_draw_b / 50,
+              item.Spazio_coord_draw_c / 50
+            );
 
-        // Add the InstancedMesh to the Octree
-        worldOctree.fromGraphNode(instancedMesh); */
+            // Set position only, no rotation or scaling
+            dummy.position.copy(position);
+            dummy.rotation.set(0, 0, 0); // No rotation
+            dummy.scale.set(1, 1, 1); // Default scale
+            dummy.updateMatrix();
+            instancedMesh.setMatrixAt(i, dummy.matrix);
+          });
+
+          instancedMesh.castShadow = true;
+          instancedMesh.receiveShadow = true;
+          scene.add(instancedMesh);
+
+          // Add the InstancedMesh to the Octree
+          worldOctree.fromGraphNode(instancedMesh); */
 
       //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
       //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
@@ -1301,7 +1691,7 @@
         const maxX = Math.max(...allX);
         return (minX + maxX) / 2;
       }
- 
+
       async function extractDataFromJSON(data) {
         racks = data.Racks;
         spaces = data.Spaces;
@@ -1619,6 +2009,49 @@
         }
         return true;
       }
+
+      //Tutorial button ALTERAÇAO GM
+      const tutorialBtn = document.getElementById("tutorial-btn");
+      const tooltipTutorial = document.getElementById("tutorial-tooltip");
+
+      let isTooltipVisible = false;
+
+      tutorialBtn.addEventListener("click", () => {
+        isTooltipVisible = !isTooltipVisible;
+        tooltipTutorial.classList.toggle("show", isTooltipVisible);
+      });
+
+      //Oculta se clicar fora
+      document.addEventListener("click", (e) => {
+        if (
+          !tooltipTutorial.contains(e.target) &&
+          !tutorialBtn.contains(e.target) &&
+          isTooltipVisible
+        ) {
+          tooltipTutorial.classList.remove("show");
+          isTooltipVisible = false;
+        }
+      });
+
+      //SIDE BAR JS ALTERAÇÃO GM
+      const sidebarToggle = document.getElementById("sidebar-toggle");
+      const sidebar = document.getElementById("sidebar");
+
+      let isSidebarVisible = true;
+
+      sidebarToggle.addEventListener("click", () => {
+        isSidebarVisible = !isSidebarVisible;
+
+        if (isSidebarVisible) {
+          sidebar.style.transform = "translateX(0)";
+          sidebarToggle.innerHTML = "❮";
+          sidebarToggle.style.left = "250px";
+        } else {
+          sidebar.style.transform = "translateX(-250px)";
+          sidebarToggle.innerHTML = "❯";
+          sidebarToggle.style.left = "0px";
+        }
+      });
     </script>
   </body>
 </html>
