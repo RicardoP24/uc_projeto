@@ -16,6 +16,32 @@
     />
 
     <style>
+      /* SCROLL BAR*/
+
+      /* Scrollbar moderna e estilizada */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: transparent; /* ou #1c1f2e para combinar */
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background-color: #3b82f6;
+        border-radius: 6px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: #2563eb;
+      }
+
+      /* Firefox */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #3b82f6 transparent;
+      }
+
       /* CSS DO HEADER*/
       /* HEADER FIXO E RESPONSIVO */
       body {
@@ -166,7 +192,6 @@
         overflow-y: auto;
         overflow-x: hidden;
       }
-     
 
       #sidebar-toggle {
         position: fixed;
@@ -191,8 +216,6 @@
         margin-top: 0;
         font-size: 18px;
       }
-
-     
 
       .dropdown-group {
         background: transparent;
@@ -269,8 +292,7 @@
         font-family: "Inter", sans-serif;
         font-size: 14px;
       }
-     
-     
+
       .ph {
         font-size: 16px;
         color: white;
@@ -392,24 +414,23 @@
 
       /* LEGEND POPUP CSS*/
       .legend-popup {
-  position: absolute;
-  top: 150px;
-  left: 280px;
-  background-color: rgba(40, 40, 40, 0.8);
-  color: white;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-family: sans-serif;
-  z-index: 9999;
-  cursor: move;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
-}
+        position: absolute;
+        top: 150px;
+        left: 280px;
+        background-color: rgba(40, 40, 40, 0.8);
+        color: white;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: sans-serif;
+        z-index: 9999;
+        cursor: move;
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+      }
 
-.legend-popup.hidden {
-  display: none;
-}
-
+      .legend-popup.hidden {
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -494,7 +515,7 @@
 
     <!-- Sidebar HTML -->
     <div id="sidebar">
-      <h2 class="arm"> Armazém Alpha</h2>
+      <h2 class="arm">Armazém Alpha</h2>
 
       <div class="section">
         <details class="dropdown-group" open>
@@ -575,13 +596,73 @@
 
       <!-- CHECKBOX CAPTIONS SIMPLES E ALINHADO -->
       <details class="dropdown-group" open>
-  <summary id="toggle-captions-btn">
-    <span style="display: flex; align-items: center; gap: 6px">
-      <i class="ph ph-warehouse"></i>
-      <span>TOGGLE CAPTIONS</span>
-    </span>
-  </summary>
-</details>
+        <summary id="toggle-captions-btn">
+          <span style="display: flex; align-items: center; gap: 6px">
+            <i class="ph ph-warehouse"></i>
+            <span>TOGGLE CAPTIONS</span>
+          </span>
+        </summary>
+      </details>
+
+      <details class="dropdown-group" open>
+        <summary style="cursor: pointer">
+          <span style="display: flex; align-items: center; gap: 6px">
+            <i class="ph ph-tag"></i>
+            <span>TOGGLE LABELS</span>
+          </span>
+        </summary>
+        <ul id="label-toggle-list">
+          <li>
+            <label
+              ><input type="checkbox" class="label-toggle" value="racks" />
+              Racks</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" class="label-toggle" value="docks" />
+              Cais</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" class="label-toggle" value="stacks" />
+              Pilhas</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" class="label-toggle" value="driveins" />
+              DriveIns</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" class="label-toggle" value="buffers" />
+              Buffers</label
+            >
+          </li>
+          <li>
+            <label
+              ><input
+                type="checkbox"
+                class="label-toggle"
+                value="corridors"
+                checked
+              />
+              Corredores</label
+            >
+          </li>
+          <li>
+            <label
+              ><input type="checkbox" class="label-toggle" value="picking" />
+              Picking</label
+            >
+          </li>
+        </ul>
+      </details>
+    </div>
+
     <!-- FIM DO HTML DO SIDEBAR-->
 
     <script type="importmap">
@@ -679,17 +760,46 @@
         updateBufferLevels(currentMaxBufferLevel);
       });
 
-      function createLabelToggleMenu() {
+      /*function createLabelToggleMenu() {
+        // Evita recriar o menu se ele já existir
+        if (document.getElementById("label-toggle-menu")) return;
+
         const menu = document.createElement("div");
+        menu.id = "label-toggle-menu";
         menu.style.position = "fixed";
-        menu.style.top = "60px";
-        menu.style.left = "10px";
+        menu.style.top = "100px";
+        menu.style.left = "300px";
         menu.style.background = "#333";
         menu.style.color = "white";
         menu.style.padding = "10px";
-        menu.style.borderRadius = "4px";
+        menu.style.borderRadius = "8px";
         menu.style.fontSize = "14px";
         menu.style.zIndex = 9999;
+        menu.style.cursor = "move";
+        menu.style.userSelect = "none";
+
+        // Torna o menu arrastável
+        let offsetX,
+          offsetY,
+          isDragging = false;
+
+        menu.addEventListener("mousedown", (e) => {
+          isDragging = true;
+          offsetX = e.clientX - menu.offsetLeft;
+          offsetY = e.clientY - menu.offsetTop;
+          document.body.style.userSelect = "none";
+        });
+
+        document.addEventListener("mousemove", (e) => {
+          if (!isDragging) return;
+          menu.style.left = `${e.clientX - offsetX}px`;
+          menu.style.top = `${e.clientY - offsetY}px`;
+        });
+
+        document.addEventListener("mouseup", () => {
+          isDragging = false;
+          document.body.style.userSelect = "";
+        });
 
         const types = [
           "racks",
@@ -700,6 +810,8 @@
           "corridors",
           "picking",
         ];
+
+        const labelsCreated = new Set();
 
         types.forEach((type) => {
           const wrapper = document.createElement("div");
@@ -712,19 +824,16 @@
           label.htmlFor = checkbox.id;
           label.textContent = ` ${type}`;
 
-          // Adiciona ao DOM antes de usá-lo
           wrapper.appendChild(checkbox);
           wrapper.appendChild(label);
           menu.appendChild(wrapper);
 
-          // ✅ Só aqui é seguro aplicar visibilidade
+          // Aplica visibilidade inicial
           labelRenderer.domElement
             .querySelectorAll(`.toggle-label-${type}`)
             .forEach((el) => {
               el.style.visibility = checkbox.checked ? "visible" : "hidden";
             });
-
-          let labelsCreated = new Set(); // manter o rastreamento dos tipos já criados
 
           checkbox.addEventListener("change", (e) => {
             const isVisible = e.target.checked;
@@ -763,11 +872,10 @@
                   );
                   break;
               }
-
               labelsCreated.add(type);
             }
 
-            // Controlar a visibilidade
+            // Controla visibilidade
             labelRenderer.domElement
               .querySelectorAll(`.toggle-label-${type}`)
               .forEach((el) => {
@@ -777,14 +885,14 @@
         });
 
         document.body.appendChild(menu);
-      }
+      } */
 
       //FUNCTION formatSpazioLabel(spazio) MADE MY GM
       function formatSpazioLabel(spazio) {
         const s = String(spazio).padStart(4, "0");
         return `${s.slice(0, 2)}.${s.slice(2)}`;
       }
-      
+
       function updateBufferLevels(maxLevel) {
         if (!bufferGroup || bufferGroup.children.length === 0) return;
 
@@ -863,7 +971,7 @@
 
         instancedMesh.instanceMatrix.needsUpdate = true;
       }
-      
+
       viewCheckboxes.forEach((checkbox) => {
         checkbox.addEventListener("change", () => {
           const selected = Array.from(viewCheckboxes)
@@ -1901,7 +2009,7 @@
         createWarehouseAreaFromComponentsAll();
         addFlatLabelsToWarehouse();
 
-        createLabelToggleMenu();
+        //createLabelToggleMenu();
         applyInitialLabelVisibilityFromMenu();
 
         createEmployee();
@@ -2032,10 +2140,10 @@
               y + boxHeight / 2 + i * boxHeight,
               z + depth / 2
             );
-            box.userData.type = "Pilha"; 
+            box.userData.type = "Pilha";
 
             stackGroup.add(box);
-            stackMeshes.push(box); 
+            stackMeshes.push(box);
 
             const edges = new THREE.EdgesGeometry(geometry);
             const line = new THREE.LineSegments(
@@ -2121,28 +2229,74 @@
       // Fetch JSON data and start rendering
 
       function applyInitialLabelVisibilityFromMenu() {
-        const types = [
-          "racks",
-          "docks",
-          "stacks",
-          "driveins",
-          "buffers",
-          "corridors",
-          "spaces",
-        ];
-
-        types.forEach((type) => {
-          const checkbox = document.getElementById(`toggle-labels-${type}`);
-          const visible = checkbox?.checked;
+        document.querySelectorAll(".label-toggle").forEach((checkbox) => {
+          const type = checkbox.value;
+          const visible = checkbox.checked;
           const labels = labelRenderer.domElement.querySelectorAll(
             `.toggle-label-${type}`
           );
-
           labels.forEach((el) => {
             el.style.visibility = visible ? "visible" : "hidden";
           });
         });
       }
+
+      //NEW FUNCTION FOR LABELS
+
+      document.querySelectorAll(".label-toggle").forEach((checkbox) => {
+        checkbox.addEventListener("change", (e) => {
+          const type = e.target.value;
+          const isVisible = e.target.checked;
+
+          // Cria a label se necessário
+          if (isVisible && !document.querySelector(`.toggle-label-${type}`)) {
+            switch (type) {
+              case "racks":
+                racks?.forEach((r) =>
+                  addLabelForSingleComponent(r, "racks", "")
+                );
+                break;
+              case "docks":
+                docks?.forEach((d) =>
+                  addLabelForSingleComponent(d, "docks", "")
+                );
+                break;
+              case "stacks":
+                stacks?.forEach((s) =>
+                  addLabelForSingleComponent(s, "stacks", "")
+                );
+                break;
+              case "driveins":
+                driveIns?.forEach((d) =>
+                  addLabelForSingleComponent(d, "driveins", "")
+                );
+                break;
+              case "buffers":
+                buffers?.forEach((b) =>
+                  addLabelForSingleComponent(b, "buffers", "buffer")
+                );
+                break;
+              case "corridors":
+                corredor?.forEach((c) =>
+                  addLabelForSingleComponent(c, "corridors", "corredor")
+                );
+                break;
+              case "picking":
+                spaces?.forEach((s) =>
+                  addLabelForSingleComponent(s, "picking", "picking")
+                );
+                break;
+            }
+          }
+
+          // Atualiza visibilidade
+          labelRenderer.domElement
+            .querySelectorAll(`.toggle-label-${type}`)
+            .forEach((el) => {
+              el.style.visibility = isVisible ? "visible" : "hidden";
+            });
+        });
+      });
 
       window.onload = function () {
         fetch("resources/data/armcarlos1.json")
@@ -2151,7 +2305,6 @@
             mirrorDataXCoordinates(data);
 
             await extractDataFromJSON(data);
- 
 
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
@@ -2249,7 +2402,6 @@
       //Toggle visibilidade
       toggleCaptionsBtn.addEventListener("click", () => {
         legendPopup.classList.toggle("hidden");
-
       });
 
       //Função drag
@@ -2257,7 +2409,7 @@
       let offsetX, offsetY;
 
       legendPopup.addEventListener("mousedown", (e) => {
-       isDragging = true;
+        isDragging = true;
         offsetX = e.clientX - legendPopup.offsetLeft;
         offsetY = e.clientY - legendPopup.offsetTop;
       });
@@ -2265,12 +2417,12 @@
         if (isDragging) {
           legendPopup.style.left = `${e.clientX - offsetX}px`;
           legendPopup.style.top = `${e.clientY - offsetY}px`;
-  }
-});
+        }
+      });
 
-    document.addEventListener("mouseup", () => {
-      isDragging = false;
-    });
+      document.addEventListener("mouseup", () => {
+        isDragging = false;
+      });
     </script>
   </body>
 </html>
