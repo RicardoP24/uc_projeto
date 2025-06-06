@@ -616,6 +616,7 @@
       let stackMeshes = [];
       let corridorMeshes = [];
       let driveInMeshes = [];
+      const bufferOriginalScales = {}; // índice → escala real
 
       const scene = new THREE.Scene();
       //Mudança das core GM
@@ -788,12 +789,12 @@
         const dummy = new THREE.Object3D();
         const count = instancedMesh.count;
 
-        const tolerance = 0.1; // Para agrupar por (x,z)
-        const yTolerance = 0.05; // Para agrupar níveis em Y
+        const tolerance = 0.1; // agrupar por (x, z)
+        const yTolerance = 0.15; // agrupar níveis em Y
 
-        // Agrupar buffers por rack (x,z)
         const rackBuckets = [];
 
+        // Agrupar buffers por posição XZ (mesma "coluna" de rack)
         for (let i = 0; i < count; i++) {
           instancedMesh.getMatrixAt(i, dummy.matrix);
           dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
@@ -813,43 +814,45 @@
           bucket.buffers.push({ index: i, y: pos.y });
         }
 
-        // Lógica por rack
+        // Processar cada grupo de buffers empilhados por rack
         rackBuckets.forEach((bucket) => {
-          const buffers = bucket.buffers;
+          const sorted = bucket.buffers.sort((a, b) => a.y - b.y);
 
-          // Agrupar níveis únicos (mesmo que variação de Y pequena)
           const levels = [];
-
-          buffers.forEach((buf) => {
-            let found = levels.find(
-              (levelY) => Math.abs(levelY - buf.y) < yTolerance
+          sorted.forEach((buf) => {
+            let level = levels.find(
+              (lvl) => Math.abs(lvl.y - buf.y) < yTolerance
             );
-            if (!found) {
-              levels.push(buf.y);
+            if (!level) {
+              level = { y: buf.y, buffers: [] };
+              levels.push(level);
             }
+            level.buffers.push(buf);
           });
 
-          // Ordenar os níveis de baixo para cima
-          levels.sort((a, b) => a - b);
+          // Aplicar visibilidade com base no nível lógico
+          levels.forEach((level, i) => {
+            const show = i < maxLevel;
 
-          // Mostrar buffers se estão em nível permitido
-          buffers.forEach((buf) => {
-            instancedMesh.getMatrixAt(buf.index, dummy.matrix);
-            dummy.matrix.decompose(
-              dummy.position,
-              dummy.quaternion,
-              dummy.scale
-            );
+            level.buffers.forEach((buf) => {
+              instancedMesh.getMatrixAt(buf.index, dummy.matrix);
+              dummy.matrix.decompose(
+                dummy.position,
+                dummy.quaternion,
+                dummy.scale
+              );
 
-            // Descobrir qual nível este buffer pertence
-            const logicalLevel = levels.findIndex(
-              (y) => Math.abs(y - buf.y) < yTolerance
-            );
+const originalScale = bufferOriginalScales[buf.index] || { x: 1, y: 1, z: 1 };
 
-            const show = logicalLevel >= 0 && logicalLevel < maxLevel;
-            dummy.scale.setScalar(show ? 1 : 0.0001);
-            dummy.updateMatrix();
-            instancedMesh.setMatrixAt(buf.index, dummy.matrix);
+              dummy.scale.set(
+                show ? originalScale.x : 0.0001,
+                show ? originalScale.y : 0.0001,
+                show ? originalScale.z : 0.0001
+              );
+
+              dummy.updateMatrix();
+              instancedMesh.setMatrixAt(buf.index, dummy.matrix);
+            });
           });
         });
 
@@ -1686,25 +1689,24 @@
 
           const orientation = String(item.Spazio_orientamento).trim();
           if (orientation === "1") {
-            const temp = width;
-            width = depth;
-            depth = temp;
+            [width, depth] = [depth, width];
           }
+
           const scaleX = width * shrinkFactor;
           const scaleY = height * shrinkFactor;
           const scaleZ = depth * shrinkFactor;
 
           dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          dummy.rotation.set(0, 0, 0);
           dummy.scale.set(scaleX, scaleY, scaleZ);
           dummy.updateMatrix();
-
           instancedMesh.setMatrixAt(i, dummy.matrix);
+
+          // ✅ Salva a escala real
+          bufferOriginalScales[i] = { x: scaleX, y: scaleY, z: scaleZ };
         });
 
         bufferGroup.add(instancedMesh);
-        bufferInstancedMesh = instancedMesh; // 👈 salva o mesh globalmente
+        bufferInstancedMesh = instancedMesh;
 
         console.log(`Buffers desenhados: ${count}`);
       }
@@ -2140,7 +2142,7 @@
             document.body.appendChild(stats.domElement);
 
             container.appendChild(stats.domElement);
-            toggleCamera()
+            toggleCamera();
           })
           .catch((error) => console.error("Error fetching JSON:", error));
       };
