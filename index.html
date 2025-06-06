@@ -166,7 +166,6 @@
         overflow-y: auto;
         overflow-x: hidden;
       }
-     
 
       #sidebar-toggle {
         position: fixed;
@@ -191,8 +190,6 @@
         margin-top: 0;
         font-size: 18px;
       }
-
-     
 
       .dropdown-group {
         background: transparent;
@@ -269,8 +266,7 @@
         font-family: "Inter", sans-serif;
         font-size: 14px;
       }
-     
-     
+
       .ph {
         font-size: 16px;
         color: white;
@@ -392,24 +388,23 @@
 
       /* LEGEND POPUP CSS*/
       .legend-popup {
-  position: absolute;
-  top: 150px;
-  left: 280px;
-  background-color: rgba(40, 40, 40, 0.8);
-  color: white;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-family: sans-serif;
-  z-index: 9999;
-  cursor: move;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
-}
+        position: absolute;
+        top: 150px;
+        left: 280px;
+        background-color: rgba(40, 40, 40, 0.8);
+        color: white;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: sans-serif;
+        z-index: 9999;
+        cursor: move;
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+      }
 
-.legend-popup.hidden {
-  display: none;
-}
-
+      .legend-popup.hidden {
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -494,7 +489,7 @@
 
     <!-- Sidebar HTML -->
     <div id="sidebar">
-      <h2 class="arm"> Armazém Alpha</h2>
+      <h2 class="arm">Armazém Alpha</h2>
 
       <div class="section">
         <details class="dropdown-group" open>
@@ -575,15 +570,15 @@
 
       <!-- CHECKBOX CAPTIONS SIMPLES E ALINHADO -->
       <details class="dropdown-group" open>
-  <summary id="toggle-captions-btn">
-    <span style="display: flex; align-items: center; gap: 6px">
-      <i class="ph ph-warehouse"></i>
-      <span>TOGGLE CAPTIONS</span>
-    </span>
-  </summary>
-</details>
-    <!-- FIM DO HTML DO SIDEBAR-->
-
+        <summary id="toggle-captions-btn">
+          <span style="display: flex; align-items: center; gap: 6px">
+            <i class="ph ph-warehouse"></i>
+            <span>TOGGLE CAPTIONS</span>
+          </span>
+        </summary>
+      </details>
+      <!-- FIM DO HTML DO SIDEBAR-->
+    </div>
     <script type="importmap">
       {
         "imports": {
@@ -601,7 +596,6 @@
       import { Capsule } from "three/addons/math/Capsule.js";
       import { GUI } from "three/addons/libs/lil-gui.module.min.js";
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-      //import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'; -> GM nao quero utilizar GLTF Loaders estragam-me os FPS
       import {
         CSS2DRenderer,
         CSS2DObject,
@@ -622,8 +616,6 @@
       let stackMeshes = [];
       let corridorMeshes = [];
       let driveInMeshes = [];
-
-      //const gltfLoader = new GLTFLoader();  -> GM nao quero utilizar GLTF Loaders estragam-me os FPS
 
       const scene = new THREE.Scene();
       //Mudança das core GM
@@ -784,7 +776,7 @@
         const s = String(spazio).padStart(4, "0");
         return `${s.slice(0, 2)}.${s.slice(2)}`;
       }
-      
+
       function updateBufferLevels(maxLevel) {
         if (!bufferGroup || bufferGroup.children.length === 0) return;
 
@@ -863,7 +855,7 @@
 
         instancedMesh.instanceMatrix.needsUpdate = true;
       }
-      
+
       viewCheckboxes.forEach((checkbox) => {
         checkbox.addEventListener("change", () => {
           const selected = Array.from(viewCheckboxes)
@@ -924,32 +916,8 @@
 
       //Corridor label render
       const labelRenderer = new CSS2DRenderer();
-      labelRenderer.setSize(window.innerWidth, window.innerHeight);
-      labelRenderer.domElement.style.position = "absolute";
-      labelRenderer.domElement.style.top = "0px";
-      labelRenderer.domElement.style.pointerEvents = "none";
-      document.body.appendChild(labelRenderer.domElement);
-
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setAnimationLoop(animate);
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.VSMShadowMap;
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      container.appendChild(renderer.domElement);
 
       const stats = new Stats();
-
-      stats.domElement.style.position = "fixed";
-      stats.domElement.style.bottom = "10px";
-      stats.domElement.style.right = "10px";
-      stats.domElement.style.left = ""; // limpa se existir
-      stats.domElement.style.top = ""; // limpa para não se sobrepor
-      stats.domElement.style.zIndex = "9999";
-
-      document.body.appendChild(stats.domElement);
-
-      container.appendChild(stats.domElement);
 
       const GRAVITY = 30;
       const STEPS_PER_FRAME = 5;
@@ -1421,11 +1389,11 @@
           employeeModel.visible = true;
           employeeModel.position.copy(playerCollider.end);
         }
-
         if (activeCamera === topCamera) {
           moveTopCamera(deltaTime * 60);
           orbitControls.update();
         }
+
         if (activeCamera === camera) {
           const maxPitch = Math.PI / 2 - 0.1;
           const minPitch = -Math.PI / 2 + 0.1;
@@ -1571,9 +1539,9 @@
         if (keyStates["KeyA"]) move.sub(right); // Left
 
         move.normalize().multiplyScalar(speed);
-
         topCamera.position.add(move);
         // After moving camera
+
         employeeModel.position.copy(topCamera.position);
 
         orbitControls.target.add(move);
@@ -1686,44 +1654,6 @@
         scene.add(dummy);
       }
 
-      // Create geometry and material for cubes
-      /*const cubeGeometry = new THREE.BoxGeometry(1, 1, 1); // 1x1x1 cubes
-          const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red color
-
-          const count = spaces.length; // Assuming spaces is an array of data
-
-          // Create InstancedMesh with cube geometry and material
-          instancedMesh = new THREE.InstancedMesh(
-            cubeGeometry,
-            cubeMaterial,
-            count
-          );
-
-          const dummy = new THREE.Object3D();
-
-          spaces.forEach((item, i) => {
-            const position = new THREE.Vector3(
-              item.Spazio_coord_draw_a / 50,
-              item.Spazio_coord_draw_b / 50,
-              item.Spazio_coord_draw_c / 50
-            );
-
-            // Set position only, no rotation or scaling
-            dummy.position.copy(position);
-            dummy.rotation.set(0, 0, 0); // No rotation
-            dummy.scale.set(1, 1, 1); // Default scale
-            dummy.updateMatrix();
-            instancedMesh.setMatrixAt(i, dummy.matrix);
-          });
-
-          instancedMesh.castShadow = true;
-          instancedMesh.receiveShadow = true;
-          scene.add(instancedMesh);
-
-          // Add the InstancedMesh to the Octree
-          worldOctree.fromGraphNode(instancedMesh); */
-
-      //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
       //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
       function createBufferFromJSON(bufferArray) {
         const bufferColor = 0xd48c8c;
@@ -1905,6 +1835,7 @@
         applyInitialLabelVisibilityFromMenu();
 
         createEmployee();
+        const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
       }
       //Nova função realizada por GM para representar os espaços
       function createCorridorsFromJSON(corridors) {
@@ -2032,10 +1963,10 @@
               y + boxHeight / 2 + i * boxHeight,
               z + depth / 2
             );
-            box.userData.type = "Pilha"; 
+            box.userData.type = "Pilha";
 
             stackGroup.add(box);
-            stackMeshes.push(box); 
+            stackMeshes.push(box);
 
             const edges = new THREE.EdgesGeometry(geometry);
             const line = new THREE.LineSegments(
@@ -2151,7 +2082,6 @@
             mirrorDataXCoordinates(data);
 
             await extractDataFromJSON(data);
- 
 
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
@@ -2185,6 +2115,32 @@
             );
             gridHelper.position.set(centerX, 0.01, centerZ);
             scene.add(gridHelper);
+
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.domElement.style.position = "absolute";
+            labelRenderer.domElement.style.top = "0px";
+            labelRenderer.domElement.style.pointerEvents = "none";
+            document.body.appendChild(labelRenderer.domElement);
+
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setAnimationLoop(animate);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.VSMShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            container.appendChild(renderer.domElement);
+
+            stats.domElement.style.position = "fixed";
+            stats.domElement.style.bottom = "10px";
+            stats.domElement.style.right = "10px";
+            stats.domElement.style.left = ""; // limpa se existir
+            stats.domElement.style.top = ""; // limpa para não se sobrepor
+            stats.domElement.style.zIndex = "9999";
+
+            document.body.appendChild(stats.domElement);
+
+            container.appendChild(stats.domElement);
+            toggleCamera()
           })
           .catch((error) => console.error("Error fetching JSON:", error));
       };
@@ -2249,7 +2205,6 @@
       //Toggle visibilidade
       toggleCaptionsBtn.addEventListener("click", () => {
         legendPopup.classList.toggle("hidden");
-
       });
 
       //Função drag
@@ -2257,7 +2212,7 @@
       let offsetX, offsetY;
 
       legendPopup.addEventListener("mousedown", (e) => {
-       isDragging = true;
+        isDragging = true;
         offsetX = e.clientX - legendPopup.offsetLeft;
         offsetY = e.clientY - legendPopup.offsetTop;
       });
@@ -2265,12 +2220,12 @@
         if (isDragging) {
           legendPopup.style.left = `${e.clientX - offsetX}px`;
           legendPopup.style.top = `${e.clientY - offsetY}px`;
-  }
-});
+        }
+      });
 
-    document.addEventListener("mouseup", () => {
-      isDragging = false;
-    });
+      document.addEventListener("mouseup", () => {
+        isDragging = false;
+      });
     </script>
   </body>
 </html>
