@@ -258,6 +258,7 @@
       scene.background = new THREE.Color(0x252c3f);
 
       let instancedMesh;
+      let bufferInstancedMesh = null;
 
       const camera = new THREE.PerspectiveCamera(
         70,
@@ -411,7 +412,7 @@
         const s = String(spazio).padStart(4, "0");
         return `${s.slice(0, 2)}.${s.slice(2)}`;
       }
-
+      
       function updateBufferLevels(maxLevel) {
         if (!bufferGroup || bufferGroup.children.length === 0) return;
 
@@ -490,7 +491,7 @@
 
         instancedMesh.instanceMatrix.needsUpdate = true;
       }
-
+      
       viewCheckboxes.forEach((checkbox) => {
         checkbox.addEventListener("change", () => {
           const selected = Array.from(viewCheckboxes)
@@ -1354,6 +1355,8 @@
         });
 
         bufferGroup.add(instancedMesh);
+        bufferInstancedMesh = instancedMesh; // 👈 salva o mesh globalmente
+
         console.log(`Buffers desenhados: ${count}`);
       }
 
@@ -1729,11 +1732,7 @@
             mirrorDataXCoordinates(data);
 
             await extractDataFromJSON(data);
-            createCorridorsFromJSON(data.Corridor); // -> Alteração GM
-            createBufferFromJSON(data.Buffer); // -> Alteração GM
-            createDockFromJSON(data.Cais); // -> Alteração GM
-            createStacksFromJSON(data.Pilhas); // -> Alteração GM
-            createDriveInsFromJSON(data.DriveIn); // -> Alteração GM
+ 
 
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
