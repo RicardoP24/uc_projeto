@@ -14,8 +14,6 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-
- 
   </head>
   <body>
     <!-- HEADER NAVIGATION -->
@@ -25,10 +23,7 @@
         <span class="title">Warehouse 3D</span>
       </div>
       <div class="nav-right">
-        <!--<label class="toggle">
-          <input type="checkbox" disabled />
-          <span class="slider">3D</span>
-        </label> -->
+        <button id="toggle-view-btn">2D</button>
         <button id="tutorial-btn">Tutorial</button>
       </div>
     </div>
@@ -307,7 +302,6 @@
 
       camera.rotation.order = "YXZ";
 
-      const aspect = window.innerWidth / window.innerHeight;
       const topCamera = new THREE.PerspectiveCamera(
         20,
         window.innerWidth / window.innerHeight,
@@ -317,9 +311,65 @@
 
       topCamera.position.set(50, 100, 50); // Starting high above the warehouse
       const initialTopCamPosition = new THREE.Vector3(50, 100, 50);
-      const initialTopCamTarget = new THREE.Vector3(50, 0, 50);
-      topCamera.position.copy(initialTopCamPosition);
+      const initialTopCamTarget = new THREE.Vector3(50, 0, -50);
+
+      const angle = Math.PI; // 180 degrees
+
+      const offset = new THREE.Vector3().subVectors(
+        initialTopCamPosition,
+        initialTopCamTarget
+      );
+      offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle); // rotate offset around Y
+
+      const rotatedPosition = new THREE.Vector3().addVectors(
+        initialTopCamTarget,
+        offset
+      );
+
+      // Apply rotated position to topCamera
+      topCamera.position.copy(rotatedPosition);
       topCamera.lookAt(initialTopCamTarget);
+
+      // ---------- ORTHO (2D) CAMERA ----------
+      const ORTHO_SIZE = 120; // “altura” do frustum – ajuste se necessário
+      const aspect = window.innerWidth / window.innerHeight;
+
+
+      const orthoCamera = new THREE.OrthographicCamera(
+        (-ORTHO_SIZE * aspect) / 2, // left
+        (ORTHO_SIZE * aspect) / 2, // right
+        ORTHO_SIZE / 2, // top
+        -ORTHO_SIZE / 2, // bottom
+        1, // near
+        10000 // far
+      );
+      orthoCamera.position.copy(rotatedPosition); // mesmo ponto de vista
+      orthoCamera.lookAt(new THREE.Vector3(50, 0, -50)); // mesmo alvo
+
+      const toggleViewBtn = document.getElementById("toggle-view-btn");
+      let is2DView = false;
+
+      toggleViewBtn.addEventListener("click", () => {
+        is2DView = !is2DView;
+
+        if (is2DView) {
+          // Troca para ortográfica
+
+          orthoCamera.position.copy(initialTopCamPosition);
+          orthoCamera.lookAt(initialTopCamTarget);
+          activeCamera = orthoCamera;
+          toggleViewBtn.textContent = "3D";
+          orbitControls.enableRotate = true;
+        } else {
+          // Volta para a topCamera
+          activeCamera = topCamera;
+          toggleViewBtn.textContent = "2D";
+          orbitControls.enableRotate = true;
+        }
+
+        orbitControls.object = activeCamera;
+        orbitControls.update();
+      });
 
       // Zoom control logic
       const zoomInBtn = document.getElementById("zoom-in");
@@ -539,7 +589,11 @@
                 dummy.scale
               );
 
-const originalScale = bufferOriginalScales[buf.index] || { x: 1, y: 1, z: 1 };
+              const originalScale = bufferOriginalScales[buf.index] || {
+                x: 1,
+                y: 1,
+                z: 1,
+              };
 
               dummy.scale.set(
                 show ? originalScale.x : 0.0001,
@@ -721,6 +775,12 @@ const originalScale = bufferOriginalScales[buf.index] || { x: 1, y: 1, z: 1 };
 
         topCamera.aspect = window.innerWidth / window.innerHeight;
         topCamera.updateProjectionMatrix();
+
+        orthoCamera.left = (-ORTHO_SIZE * aspect) / 2;
+        orthoCamera.right = (ORTHO_SIZE * aspect) / 2;
+        orthoCamera.top = ORTHO_SIZE / 2;
+        orthoCamera.bottom = -ORTHO_SIZE / 2;
+        orthoCamera.updateProjectionMatrix();
 
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
