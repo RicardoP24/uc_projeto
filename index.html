@@ -334,7 +334,6 @@
       const ORTHO_SIZE = 120; // “altura” do frustum – ajuste se necessário
       const aspect = window.innerWidth / window.innerHeight;
 
-
       const orthoCamera = new THREE.OrthographicCamera(
         (-ORTHO_SIZE * aspect) / 2, // left
         (ORTHO_SIZE * aspect) / 2, // right
@@ -628,10 +627,10 @@
 
       resetTopCamBtn.addEventListener("click", () => {
         if (activeCamera === topCamera) {
-          topCamera.position.copy(initialTopCamPosition);
-          orbitControls.target.copy(initialTopCamTarget);
+          topCamera.position.copy(rotatedPosition);
           topCamera.lookAt(initialTopCamTarget);
-          employeeModel.position.copy(initialTopCamPosition);
+          // orbitControls.target.copy(initialTopCamTarget);
+          employeeModel.position.copy(rotatedPosition);
         }
       });
 
