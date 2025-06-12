@@ -56,7 +56,7 @@
       </div>
       <div class="legend-item">
         <div class="legend-color corridor"></div>
-        Corridors (planos azuis semi-translúcidos)
+        classeTransportesMeshes (planos azuis semi-translúcidos)
       </div>
 
       <div class="legend-item">
@@ -276,11 +276,17 @@
       let corredor;
       let buffers;
       let boundingBoxCenter = new THREE.Vector3();
-      let rackMeshes = []; // Add this at the top of your script
-      let dockMeshes = [];
-      let stackMeshes = [];
-      let corridorMeshes = [];
-      let driveInMeshes = [];
+      let classeEspExecMeshes = []; // Add this at the top of your script
+      let classeEspArmMeshes = [];
+      let classeCaisMeshes = [];
+      let classeDivEspacosMeshes = [];
+      let classeZonAnomalasMeshes = [];
+      let classeEspacoDistrMeshes = [];
+      let classeTransportesMeshes = [];
+      let classeTransicaoMeshes = [];
+      let classePilhaMeshes = [];
+      let classeCaisTemporarioMeshes = [];
+
       const bufferOriginalScales = {}; // índice → escala real
 
       const scene = new THREE.Scene();
@@ -390,133 +396,6 @@
         currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
         updateBufferLevels(currentMaxBufferLevel);
       });
-
-      /*function createLabelToggleMenu() {
-        // Evita recriar o menu se ele já existir
-        if (document.getElementById("label-toggle-menu")) return;
-
-        const menu = document.createElement("div");
-        menu.id = "label-toggle-menu";
-        menu.style.position = "fixed";
-        menu.style.top = "100px";
-        menu.style.left = "300px";
-        menu.style.background = "#333";
-        menu.style.color = "white";
-        menu.style.padding = "10px";
-        menu.style.borderRadius = "8px";
-        menu.style.fontSize = "14px";
-        menu.style.zIndex = 9999;
-        menu.style.cursor = "move";
-        menu.style.userSelect = "none";
-
-        // Torna o menu arrastável
-        let offsetX,
-          offsetY,
-          isDragging = false;
-
-        menu.addEventListener("mousedown", (e) => {
-          isDragging = true;
-          offsetX = e.clientX - menu.offsetLeft;
-          offsetY = e.clientY - menu.offsetTop;
-          document.body.style.userSelect = "none";
-        });
-
-        document.addEventListener("mousemove", (e) => {
-          if (!isDragging) return;
-          menu.style.left = `${e.clientX - offsetX}px`;
-          menu.style.top = `${e.clientY - offsetY}px`;
-        });
-
-        document.addEventListener("mouseup", () => {
-          isDragging = false;
-          document.body.style.userSelect = "";
-        });
-
-        const types = [
-          "racks",
-          "docks",
-          "stacks",
-          "driveins",
-          "buffers",
-          "corridors",
-          "picking",
-        ];
-
-        const labelsCreated = new Set();
-
-        types.forEach((type) => {
-          const wrapper = document.createElement("div");
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.id = `toggle-labels-${type}`;
-          checkbox.checked = type === "corridors";
-
-          const label = document.createElement("label");
-          label.htmlFor = checkbox.id;
-          label.textContent = ` ${type}`;
-
-          wrapper.appendChild(checkbox);
-          wrapper.appendChild(label);
-          menu.appendChild(wrapper);
-
-          // Aplica visibilidade inicial
-          labelRenderer.domElement
-            .querySelectorAll(`.toggle-label-${type}`)
-            .forEach((el) => {
-              el.style.visibility = checkbox.checked ? "visible" : "hidden";
-            });
-
-          checkbox.addEventListener("change", (e) => {
-            const isVisible = e.target.checked;
-
-            // Cria as labels se ainda não foram criadas
-            if (isVisible && !labelsCreated.has(type)) {
-              switch (type) {
-                case "racks":
-                  racks?.forEach((r) =>
-                    addLabelForSingleComponent(r, "racks", "")
-                  );
-                  break;
-                case "docks":
-                  docks?.forEach((d) =>
-                    addLabelForSingleComponent(d, "docks", "")
-                  );
-                  break;
-                case "stacks":
-                  stacks?.forEach((s) =>
-                    addLabelForSingleComponent(s, "stacks", "")
-                  );
-                  break;
-                case "driveins":
-                  driveIns?.forEach((d) =>
-                    addLabelForSingleComponent(d, "driveins", "")
-                  );
-                  break;
-                case "buffers":
-                  buffers?.forEach((b) =>
-                    addLabelForSingleComponent(b, "buffers", "buffer")
-                  );
-                  break;
-                case "picking":
-                  spaces?.forEach((s) =>
-                    addLabelForSingleComponent(s, "picking", "picking")
-                  );
-                  break;
-              }
-              labelsCreated.add(type);
-            }
-
-            // Controla visibilidade
-            labelRenderer.domElement
-              .querySelectorAll(`.toggle-label-${type}`)
-              .forEach((el) => {
-                el.style.visibility = isVisible ? "visible" : "hidden";
-              });
-          });
-        });
-
-        document.body.appendChild(menu);
-      } */
 
       //FUNCTION formatSpazioLabel(spazio) MADE MY GM
       function formatSpazioLabel(spazio) {
@@ -909,11 +788,15 @@
       }
       function createWarehouseAreaFromComponentsAll() {
         const allMeshes = [
-          ...rackMeshes,
-          ...dockMeshes,
-          ...stackMeshes,
-          ...corridorMeshes,
-          ...driveInMeshes,
+          ...classeEspExecMeshes,
+          ...classeEspArmMeshes,
+          ...classeDivEspacosMeshes,
+          ...classeZonAnomalasMeshes,
+          ...classeEspacoDistrMeshes,
+          ...classeTransportesMeshes,
+          ...classeTransicaoMeshes,
+          ...classePilhaMeshes,
+          ...classeCaisTemporarioMeshes,
         ];
 
         if (allMeshes.length === 0) return;
@@ -1200,7 +1083,7 @@
           mesh.userData.isRack = true;
 
           rackGroup.add(mesh);
-          rackMeshes.push(mesh);
+          classeEspExecMeshes.push(mesh);
 
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(
@@ -1234,12 +1117,19 @@
 
         raycaster.setFromCamera(mouse, activeCamera);
         const hoverTargets = [
-          ...rackMeshes,
-          ...dockMeshes,
-          ...stackMeshes,
-          ...corridorMeshes,
-          ...driveInMeshes,
+          ...classeEspExecMeshes,
+          ...classeCaisMeshes,
+          ...classeDivEspacosMeshes,
+          ...classeZonAnomalasMeshes,
+          ...classeEspacoDistrMeshes,
+          ...classeTransportesMeshes,
+          ...classeTransicaoMeshes,
+          ...classePilhaMeshes,
+          ...classeCaisTemporarioMeshes
+
         ];
+
+ 
 
         // ✅ Só considerar objetos visíveis
         const visibleTargets = hoverTargets.filter(isFullyVisible);
@@ -1257,11 +1147,15 @@
           tooltip.style.top = event.clientY + 10 + "px";
           const pos = first.position;
           let type = "Objeto";
-          if (rackMeshes.includes(first)) type = "Rack";
-          else if (dockMeshes.includes(first)) type = "Cais";
-          else if (stackMeshes.includes(first)) type = "Pilha";
-          else if (corridorMeshes.includes(first)) type = "Corredor";
-          else if (driveInMeshes.includes(first)) type = "DriveIn";
+          if (classeEspExecMeshes.includes(first)) type = "classeEspExecMeshes";
+          else if (classeCaisMeshes.includes(first)) type = "classeCaisMeshes";
+          else if (classeDivEspacosMeshes.includes(first)) type = "classeDivEspacosMeshes";
+          else if (classeZonAnomalasMeshes.includes(first)) type = "classeZonAnomalasMeshes";
+          else if (classeEspacoDistrMeshes.includes(first)) type = "classeEspacoDistrMeshes";
+          else if (classeTransportesMeshes.includes(first)) type = "classeTransportesMeshes";
+          else if (classeTransicaoMeshes.includes(first)) type = "classeTransicaoMeshes";
+          else if (classePilhaMeshes.includes(first)) type = "classePilhaMeshes";
+          else if (classeCaisTemporarioMeshes.includes(first)) type = "classeCaisTemporarioMeshes";
 
           tooltip.innerHTML = `<strong>${type}</strong><br>
       <strong>X</strong>: ${pos.x.toFixed(2)}
@@ -1501,14 +1395,15 @@
 
       function getLayoutCenterX(data) {
         const allX = [
-          ...data.Racks,
-          ...data.Spaces,
-          ...data.Buffer,
-          ...data.Cais,
-          ...data.Pilhas,
-          ...data.DriveIn,
-          ...data.Corridor,
+          ...data.classeDivEspacos,
+          ...data.classeExec,
+          ...data.classeDocks,
+          ...data.classeStacks,
+          ...data.classeTransporte,
+          ...data.classeArmaz,
+          ...data.classeDist,
         ]
+
           .map((item) => parseFloat(item.Spazio_coord_draw_a))
           .filter((x) => !isNaN(x));
 
@@ -1562,7 +1457,12 @@
         const classeArmaz = data.filter((d) => d.Spazio_classe === "02"); // Armazenamento
         const classeDist = data.filter((d) => d.Spazio_classe === "06"); // Estações de Loja
         // Bounding box com base nas racks
-        wallBoundingBoxCoords = calculateWallBoundingBox(racks);
+        const relevantWalls = classeDivEspacos.filter(
+          (e) => parseFloat(e.Spazio_coord_alto) !== 0
+        );
+
+        
+        wallBoundingBoxCoords = calculateWallBoundingBox(relevantWalls);
         boundingBoxCenter.copy(wallBoundingBoxCoords.center);
 
         playerCollider.start.set(
@@ -1576,24 +1476,23 @@
         camera.rotation.set(0, Math.PI, 0);
 
         orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
-
-        // Chamada das funções com os dados corretos
-        await createRacksFromJSON(racks, buffers);
-        await createSpacesFromJSON(spaces);
-        await createCorridorsFromJSON(corridor);
-        await createBufferFromJSON(buffers);
-        await createDockFromJSON(docks);
-        await createStacksFromJSON(stacks);
-        await createDriveInsFromJSON(driveIns);
-        await createDistribuicaoFromJSON(distribuicao); // <- NOVO
-
+         
+        await createDockFromJSON(classeDocks)
         createWarehouseAreaFromComponentsAll();
         addFlatLabelsToWarehouse();
         applyInitialLabelVisibilityFromMenu();
 
         createEmployee();
         const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
-        console.log(data);
+        return {
+          classeDivEspacos,
+          classeExec,
+          classeDocks,
+          classeStacks,
+          classeTransporte,
+          classeArmaz,
+          classeDist,
+        };
       }
 
       //Nova função realizada por GM para representar os espaços
@@ -1680,7 +1579,7 @@
             new THREE.LineBasicMaterial({ color: 0xffffff })
           );
           line.position.copy(mesh.position);
-          dockMeshes.push(mesh);
+          classeCaisMeshes.push(mesh);
 
           dockGroup.add(line);
         });
@@ -1823,7 +1722,7 @@
         });
       }
 
-      //NEW FUNCTION FOR LABELS
+ 
 
       document.querySelectorAll(".label-toggle").forEach((checkbox) => {
         checkbox.addEventListener("change", (e) => {
@@ -1833,39 +1732,49 @@
           // Cria a label se necessário
           if (isVisible && !document.querySelector(`.toggle-label-${type}`)) {
             switch (type) {
-              case "racks":
-                racks?.forEach((r) =>
-                  addLabelForSingleComponent(r, "racks", "")
+              case "classeEspExecMeshes":
+                classeEspExecMeshes?.forEach((r) =>
+                  addLabelForSingleComponent(r, "classeEspExecMeshes", "")
                 );
                 break;
-              case "docks":
-                docks?.forEach((d) =>
-                  addLabelForSingleComponent(d, "docks", "")
+              case "classeCaisMeshes":
+                classeCaisMeshes?.forEach((d) =>
+                  addLabelForSingleComponent(d, "classeCaisMeshes", "")
                 );
                 break;
-              case "stacks":
-                stacks?.forEach((s) =>
-                  addLabelForSingleComponent(s, "stacks", "")
+              case "classeDivEspacosMeshes":
+                classeDivEspacosMeshes?.forEach((s) =>
+                  addLabelForSingleComponent(s, "classeDivEspacosMeshes", "")
                 );
                 break;
-              case "driveins":
-                driveIns?.forEach((d) =>
-                  addLabelForSingleComponent(d, "driveins", "")
+              case "classeZonAnomalasMeshes":
+                classeZonAnomalasMeshes?.forEach((d) =>
+                  addLabelForSingleComponent(d, "classeZonAnomalasMeshes", "")
                 );
                 break;
-              case "buffers":
-                buffers?.forEach((b) =>
-                  addLabelForSingleComponent(b, "buffers", "buffer")
+              case "classeEspacoDistrMeshes":
+                classeEspacoDistrMeshes?.forEach((b) =>
+                  addLabelForSingleComponent(b, "classeEspacoDistrMeshes", "")
                 );
                 break;
-              case "corridors":
-                corredor?.forEach((c) =>
-                  addLabelForSingleComponent(c, "corridors", "corredor")
+              case "classeTransportesMeshes":
+                classeTransportesMeshes?.forEach((c) =>
+                  addLabelForSingleComponent(c, "classeTransportesMeshes", "corredor")
                 );
                 break;
-              case "picking":
-                spaces?.forEach((s) =>
-                  addLabelForSingleComponent(s, "picking", "picking")
+              case "classeTransicaoMeshes":
+                classeTransicaoMeshes?.forEach((s) =>
+                  addLabelForSingleComponent(s, "classeTransicaoMeshes", "")
+                );
+                break;
+              case "classePilhaMeshes":
+                classePilhaMeshes?.forEach((s) =>
+                  addLabelForSingleComponent(s, "classePilhaMeshes", "")
+                );
+                break;
+              case "classeCaisTemporarioMeshes":
+                classeCaisTemporarioMeshes?.forEach((s) =>
+                  addLabelForSingleComponent(s, "classeCaisTemporarioMeshes", "")
                 );
                 break;
             }
@@ -1884,19 +1793,25 @@
         fetch("resources/data/dados_limpo.json")
           .then((response) => response.json())
           .then(async (data) => {
-           
-            await extractDataFromJSON(data);
-            mirrorDataXCoordinates(data);
+            debugger
+            const classesData = await extractDataFromJSON(data);
+            
+            mirrorDataXCoordinates(classesData);
 
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
             const bounds = new THREE.Box3();
             [
-              ...rackMeshes,
-              ...dockMeshes,
-              ...stackMeshes,
-              ...corridorMeshes,
-              ...driveInMeshes,
+          ...classeEspExecMeshes,
+          ...classeCaisMeshes,
+          ...classeDivEspacosMeshes,
+          ...classeZonAnomalasMeshes,
+          ...classeEspacoDistrMeshes,
+          ...classeTransportesMeshes,
+          ...classeTransicaoMeshes,
+          ...classePilhaMeshes,
+          ...classeCaisTemporarioMeshes
+
             ].forEach((mesh) => bounds.expandByObject(mesh));
 
             const originalMargin = 20;
