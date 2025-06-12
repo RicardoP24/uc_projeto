@@ -1073,7 +1073,7 @@
           const material = new THREE.MeshStandardMaterial({ hexColor });
 
           const mesh = new THREE.Mesh(geometry, material);
-          meth.position.set(x, y + height / 2, z);
+          mesh.position.set(x, y + height / 2, z);
 
           scene.add(mesh);
         });
@@ -1086,7 +1086,7 @@
           const z = parseFloat(dock.Spazio_coord_draw_c) / 100;
 
           let width = parseFloat(dock.Spazio_coord_largo) / 100;
-          const heigth = parseFloat(dock.Spazio_coord_alto) / 100;
+          const height = parseFloat(dock.Spazio_coord_alto) / 100;
           let depth = parseFloat(dock.Spazio_coord_fondo) / 100;
 
           const orientation = String(dock.Spazio_orientamento).trim();
@@ -1106,7 +1106,7 @@
             hexColor = 0x73a7f5;
           }
 
-          const geometry = new THREE.BoxGeometry(width, heigth, depth);
+          const geometry = new THREE.BoxGeometry(width, height, depth);
           const material = new THREE.MeshBasicMaterial({
             color: hexColor,
             transparent: true,
@@ -1126,7 +1126,7 @@
           );
           line.position.copy(mesh.position);
 
-          dockMeshes.push(mesh);
+          classeCaisMeshes.push(mesh);
           dockGroup.add(line);
         });
         console.log(`Cais desenhados (usando posição e altura do JSON): ${docks.length}`);
@@ -1201,7 +1201,7 @@
           bufferGroup.add(mesh);
         }
         console.log(
-          `Espaços de armazenamento desenhados: ${armazenamentoArray.length}`
+          `Espaços de armazenamento desenhados: ${warehouseArray.length}`
         );
       }
 
@@ -1611,7 +1611,7 @@
         const classeStacks = data.filter((d) => d.Spazio_classe === "09"); // Pilha
         const classeTransporte = data.filter((d) => d.Spazio_classe === "07"); // Transportes
         const classeArmaz = data.filter((d) => d.Spazio_classe === "02"); // Armazenamento DONE
-        const classDist = data.filter((d) => d.Spazio_classe === "06"); // Estações de Loja DONE
+        const classeDist = data.filter((d) => d.Spazio_classe === "06"); // Estações de Loja DONE
         // Bounding box com base nas racks
         const relevantWalls = classeDivEspacos.filter(
           (e) => parseFloat(e.Spazio_coord_alto) !== 0
@@ -1635,8 +1635,8 @@
 
         // Chamada das funções com os dados corretos
 
-        await createDistributionFromJSON(classDist); // <- GM
-        await createWarahouseSpacesFromJSON(classeArmaz); // GM
+        // await createDistributionFromJSON(classeDist); // <- GM
+        // await createWarahouseSpacesFromJSON(classeArmaz); // GM
         await createDockFromJSON(classeDocks); //GM
 
         createWarehouseAreaFromComponentsAll();
@@ -1954,8 +1954,8 @@
         fetch("resources/data/dados_limpo.json")
           .then((response) => response.json())
           .then(async (data) => {
-            await extractDataFromJSON(data);
-            mirrorDataXCoordinates(data);
+            const val=await extractDataFromJSON(data);
+            mirrorDataXCoordinates(val);
 
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
