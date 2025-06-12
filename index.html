@@ -1553,17 +1553,18 @@
       }
 
       async function extractDataFromJSON(data) {
-        racks = data.Racks;
-        spaces = data.Spaces;
-        docks = data.Cais;
-        stacks = data.Pilhas;
-        driveIns = data.DriveIn;
-        buffers = data.Buffer;
-        corredor = data.Corridor;
-        wallBoundingBoxCoords = calculateWallBoundingBox(data.Racks);
+        // Filtros por classe
+        const classeDivEspacos = data.filter((d) => d.Spazio_classe === "04"); // Divisões Espaços
+        const classeExec = data.filter((d) => d.Spazio_classe === "01"); // Execução
+        const classeDocks = data.filter((d) => d.Spazio_classe === "03"); // Cais
+        const classeStacks = data.filter((d) => d.Spazio_classe === "09"); // Pilha
+        const classeTransporte = data.filter((d) => d.Spazio_classe === "07"); // Transportes
+        const classeArmaz = data.filter((d) => d.Spazio_classe === "02"); // Armazenamento
+        const classeDist = data.filter((d) => d.Spazio_classe === "06"); // Estações de Loja
+        // Bounding box com base nas racks
+        wallBoundingBoxCoords = calculateWallBoundingBox(racks);
         boundingBoxCenter.copy(wallBoundingBoxCoords.center);
 
-        // coloca o collider do player ligeiramente acima do chão para evitar colisão imediata
         playerCollider.start.set(
           boundingBoxCenter.x,
           0.35,
@@ -1571,30 +1572,30 @@
         );
         playerCollider.end.set(boundingBoxCenter.x, 1, boundingBoxCenter.z);
 
-        // atualiza também a posição e rotação da câmera para garantir que começa corretamente
         camera.position.copy(playerCollider.end);
-        camera.rotation.set(0, Math.PI, 0); // Olha para "frente" (ajusta se necessário)
+        camera.rotation.set(0, Math.PI, 0);
 
-        // Set the topCamera position to the center of the bounding box
         orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
 
-        await createRacksFromJSON(racks, data.Buffer);
-        await createSpacesFromJSON();
-        await createCorridorsFromJSON(data.Corridor);
-        await createBufferFromJSON(data.Buffer);
-        await createDockFromJSON(data.Cais);
-        await createStacksFromJSON(data.Pilhas);
-        await createDriveInsFromJSON(data.DriveIn);
+        // Chamada das funções com os dados corretos
+        await createRacksFromJSON(racks, buffers);
+        await createSpacesFromJSON(spaces);
+        await createCorridorsFromJSON(corridor);
+        await createBufferFromJSON(buffers);
+        await createDockFromJSON(docks);
+        await createStacksFromJSON(stacks);
+        await createDriveInsFromJSON(driveIns);
+        await createDistribuicaoFromJSON(distribuicao); // <- NOVO
 
         createWarehouseAreaFromComponentsAll();
         addFlatLabelsToWarehouse();
-
-        //createLabelToggleMenu();
         applyInitialLabelVisibilityFromMenu();
 
         createEmployee();
         const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
+        console.log(data);
       }
+
       //Nova função realizada por GM para representar os espaços
       function createCorridorsFromJSON(corridors) {
         const height = 0.02;
@@ -1880,12 +1881,12 @@
       });
 
       window.onload = function () {
-        fetch("resources/data/armcarlos1.json")
+        fetch("resources/data/dados_limpo.json")
           .then((response) => response.json())
           .then(async (data) => {
-            mirrorDataXCoordinates(data);
-
+           
             await extractDataFromJSON(data);
+            mirrorDataXCoordinates(data);
 
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
