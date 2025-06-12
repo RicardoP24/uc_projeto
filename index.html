@@ -1167,6 +1167,162 @@
 
         stats.update();
       }
+      // NEW DYNAMIC FUNCTIONS TO DRAW SPACES GM
+      // Spazio_classe === "02"
+      async function createDistributionFromJSON(distribuicoes) {
+        distribuicoes.forEach((item) => {
+          const width = parseFloat(item.Spazio_coord_largo) / 100;
+          const height = parseFloat(item.Spazio_coord_alto) / 100;
+          const depth = parseFloat(item.Spazio_coord_fondo) / 100;
+
+          const x = parseFloat(item.Spazio_coord_draw_a) / 100;
+          const y = parseFloat(item.Spazio_coord_draw_b) / 100;
+          const z = parseFloat(item.Spazio_coord_draw_c) / 100;
+
+          //Geometry and Material resources
+          const getRandomColor = () => Math.floor(Math.random() * 0xffffff);
+          const hexColor =
+            item.Colore && item.Colore !== "null"
+              ? parseInt(item.Colore.replace("#", ""), 16)
+              : getRandomColor();
+
+          const geometry = new THREE.BoxGeometry(width, height, depth);
+          const material = new THREE.MeshStandardMaterial({ hexColor });
+
+          const mesh = new THREE.Mesh(geometry, material);
+          meth.position.set(x, y + height / 2, z);
+
+          scene.add(mesh);
+        });
+      }
+      //Spazio_classe === "03"
+      async function createDockFromJSON(docks) {
+        docks.forEach((dock) => {
+          const x = parseFloat(dock.Spazio_coord_draw_a) / 100;
+          const y = parseFloat(dock.Spazio_coord_draw_b) / 100;
+          const z = parseFloat(dock.Spazio_coord_draw_c) / 100;
+
+          let width = parseFloat(dock.Spazio_coord_largo) / 100;
+          const heigth = parseFloat(dock.Spazio_coord_alto) / 100;
+          let depth = parseFloat(dock.Spazio_coord_fondo) / 100;
+
+          const orientation = String(dock.Spazio_orientamento).trim();
+          if (orientation === "1") {
+            [width, depth] = [depth, width];
+          }
+
+          // Cor do JSON ou azul padrao
+          let hexColor;
+          if (dock.Colore && dock.Colore !== "null") {
+            try {
+              hexColor = parseInt(dock.Colore.replace("#", ""), 16);
+            } catch {
+              hexColor = 0x73a7f5;
+            }
+          } else {
+            hexColor = 0x73a7f5;
+          }
+
+          const geometry = new THREE.BoxGeometry(width, heigth, depth);
+          const material = new THREE.MeshBasicMaterial({
+            color: hexColor,
+            transparent: true,
+            opacity: 0.9,
+            depthWrite: false,
+          });
+
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.position.set(x + width / 2, y + height / 2, z + depth / 2);
+          dockGroup.add(mesh);
+
+          // Contorno branco
+          const edges = new THREE.EdgesGeometry(geometry);
+          const line = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0xffffff })
+          );
+          line.position.copy(mesh.position);
+
+          dockMeshes.push(mesh);
+          dockGroup.add(line);
+        });
+        console.log(`Cais desenhados (usando posição e altura do JSON): ${docks.length}`);
+      }
+      //Spazio_classe === "06"
+      async function createWarahouseSpacesFromJSON(warehouseArray) {
+        const opacity = 0.95;
+        const shrinkFactor = 0.65;
+
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const dummy = new THREE.Object3D();
+
+        const instancedMeshesByColor = {};
+
+        warehouseArray.forEach((item, i) => {
+          const x = parseFloat(item.Spazio_coord_draw_a) / 100;
+          const y = parseFloat(item.Spazio_coord_draw_b) / 100;
+          const z = parseFloat(item.Spazio_coord_draw_c) / 100;
+
+          let width = parseFloat(item.Spazio_coord_largo || 80) / 100;
+          const height = parseFloat(item.Spazio_coord_alto || 180) / 100;
+          let depth = parseFloat(item.Spazio_coord_fondo || 120) / 100;
+
+          const orientation = String(item.Spazio_orientamento).trim();
+          if (orientation === "1") {
+            [width, depth] = [depth, width];
+          }
+
+          const scaleX = width * shrinkFactor;
+          const scaleY = height * shrinkFactor;
+          const scaleZ = depth * shrinkFactor;
+
+          let hexColor;
+          if (item.Colore && item.Colore !== "null") {
+            try {
+              hexColor = parseInt(item.Colore.replace("#", ""), 16);
+            } catch {
+              hexColor = Math.floor(Math.random() * 0xffffff);
+            }
+          } else {
+            hexColor = Math.floor(Math.random() * 0xffffff);
+          }
+
+          if (!instancedMeshesByColor[hexColor]) {
+            const material = new THREE.MeshBasicMaterial({
+              color: hexColor,
+              transparent: true,
+              opacity: opacity,
+            });
+            instancedMeshesByColor[hexColor] = {
+              mesh: new THREE.InstancedMesh(geometry, material, 0),
+              count: 0,
+              transforms: [],
+            };
+          }
+
+          const meshData = instancedMeshesByColor[hexColor];
+          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+          dummy.scale.set(scaleX, scaleY, scaleZ);
+          dummy.updateMatrix();
+
+          meshData.transforms.push(dummy.matrix.clone());
+          meshData.count++;
+        });
+
+        // Adiciona todas as instanced meshes ao grupo final
+        for (const colorKey in instancedMeshesByColor) {
+          const { mesh, count, transforms } = instancedMeshesByColor[colorKey];
+          mesh.count = count;
+          transforms.forEach((matrix, idx) => mesh.setMatrixAt(idx, matrix));
+          mesh.instanceMatrix.needsUpdate = true;
+          bufferGroup.add(mesh);
+        }
+        console.log(
+          `Espaços de armazenamento desenhados: ${armazenamentoArray.length}`
+        );
+      }
+
+      // END NEW DYNAMIC FUNCTIONS TO DRAW SPACES
 
       async function createRacksFromJSON(racks) {
         racks.forEach((rack) => {
@@ -1414,7 +1570,7 @@
       }
 
       //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
-      function createBufferFromJSON(bufferArray) {
+      /* function createBufferFromJSON(bufferArray) {
         const bufferColor = 0xd48c8c;
         const bufferOpacity = 0.95;
         const shrinkFactor = 0.65;
@@ -1465,7 +1621,7 @@
         bufferInstancedMesh = instancedMesh;
 
         console.log(`Buffers desenhados: ${count}`);
-      }
+      } */
 
       function mirrorDataXCoordinates(data) {
         const centerX = getLayoutCenterX(data);
@@ -1559,8 +1715,8 @@
         const classeDocks = data.filter((d) => d.Spazio_classe === "03"); // Cais
         const classeStacks = data.filter((d) => d.Spazio_classe === "09"); // Pilha
         const classeTransporte = data.filter((d) => d.Spazio_classe === "07"); // Transportes
-        const classeArmaz = data.filter((d) => d.Spazio_classe === "02"); // Armazenamento
-        const classeDist = data.filter((d) => d.Spazio_classe === "06"); // Estações de Loja
+        const classeArmaz = data.filter((d) => d.Spazio_classe === "02"); // Armazenamento DONE
+        const classDist = data.filter((d) => d.Spazio_classe === "06"); // Estações de Loja DONE
         // Bounding box com base nas racks
         wallBoundingBoxCoords = calculateWallBoundingBox(racks);
         boundingBoxCenter.copy(wallBoundingBoxCoords.center);
@@ -1578,14 +1734,10 @@
         orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
 
         // Chamada das funções com os dados corretos
-        await createRacksFromJSON(racks, buffers);
-        await createSpacesFromJSON(spaces);
-        await createCorridorsFromJSON(corridor);
-        await createBufferFromJSON(buffers);
-        await createDockFromJSON(docks);
-        await createStacksFromJSON(stacks);
-        await createDriveInsFromJSON(driveIns);
-        await createDistribuicaoFromJSON(distribuicao); // <- NOVO
+
+        await createDistributionFromJSON(classDist); // <- GM
+        await createWarahouseSpacesFromJSON(classeArmaz); // GM
+        await createDockFromJSON(classeDocks); //GM
 
         createWarehouseAreaFromComponentsAll();
         addFlatLabelsToWarehouse();
@@ -1645,7 +1797,7 @@
       }
 
       //FUNÇÃO PARA CRIAÇÃO DE CAIS ALTERAÇÃO GM
-      async function createDockFromJSON(docks) {
+      /*async function createDockFromJSON(docks) {
         docks.forEach((dock) => {
           const x = parseFloat(dock.Spazio_coord_draw_a) / 100;
           const z = parseFloat(dock.Spazio_coord_draw_c) / 100;
@@ -1684,7 +1836,7 @@
 
           dockGroup.add(line);
         });
-      }
+      } */
 
       //ESTA FUNÇA USADA PARA GERAR AS PILHAS -> GM ALTERAÇÃO
       async function createStacksFromJSON(stacks) {
@@ -1884,7 +2036,6 @@
         fetch("resources/data/dados_limpo.json")
           .then((response) => response.json())
           .then(async (data) => {
-           
             await extractDataFromJSON(data);
             mirrorDataXCoordinates(data);
 
