@@ -48,6 +48,36 @@ select {
   z-index: 2 !important; /* TODO Solve this in HTML */
 }
 
+.tipo-controls {
+  bottom: 20px;
+  left: 20px;
+  background: #1e2537;
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  z-index: 999;
+  font-family: sans-serif;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+#tipo-buttons button {
+  display: block;
+  margin: 4px 0;
+  width: 100%;
+  background: #5865f2;
+  border: none;
+  color: white;
+  padding: 5px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+#tipo-buttons button.active {
+  background: #2e3758;
+}
+
+
 @media all and (max-width: 640px) {
   .lil-gui.root {
     right: auto;

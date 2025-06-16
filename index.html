@@ -1129,7 +1129,9 @@
           classeCaisMeshes.push(mesh);
           dockGroup.add(line);
         });
-        console.log(`Cais desenhados (usando posição e altura do JSON): ${docks.length}`);
+        console.log(
+          `Cais desenhados (usando posição e altura do JSON): ${docks.length}`
+        );
       }
       //Spazio_classe === "06"
       async function createWarahouseSpacesFromJSON(warehouseArray) {
@@ -1208,7 +1210,7 @@
       // END NEW DYNAMIC FUNCTIONS TO DRAW SPACES
 
       async function createRacksFromJSON(racks) {
-        racks.forEach((rack) => {
+        racks.forEach((rack, index) => {
           const x = parseFloat(rack.Spazio_coord_draw_a) / 100;
           const y = parseFloat(rack.Spazio_coord_draw_b) / 100;
           const z = parseFloat(rack.Spazio_coord_draw_c) / 100;
@@ -1235,11 +1237,10 @@
 
           const mesh = new THREE.Mesh(geometry, material);
           mesh.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          mesh.name = "Rack";
-          mesh.userData.isRack = true;
+          mesh.userData.tipo = rack.Spazio_tipo;
 
           rackGroup.add(mesh);
-          classeEspExecMeshes.push(mesh);
+          classeDivEspacosMeshes.push(mesh);
 
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(
@@ -1247,11 +1248,10 @@
             new THREE.LineBasicMaterial({ color: 0xffffff })
           );
           line.position.copy(mesh.position);
+          line.userData.tipo = rack.Spazio_tipo;
 
           rackGroup.add(line);
         });
-
-        console.log(`Racks desenhadas: ${racks.length}`);
       }
 
       const raycaster = new THREE.Raycaster();
@@ -1281,11 +1281,8 @@
           ...classeTransportesMeshes,
           ...classeTransicaoMeshes,
           ...classePilhaMeshes,
-          ...classeCaisTemporarioMeshes
-
+          ...classeCaisTemporarioMeshes,
         ];
-
- 
 
         // ✅ Só considerar objetos visíveis
         const visibleTargets = hoverTargets.filter(isFullyVisible);
@@ -1305,13 +1302,20 @@
           let type = "Objeto";
           if (classeEspExecMeshes.includes(first)) type = "classeEspExecMeshes";
           else if (classeCaisMeshes.includes(first)) type = "classeCaisMeshes";
-          else if (classeDivEspacosMeshes.includes(first)) type = "classeDivEspacosMeshes";
-          else if (classeZonAnomalasMeshes.includes(first)) type = "classeZonAnomalasMeshes";
-          else if (classeEspacoDistrMeshes.includes(first)) type = "classeEspacoDistrMeshes";
-          else if (classeTransportesMeshes.includes(first)) type = "classeTransportesMeshes";
-          else if (classeTransicaoMeshes.includes(first)) type = "classeTransicaoMeshes";
-          else if (classePilhaMeshes.includes(first)) type = "classePilhaMeshes";
-          else if (classeCaisTemporarioMeshes.includes(first)) type = "classeCaisTemporarioMeshes";
+          else if (classeDivEspacosMeshes.includes(first))
+            type = "classeDivEspacosMeshes";
+          else if (classeZonAnomalasMeshes.includes(first))
+            type = "classeZonAnomalasMeshes";
+          else if (classeEspacoDistrMeshes.includes(first))
+            type = "classeEspacoDistrMeshes";
+          else if (classeTransportesMeshes.includes(first))
+            type = "classeTransportesMeshes";
+          else if (classeTransicaoMeshes.includes(first))
+            type = "classeTransicaoMeshes";
+          else if (classePilhaMeshes.includes(first))
+            type = "classePilhaMeshes";
+          else if (classeCaisTemporarioMeshes.includes(first))
+            type = "classeCaisTemporarioMeshes";
 
           tooltip.innerHTML = `<strong>${type}</strong><br>
       <strong>X</strong>: ${pos.x.toFixed(2)}
@@ -1617,7 +1621,6 @@
           (e) => parseFloat(e.Spazio_coord_alto) !== 0
         );
 
-        
         wallBoundingBoxCoords = calculateWallBoundingBox(relevantWalls);
         boundingBoxCenter.copy(wallBoundingBoxCoords.center);
 
@@ -1638,7 +1641,7 @@
         // await createDistributionFromJSON(classeDist); // <- GM
         // await createWarahouseSpacesFromJSON(classeArmaz); // GM
         await createDockFromJSON(classeDocks); //GM
-
+        await processDivSpacesClass(classeDivEspacos);
         createWarehouseAreaFromComponentsAll();
         addFlatLabelsToWarehouse();
         applyInitialLabelVisibilityFromMenu();
@@ -1656,17 +1659,168 @@
         };
       }
 
+      function trocarCoordenadasBC(array) {
+        array.forEach((item) => {
+          const temp = item.Spazio_coord_draw_b;
+          item.Spazio_coord_draw_b = item.Spazio_coord_draw_c;
+          item.Spazio_coord_draw_c = temp;
+        });
+      }
+
+      let comps;
+      function processDivSpacesClass(componentes) {
+        const tiposMap = {};
+
+        // Agrupar por tipo de espaço
+        componentes.forEach((item) => {
+          const tipo = item.Spazio_tipo || "Desconhecido";
+          if (!tiposMap[tipo]) {
+            tiposMap[tipo] = [];
+          }
+          tiposMap[tipo].push(item);
+        });
+
+        // Painel de controle
+        // Painel de controle dentro da sidebar
+        let controlBox = document.getElementById("grupo-controls");
+        if (!controlBox) {
+          controlBox = document.createElement("div");
+          controlBox.id = "grupo-controls";
+          controlBox.classList.add("dropdown-group"); // usa classe já estilizada no CSS
+
+          const sidebar = document.getElementById("sidebar");
+          if (sidebar) {
+            sidebar.appendChild(controlBox);
+          } else {
+            console.warn(
+              "Sidebar não encontrada. controlBox será adicionado ao body."
+            );
+            document.body.appendChild(controlBox); // fallback
+          }
+        }
+        controlBox.innerHTML = `
+ 
+              <span   style="display: flex; align-items: center; gap: 6px; font-weight:bold">
+              <i class="ph ph-layout"></i>
+              <span id="toggle-tipos" >ALTURA DE ESPAÇOS</span>
+            </span>
+  <ul id="grupo-lista-tipos" style="padding-left: 10px; margin-top: 6px;"></ul>
+`;
+        const toggleHeader = controlBox.querySelector("#toggle-tipos");
+        const tipoLista = controlBox.querySelector("#grupo-lista-tipos");
+
+        toggleHeader.addEventListener("click", () => {
+          const isVisible = tipoLista.style.display !== "none";
+          tipoLista.style.display = isVisible ? "none" : "block";
+        });
+
+        // Processar cada grupo
+
+        for (const tipo in tiposMap) {
+          const grupo = tiposMap[tipo];
+          const varName = `tipo${tipo}Meshes`;
+
+          // Criar visual inicial baseado na altura do 1º item
+          const temAltura = grupo.some((item) => {
+            if (!item || item.Spazio_coord_alto == null) return false;
+            return parseFloat(item.Spazio_coord_alto) > 0.001;
+          });
+          if (temAltura) {
+            createRacksFromJSON(grupo);
+          } else {
+            createCorridorsFromJSON(grupo);
+          }
+
+          // Criar checkbox
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.id = `chk-${tipo}`;
+          checkbox.checked = !temAltura; // checked se era plano originalmente
+
+          const label = document.createElement("label");
+          label.htmlFor = checkbox.id;
+          label.textContent = ` Mostrar ${tiposMap[tipo][0].Spazio_tipoD} sem alturas`;
+          label.style.display = "block";
+          label.style.marginBottom = "5px";
+          label.prepend(checkbox);
+          const li = document.createElement("li");
+          li.appendChild(label);
+          document.getElementById("grupo-lista-tipos").appendChild(li);
+
+          // Evento de troca de estado
+          checkbox.addEventListener("change", () => {
+            if (checkbox.checked) {
+              // Substitua 'rackGroup' pelo grupo onde o mesh foi adicionado originalmente
+              classeDivEspacosMeshes
+                .filter((mesh) => mesh.userData?.tipo === tipo)
+                .forEach((mesh) => {
+                  rackGroup.remove(mesh); // ou scene.remove(mesh), dependendo de onde foi adicionado
+                  mesh.geometry?.dispose?.();
+                  mesh.material?.dispose?.();
+                });
+
+              // Remover do array também
+              classeDivEspacosMeshes = classeDivEspacosMeshes.filter(
+                (mesh) => mesh.userData?.tipo !== tipo
+              );
+
+              rackGroup.children
+                .filter((child) => child.userData?.tipo === tipo)
+                .forEach((child) => {
+                  rackGroup.remove(child);
+                  child.geometry?.dispose?.();
+                  child.material?.dispose?.();
+                });
+
+              // Recriar baseado no estado da checkbox
+              createCorridorsFromJSON(grupo); // mostrar como corredor
+            } else {
+              // Remover da cena (corridorGroup)
+              classeDivEspacosMeshes
+                .filter((mesh) => mesh.userData?.tipo === tipo)
+                .forEach((mesh) => {
+                  corridorGroup.remove(mesh); // remove do grupo correto
+                  mesh.geometry?.dispose?.();
+                  mesh.material?.dispose?.();
+                });
+
+              // Remover do array auxiliar
+              classeDivEspacosMeshes = classeDivEspacosMeshes.filter(
+                (mesh) => mesh.userData?.tipo !== tipo
+              );
+
+              // Garantir que nenhum outro filho permaneça no grupo
+              corridorGroup.children
+                .filter((child) => child.userData?.tipo === tipo)
+                .forEach((child) => {
+                  corridorGroup.remove(child);
+                  child.geometry?.dispose?.();
+                  child.material?.dispose?.();
+                });
+
+              createRacksFromJSON(grupo); // mostrar como rack
+            }
+          });
+        }
+      }
+
+      function capitalizeFirstLetter(str) {
+        if (typeof str !== "string") return str;
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+      }
+
       //Nova função realizada por GM para representar os espaços
       function createCorridorsFromJSON(corridors) {
         const height = 0.02;
-        const corridorMaterial = new THREE.MeshBasicMaterial({
-          color: 0x3399ff,
-          transparent: true,
-          opacity: 0.95,
-          depthWrite: false,
-        });
 
-        corridors.forEach((corridor) => {
+        corridors.forEach((corridor, index) => {
+          const colorName = capitalizeFirstLetter(corridor.ColoreD || "gray");
+          let corridorMaterial = new THREE.MeshBasicMaterial({
+            color: colorName,
+            transparent: true,
+            opacity: 0.95,
+            depthWrite: false,
+          });
           const x = parseFloat(corridor.Spazio_coord_draw_a) / 100;
           const z = parseFloat(corridor.Spazio_coord_draw_c) / 100;
 
@@ -1685,8 +1839,10 @@
 
           // Posiciona o plano centrado como as racks
           mesh.position.set(x + width / 2, height, z + depth / 2);
+          mesh.userData.tipo = corridor.Spazio_tipo;
+
           corridorGroup.add(mesh);
-          corridorMeshes.push(mesh);
+          classeDivEspacosMeshes.push(mesh);
 
           //Adicionar contorno preto
           const edgeGeometry = new THREE.EdgesGeometry(geometry);
@@ -1698,6 +1854,8 @@
           const line = new THREE.LineSegments(edgeGeometry, edgeMaterial);
           line.rotation.x = -Math.PI / 2;
           line.position.set(x + width / 2, height + 0.001, z + depth / 2);
+          line.userData.tipo = corridor.Spazio_tipo;
+
           corridorGroup.add(line);
         });
 
@@ -1883,8 +2041,6 @@
         });
       }
 
- 
-
       document.querySelectorAll(".label-toggle").forEach((checkbox) => {
         checkbox.addEventListener("change", (e) => {
           const type = e.target.value;
@@ -1920,7 +2076,11 @@
                 break;
               case "classeTransportesMeshes":
                 classeTransportesMeshes?.forEach((c) =>
-                  addLabelForSingleComponent(c, "classeTransportesMeshes", "corredor")
+                  addLabelForSingleComponent(
+                    c,
+                    "classeTransportesMeshes",
+                    "corredor"
+                  )
                 );
                 break;
               case "classeTransicaoMeshes":
@@ -1935,7 +2095,11 @@
                 break;
               case "classeCaisTemporarioMeshes":
                 classeCaisTemporarioMeshes?.forEach((s) =>
-                  addLabelForSingleComponent(s, "classeCaisTemporarioMeshes", "")
+                  addLabelForSingleComponent(
+                    s,
+                    "classeCaisTemporarioMeshes",
+                    ""
+                  )
                 );
                 break;
             }
@@ -1954,23 +2118,24 @@
         fetch("resources/data/dados_limpo.json")
           .then((response) => response.json())
           .then(async (data) => {
-            const val=await extractDataFromJSON(data);
+            trocarCoordenadasBC(data);
+
+            const val = await extractDataFromJSON(data);
             mirrorDataXCoordinates(val);
 
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
             const bounds = new THREE.Box3();
             [
-          ...classeEspExecMeshes,
-          ...classeCaisMeshes,
-          ...classeDivEspacosMeshes,
-          ...classeZonAnomalasMeshes,
-          ...classeEspacoDistrMeshes,
-          ...classeTransportesMeshes,
-          ...classeTransicaoMeshes,
-          ...classePilhaMeshes,
-          ...classeCaisTemporarioMeshes
-
+              ...classeEspExecMeshes,
+              ...classeCaisMeshes,
+              ...classeDivEspacosMeshes,
+              ...classeZonAnomalasMeshes,
+              ...classeEspacoDistrMeshes,
+              ...classeTransportesMeshes,
+              ...classeTransicaoMeshes,
+              ...classePilhaMeshes,
+              ...classeCaisTemporarioMeshes,
             ].forEach((mesh) => bounds.expandByObject(mesh));
 
             const originalMargin = 20;
