@@ -286,6 +286,7 @@
       let classeTransicaoMeshes = [];
       let classePilhaMeshes = [];
       let classeCaisTemporarioMeshes = [];
+      const outlinesArray = [];
 
       const bufferOriginalScales = {}; // índice → escala real
 
@@ -394,7 +395,7 @@
 
       bufferLevelSelect.addEventListener("change", () => {
         currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
-        updateBufferLevels(currentMaxBufferLevel);
+        //updateBufferLevels(currentMaxBufferLevel);
       });
 
       //FUNCTION formatSpazioLabel(spazio) MADE MY GM
@@ -593,6 +594,7 @@
         stackGroup,
         driveInGroup
       );
+      console.log("Buffer group tem filhos:", bufferGroup.children.length);
 
       const tooltip = document.getElementById("tooltip");
 
@@ -1045,112 +1047,137 @@
           );
         }
 
+        outlinesArray.forEach(({ outline, position }) => {
+          const dist = activeCamera.position.distanceTo(position);
+          outline.visible = dist < 250; // Podes ajustar o valor de 40
+        });
+
         renderer.render(scene, activeCamera);
         labelRenderer.render(scene, activeCamera);
 
         stats.update();
       }
-      // NEW DYNAMIC FUNCTIONS TO DRAW SPACES GM
-      // Spazio_classe === "02"
-      async function createDistributionFromJSON(distribuicoes) {
-        distribuicoes.forEach((item) => {
-          const width = parseFloat(item.Spazio_coord_largo) / 100;
-          const height = parseFloat(item.Spazio_coord_alto) / 100;
-          const depth = parseFloat(item.Spazio_coord_fondo) / 100;
+      // NEW DYNAMIC FUNCTIONS TO DRAW SPACES GM -------------------------------------------------------------------------------------------------------------------------------------
 
-          const x = parseFloat(item.Spazio_coord_draw_a) / 100;
-          const y = parseFloat(item.Spazio_coord_draw_b) / 100;
-          const z = parseFloat(item.Spazio_coord_draw_c) / 100;
+      //Spazio_classe === "01"
+      async function createSpacesFromJSON(spacesArray) {
+        const spaceOpacity = 0.9;
+        const shrinkFactor = 0.65;
+        const defaultColor = new THREE.Color("#00ff00");
 
-          //Geometry and Material resources
-          const getRandomColor = () => Math.floor(Math.random() * 0xffffff);
-          const hexColor =
-            item.Colore && item.Colore !== "null"
-              ? parseInt(item.Colore.replace("#", ""), 16)
-              : getRandomColor();
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const dummy = new THREE.Object3D();
+        const count = spacesArray.length;
 
-          const geometry = new THREE.BoxGeometry(width, height, depth);
-          const material = new THREE.MeshStandardMaterial({ hexColor });
-
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.set(x, y + height / 2, z);
-
-          scene.add(mesh);
+        const material = new THREE.MeshBasicMaterial({
+          transparent: true,
+          opacity: spaceOpacity,
+          depthWrite: true,
         });
-      }
-      //Spazio_classe === "03"
-      async function createDockFromJSON(docks) {
-        docks.forEach((dock) => {
-          const x = parseFloat(dock.Spazio_coord_draw_a) / 100;
-          const y = parseFloat(dock.Spazio_coord_draw_b) / 100;
-          const z = parseFloat(dock.Spazio_coord_draw_c) / 100;
 
-          let width = parseFloat(dock.Spazio_coord_largo) / 100;
-          const height = parseFloat(dock.Spazio_coord_alto) / 100;
-          let depth = parseFloat(dock.Spazio_coord_fondo) / 100;
+        const instancedMesh = new THREE.InstancedMesh(
+          geometry,
+          material,
+          count
+        );
 
-          const orientation = String(dock.Spazio_orientamento).trim();
+        const color = new THREE.Color();
+        const colorArray = new Float32Array(count * 3); // RGB por instância
+
+        spacesArray.forEach((space, i) => {
+          const x = parseFloat(space.Spazio_coord_draw_a || 0) / 100;
+          const y = parseFloat(space.Spazio_coord_draw_b || 0) / 100;
+          const z = parseFloat(space.Spazio_coord_draw_c || 0) / 100;
+
+          let width = parseFloat(space.Spazio_coord_largo || 80) / 100;
+          const height = parseFloat(space.Spazio_coord_alto || 180) / 100;
+          let depth = parseFloat(space.Spazio_coord_fondo || 120) / 100;
+
+          const orientation = String(space.Spazio_orientamento || "").trim();
           if (orientation === "1") {
             [width, depth] = [depth, width];
           }
 
-          // Cor do JSON ou azul padrao
-          let hexColor;
-          if (dock.Colore && dock.Colore !== "null") {
-            try {
-              hexColor = parseInt(dock.Colore.replace("#", ""), 16);
-            } catch {
-              hexColor = 0x73a7f5;
+          const px = x + width / 2;
+          const py = y + height / 2;
+          const pz = z + depth / 2;
+
+          dummy.position.set(px, py, pz);
+          dummy.scale.set(
+            width * shrinkFactor,
+            height * shrinkFactor,
+            depth * shrinkFactor
+          );
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+
+          let colorString = space.ColoreD;
+
+          try {
+            if (colorString && typeof colorString === "string") {
+              colorString = colorString.toLowerCase();
+              color.set(colorString);
+            } else {
+              color.copy(defaultColor);
+              colorString = "default";
             }
-          } else {
-            hexColor = 0x73a7f5;
+          } catch (err) {
+            console.warn(`Cor inválida no espaço[${i}]:`, space.ColoreD);
+            color.copy(defaultColor);
+            colorString = "default";
           }
 
-          const geometry = new THREE.BoxGeometry(width, height, depth);
-          const material = new THREE.MeshBasicMaterial({
-            color: hexColor,
-            transparent: true,
-            opacity: 0.9,
-            depthWrite: false,
-          });
-
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          dockGroup.add(mesh);
-
-          // Contorno branco
-          const edges = new THREE.EdgesGeometry(geometry);
-          const line = new THREE.LineSegments(
-            edges,
-            new THREE.LineBasicMaterial({ color: 0xffffff })
-          );
-          line.position.copy(mesh.position);
-
-          classeCaisMeshes.push(mesh);
-          dockGroup.add(line);
+          color.toArray(colorArray, i * 3);
         });
-        console.log(`Cais desenhados (usando posição e altura do JSON): ${docks.length}`);
+
+        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+          colorArray,
+          3
+        );
+
+        instancedMesh.instanceMatrix.needsUpdate = true;
+        spaceGroup.add(instancedMesh);
+
+        console.log(
+          `Espaços de execucao desenhados (classe 01): ${spacesArray.length}`
+        );
       }
-      //Spazio_classe === "06"
-      async function createWarahouseSpacesFromJSON(warehouseArray) {
-        const opacity = 0.95;
+      //-------------------------------------------------------------------------------------------------------------------------------------
+      //Spazio_classe === "02"
+      async function createWarehouseSpacesFromJSON(bufferArray) {
+        const bufferOpacity = 0.9;
         const shrinkFactor = 0.65;
+        const defaultColor = new THREE.Color("#d48c8c");
 
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const dummy = new THREE.Object3D();
+        const count = bufferArray.length;
 
-        const instancedMeshesByColor = {};
+        const material = new THREE.MeshBasicMaterial({
+          color: defaultColor, // Aplica a cor padrão no material
+          transparent: true,
+          opacity: bufferOpacity,
+          depthWrite: true,
+        });
 
-        warehouseArray.forEach((item, i) => {
-          const x = parseFloat(item.Spazio_coord_draw_a) / 100;
-          const y = parseFloat(item.Spazio_coord_draw_b) / 100;
-          const z = parseFloat(item.Spazio_coord_draw_c) / 100;
+        const instancedMesh = new THREE.InstancedMesh(
+          geometry,
+          material,
+          count
+        );
+        const color = new THREE.Color();
+        const colorArray = new Float32Array(count * 3); // RGB por instância
+
+        bufferArray.forEach((item, i) => {
+          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
 
           let width = parseFloat(item.Spazio_coord_largo || 80) / 100;
           const height = parseFloat(item.Spazio_coord_alto || 180) / 100;
           let depth = parseFloat(item.Spazio_coord_fondo || 120) / 100;
 
-          const orientation = String(item.Spazio_orientamento).trim();
+          const orientation = String(item.Spazio_orientamento || "").trim();
           if (orientation === "1") {
             [width, depth] = [depth, width];
           }
@@ -1159,52 +1186,638 @@
           const scaleY = height * shrinkFactor;
           const scaleZ = depth * shrinkFactor;
 
-          let hexColor;
-          if (item.Colore && item.Colore !== "null") {
-            try {
-              hexColor = parseInt(item.Colore.replace("#", ""), 16);
-            } catch {
-              hexColor = Math.floor(Math.random() * 0xffffff);
-            }
-          } else {
-            hexColor = Math.floor(Math.random() * 0xffffff);
-          }
-
-          if (!instancedMeshesByColor[hexColor]) {
-            const material = new THREE.MeshBasicMaterial({
-              color: hexColor,
-              transparent: true,
-              opacity: opacity,
-            });
-            instancedMeshesByColor[hexColor] = {
-              mesh: new THREE.InstancedMesh(geometry, material, 0),
-              count: 0,
-              transforms: [],
-            };
-          }
-
-          const meshData = instancedMeshesByColor[hexColor];
           dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
           dummy.scale.set(scaleX, scaleY, scaleZ);
           dummy.updateMatrix();
+          instancedMesh.setMatrixAt(i, dummy.matrix);
 
-          meshData.transforms.push(dummy.matrix.clone());
-          meshData.count++;
+          bufferOriginalScales[i] = { x: scaleX, y: scaleY, z: scaleZ };
+          let colorString = item.ColoreD;
+
+          try {
+            if (colorString && typeof colorString === "string") {
+              colorString = colorString.toLowerCase();
+              color.set(colorString);
+            } else {
+              color.copy(defaultColor);
+              colorString = "default";
+            }
+          } catch (err) {
+            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
+            color.copy(defaultColor);
+            colorString = "default";
+          }
+
+          color.toArray(colorArray, i * 3);
+        });
+        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+          colorArray,
+          3
+        );
+
+        instancedMesh.instanceMatrix.needsUpdate = true;
+        bufferGroup.add(instancedMesh);
+
+        console.log(`Espaços Armazenamento desenhados (classe 02): ${count}`);
+      }
+      //-------------------------------------------------------------------------------------------------------------------------------------
+      //Spazio_classe === "03" // SEM OPÇAO DE METER ALTURA AINDA
+      async function createDockFromJSON(docks) {
+        const shrinkFactor = 1;
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const dummy = new THREE.Object3D();
+        const dockGroup = new THREE.Group();
+        const outlineGroup = new THREE.Group();
+        const defaultColor = new THREE.Color("#0080ff"); // azul suave para docks
+
+        const count = docks.length;
+
+        const material = new THREE.MeshBasicMaterial({
+          color: defaultColor,
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: true, // otimizado
         });
 
-        // Adiciona todas as instanced meshes ao grupo final
-        for (const colorKey in instancedMeshesByColor) {
-          const { mesh, count, transforms } = instancedMeshesByColor[colorKey];
-          mesh.count = count;
-          transforms.forEach((matrix, idx) => mesh.setMatrixAt(idx, matrix));
-          mesh.instanceMatrix.needsUpdate = true;
-          bufferGroup.add(mesh);
-        }
+        const instancedMesh = new THREE.InstancedMesh(
+          geometry,
+          material,
+          count
+        );
+        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+        const outlineGeometry = new THREE.EdgesGeometry(geometry);
+        const outlineMaterial = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 1,
+        });
+
+        const color = new THREE.Color();
+        const colorArray = new Float32Array(count * 3);
+
+        docks.forEach((dock, i) => {
+          let width = parseFloat(dock.Spazio_coord_largo || 100) / 100;
+          let depth = parseFloat(dock.Spazio_coord_fondo || 100) / 100;
+
+          const x = parseFloat(dock.Spazio_coord_draw_a || 0) / 100;
+          const y = parseFloat(dock.Spazio_coord_draw_b || 0) / 100;
+          const z = parseFloat(dock.Spazio_coord_draw_c || 0) / 100;
+
+          const orientation = String(dock.Spazio_orientamento || "").trim();
+          if (orientation === "1") {
+            [width, depth] = [depth, width];
+          }
+
+          dummy.position.set(x + width / 2, y, z + depth / 2);
+          dummy.scale.set(width * shrinkFactor, 0.1, depth * shrinkFactor);
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+
+          // Contorno invisível (mantido igual aos outros)
+          const outline = new THREE.LineSegments(
+            outlineGeometry,
+            outlineMaterial.clone()
+          );
+          outline.applyMatrix4(dummy.matrix);
+          outline.visible = false;
+          outlineGroup.add(outline);
+
+          outlinesArray.push({
+            outline,
+            position: dummy.position.clone(),
+          });
+
+          let colorString = dock.ColoreD;
+
+          try {
+            if (colorString && typeof colorString === "string") {
+              colorString = colorString.toLowerCase();
+              color.set(colorString);
+            } else {
+              color.copy(defaultColor);
+              colorString = "default";
+            }
+          } catch (err) {
+            console.warn(`Cor inválida no espaço[${i}]:`, dock.ColoreD);
+            color.copy(defaultColor);
+            colorString = "default";
+          }
+
+          color.toArray(colorArray, i * 3);
+        });
+
+        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+          colorArray,
+          3
+        );
+        instancedMesh.instanceMatrix.needsUpdate = true;
+
+        dockGroup.add(instancedMesh);
+        dockGroup.add(outlineGroup);
+        scene.add(dockGroup);
+
+        console.log(`Espaços de cais desenhados (classe 03): ${docks.length}`);
+      }
+
+      //-------------------------------------------------------------------------------------------------------------------------------------
+      //Spazio_classe === "05" Zonas Anómalas
+
+      async function createAnomalousZonesFromJSON(zonas) {
+        const shrinkFactor = 1;
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const dummy = new THREE.Object3D();
+        const anomalousGroup = new THREE.Group();
+        const outlineGroup = new THREE.Group();
+        const defaultColor = new THREE.Color("#ff4d4d"); // vermelho claro de alerta
+
+        const count = zonas.length;
+
+        const material = new THREE.MeshBasicMaterial({
+          color: defaultColor,
+          transparent: true,
+          opacity: 0.85,
+          depthWrite: true,
+        });
+
+        const instancedMesh = new THREE.InstancedMesh(
+          geometry,
+          material,
+          count
+        );
+        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+        const outlineGeometry = new THREE.EdgesGeometry(geometry);
+        const outlineMaterial = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 1,
+        });
+
+        const color = new THREE.Color();
+        const colorArray = new Float32Array(count * 3);
+
+        zonas.forEach((item, i) => {
+          let width = parseFloat(item.Spazio_coord_largo || 100) / 100;
+          let depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
+
+          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+
+          const orientation = String(item.Spazio_orientamento || "").trim();
+          if (orientation === "1") {
+            [width, depth] = [depth, width];
+          }
+
+          dummy.position.set(x + width / 2, y, z + depth / 2);
+          dummy.scale.set(width * shrinkFactor, 0.05, depth * shrinkFactor); // 0.05 de altura "quase plano"
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+
+          // Contorno
+          const outline = new THREE.LineSegments(
+            outlineGeometry,
+            outlineMaterial.clone()
+          );
+          outline.applyMatrix4(dummy.matrix);
+          outline.visible = false;
+          outlineGroup.add(outline);
+
+          outlinesArray.push({
+            outline,
+            position: dummy.position.clone(),
+          });
+
+          let colorString = item.ColoreD;
+          try {
+            if (colorString && typeof colorString === "string") {
+              colorString = colorString.toLowerCase();
+              color.set(colorString);
+            } else {
+              color.copy(defaultColor);
+            }
+          } catch (err) {
+            console.warn(`Cor inválida na zona anómala [${i}]:`, item.ColoreD);
+            color.copy(defaultColor);
+          }
+
+          color.toArray(colorArray, i * 3);
+        });
+
+        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+          colorArray,
+          3
+        );
+        instancedMesh.instanceMatrix.needsUpdate = true;
+
+        anomalousGroup.add(instancedMesh);
+        anomalousGroup.add(outlineGroup);
+        scene.add(anomalousGroup);
+
+        console.log(`Zonas Anómalas desenhadas (classe 05): ${zonas.length}`);
+      }
+
+      //-------------------------------------------------------------------------------------------------------------------------------------
+      // Spazio_classe === "06" ZONAS DE DISTRIBUIÇAO
+
+      async function createDistributionFromJSON(distribuicoes) {
+        const shrinkFactor = 1;
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const dummy = new THREE.Object3D();
+        const distribGroup = new THREE.Group();
+        const outlineGroup = new THREE.Group();
+        const defaultColor = new THREE.Color("#ffc107");
+        const count = distribuicoes.length;
+        const material = new THREE.MeshBasicMaterial({
+          color: defaultColor,
+          transparent: true,
+          opacity: 0.9,
+        });
+
+        const instancedMesh = new THREE.InstancedMesh(
+          geometry,
+          material,
+          count
+        );
+
+        const outlineGeometry = new THREE.EdgesGeometry(geometry);
+        const outlineMaterial = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 1,
+        });
+
+        const color = new THREE.Color();
+        const colorArray = new Float32Array(count * 3); // RGB por instância
+
+        distribuicoes.forEach((item, i) => {
+          const width = parseFloat(item.Spazio_coord_largo || 100) / 100;
+          const height = parseFloat(item.Spazio_coord_alto || 100) / 100;
+          const depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
+
+          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+
+          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+          dummy.scale.set(
+            width * shrinkFactor,
+            height * shrinkFactor,
+            depth * shrinkFactor
+          );
+          dummy.updateMatrix();
+
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+
+          // Cria contorno, mas invisível
+          const outline = new THREE.LineSegments(
+            outlineGeometry,
+            outlineMaterial.clone()
+          );
+          outline.applyMatrix4(dummy.matrix);
+          outline.visible = false;
+          outlineGroup.add(outline);
+
+          // Guarda no array global
+          outlinesArray.push({
+            outline,
+            position: dummy.position.clone(),
+          });
+
+          let colorString = item.ColoreD;
+
+          try {
+            if (colorString && typeof colorString === "string") {
+              colorString = colorString.toLowerCase();
+              color.set(colorString);
+            } else {
+              color.copy(defaultColor);
+              colorString = "default";
+            }
+          } catch (err) {
+            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
+            color.copy(defaultColor);
+            colorString = "default";
+          }
+
+          color.toArray(colorArray, i * 3);
+        });
+        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+          colorArray,
+          3
+        );
+
+        instancedMesh.instanceMatrix.needsUpdate = true;
+
+        distribGroup.add(instancedMesh);
+        distribGroup.add(outlineGroup);
+        scene.add(distribGroup);
+
         console.log(
-          `Espaços de armazenamento desenhados: ${warehouseArray.length}`
+          `Estações de loja desenhadas (classe 06): ${distribuicoes.length}`
         );
       }
 
+
+      //-------------------------------------------------------------------------------------------------------------------------------------
+      //Spazio_classe === "08" Transition Zones
+
+      async function createTransitionZonesFromJSON(transitionZones) {
+        const shrinkFactor = 1;
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const dummy = new THREE.Object3D();
+        const transitionGroup = new THREE.Group();
+        const outlineGroup = new THREE.Group();
+        const defaultColor = new THREE.Color("#80d8ff"); // azul claro
+
+        const count = transitionZones.length;
+
+        const material = new THREE.MeshBasicMaterial({
+          color: defaultColor,
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: true,
+        });
+
+        const instancedMesh = new THREE.InstancedMesh(
+          geometry,
+          material,
+          count
+        );
+        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+        const outlineGeometry = new THREE.EdgesGeometry(geometry);
+        const outlineMaterial = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 1,
+        });
+
+        const color = new THREE.Color();
+        const colorArray = new Float32Array(count * 3);
+
+        transitionZones.forEach((item, i) => {
+          let width = parseFloat(item.Spazio_coord_largo || 100) / 100;
+          const height = parseFloat(item.Spazio_coord_alto || 100) / 100;
+          let depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
+
+          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+
+          const orientation = String(item.Spazio_orientamento || "").trim();
+          if (orientation === "1") [width, depth] = [depth, width];
+
+          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+          dummy.scale.set(
+            width * shrinkFactor,
+            height * shrinkFactor,
+            depth * shrinkFactor
+          );
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+
+          const outline = new THREE.LineSegments(
+            outlineGeometry,
+            outlineMaterial.clone()
+          );
+          outline.applyMatrix4(dummy.matrix);
+          outline.visible = false;
+          outlineGroup.add(outline);
+
+          outlinesArray.push({
+            outline,
+            position: dummy.position.clone(),
+          });
+
+          let colorString = item.ColoreD;
+          try {
+            if (colorString && typeof colorString === "string") {
+              color.set(colorString.toLowerCase());
+            } else {
+              color.copy(defaultColor);
+            }
+          } catch (err) {
+            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
+            color.copy(defaultColor);
+          }
+
+          color.toArray(colorArray, i * 3);
+        });
+
+        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+          colorArray,
+          3
+        );
+        instancedMesh.instanceMatrix.needsUpdate = true;
+
+        transitionGroup.add(instancedMesh);
+        transitionGroup.add(outlineGroup);
+        scene.add(transitionGroup);
+
+        console.log(`Zonas de Transição desenhadas (classe 08): ${count}`);
+      }
+
+      //-------------------------------------------------------------------------------------------------------------------------------------
+      //Spazio_classe === "09"
+      async function createStacksFromJSON(stacksArray) {
+        const shrinkFactor = 1;
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const dummy = new THREE.Object3D();
+        const outlineGroup = new THREE.Group();
+        const defaultColor = new THREE.Color("#9966ff");
+        const count = stacksArray.length;
+
+        const material = new THREE.MeshBasicMaterial({
+          color: defaultColor,
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: true,
+        });
+
+        const instancedMesh = new THREE.InstancedMesh(
+          geometry,
+          material,
+          count
+        );
+        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+        const outlineGeometry = new THREE.EdgesGeometry(geometry);
+        const outlineMaterial = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 1,
+        });
+
+        const color = new THREE.Color();
+        const colorArray = new Float32Array(count * 3);
+
+        stacksArray.forEach((item, i) => {
+          let width = parseFloat(item.Spazio_coord_largo || 100) / 100;
+          const height = parseFloat(item.Spazio_coord_alto || 100) / 100;
+          let depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
+
+          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+
+          const orientation = String(item.Spazio_orientamento || "").trim();
+          if (orientation === "1") {
+            [width, depth] = [depth, width];
+          }
+
+          dummy.position.set(x + width / 2, y + height, z + depth / 2);
+          dummy.scale.set(width, height, depth);
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+
+          //Contorno
+          const outline = new THREE.LineSegments(
+            outlineGeometry,
+            outlineMaterial.clone()
+          );
+          outline.applyMatrix4(dummy.matrix);
+          outline.visible = false;
+          outlineGroup.add(outline);
+
+          outlinesArray.push({
+            outline,
+            position: dummy.position.clone(),
+          });
+
+          //Get the color from JSON
+
+          let colorString = item.ColoreD;
+          try {
+            if (colorString && typeof colorString === "string") {
+              color.set(colorString.toLowerCase());
+            } else {
+              color.copy(defaultColor);
+            }
+          } catch (err) {
+            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
+            color.copy(defaultColor);
+          }
+
+          color.toArray(colorArray, i * 3);
+        });
+
+        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+          colorArray,
+          3
+        );
+        instancedMesh.instanceMatrix.needsUpdate = true;
+
+        stackGroup.add(instancedMesh);
+        stackGroup.add(outlineGroup);
+        scene.add(stackGroup);
+
+        console.log(`Pilhas desenhados (classe 09): ${count}`);
+      }
+      //-------------------------------------------------------------------------------------------------------------------------------------
+      //Spazio_classe === "10" Cais Temporario ainda sem a funcionalidade da altura
+
+      async function createTemporaryDockFromJSON(tempDocks) {
+        const shrinkFactor = 1;
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const dummy = new THREE.Object3D();
+        const tempDockGroup = new THREE.Group();
+        const outlineGroup = new THREE.Group();
+        const defaultColor = new THREE.Color("#ffb74d"); // Cor suave
+        const count = tempDocks.length;
+
+        const material = new THREE.MeshBasicMaterial({
+          color: defaultColor,
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: true,
+        });
+
+        const instancedMesh = new THREE.InstancedMesh(
+          geometry,
+          material,
+          count
+        );
+        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+        const outlineGeometry = new THREE.EdgesGeometry(geometry);
+        const outlineMaterial = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 1,
+        });
+
+        const color = new THREE.Color();
+        const colorArray = new Float32Array(count * 3);
+
+        tempDocks.forEach((item, i) => {
+          const width = parseFloat(item.Spazio_coord_largo || 100) / 100;
+          const depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
+
+          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+
+          const orientation = String(item.Spazio_orientamento || "").trim();
+          if (orientation === "1") {
+            [width, depth] = [depth, width];
+          }
+
+          dummy.position.set(x + width / 2, y, z + depth / 2);
+          dummy.scale.set(
+            width * shrinkFactor,
+            0.1, // altura ignorada por agora
+            depth * shrinkFactor
+          );
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+
+          // Contorno invisível
+          const outline = new THREE.LineSegments(
+            outlineGeometry,
+            outlineMaterial.clone()
+          );
+          outline.applyMatrix4(dummy.matrix);
+          outline.visible = false;
+          outlineGroup.add(outline);
+
+          outlinesArray.push({
+            outline,
+            position: dummy.position.clone(),
+          });
+
+          let colorString = item.ColoreD;
+          try {
+            if (colorString && typeof colorString === "string") {
+              colorString = colorString.toLowerCase();
+              color.set(colorString);
+            } else {
+              color.copy(defaultColor);
+              colorString = "default";
+            }
+          } catch (err) {
+            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
+            color.copy(defaultColor);
+            colorString = "default";
+          }
+
+          color.toArray(colorArray, i * 3);
+        });
+
+        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+          colorArray,
+          3
+        );
+        instancedMesh.instanceMatrix.needsUpdate = true;
+
+        tempDockGroup.add(instancedMesh);
+        tempDockGroup.add(outlineGroup);
+        scene.add(tempDockGroup);
+
+        console.log(`Cais Temporários desenhados (classe 10): ${count}`);
+      }
+      
       // END NEW DYNAMIC FUNCTIONS TO DRAW SPACES
 
       async function createRacksFromJSON(racks) {
@@ -1281,11 +1894,8 @@
           ...classeTransportesMeshes,
           ...classeTransicaoMeshes,
           ...classePilhaMeshes,
-          ...classeCaisTemporarioMeshes
-
+          ...classeCaisTemporarioMeshes,
         ];
-
- 
 
         // ✅ Só considerar objetos visíveis
         const visibleTargets = hoverTargets.filter(isFullyVisible);
@@ -1305,13 +1915,20 @@
           let type = "Objeto";
           if (classeEspExecMeshes.includes(first)) type = "classeEspExecMeshes";
           else if (classeCaisMeshes.includes(first)) type = "classeCaisMeshes";
-          else if (classeDivEspacosMeshes.includes(first)) type = "classeDivEspacosMeshes";
-          else if (classeZonAnomalasMeshes.includes(first)) type = "classeZonAnomalasMeshes";
-          else if (classeEspacoDistrMeshes.includes(first)) type = "classeEspacoDistrMeshes";
-          else if (classeTransportesMeshes.includes(first)) type = "classeTransportesMeshes";
-          else if (classeTransicaoMeshes.includes(first)) type = "classeTransicaoMeshes";
-          else if (classePilhaMeshes.includes(first)) type = "classePilhaMeshes";
-          else if (classeCaisTemporarioMeshes.includes(first)) type = "classeCaisTemporarioMeshes";
+          else if (classeDivEspacosMeshes.includes(first))
+            type = "classeDivEspacosMeshes";
+          else if (classeZonAnomalasMeshes.includes(first))
+            type = "classeZonAnomalasMeshes";
+          else if (classeEspacoDistrMeshes.includes(first))
+            type = "classeEspacoDistrMeshes";
+          else if (classeTransportesMeshes.includes(first))
+            type = "classeTransportesMeshes";
+          else if (classeTransicaoMeshes.includes(first))
+            type = "classeTransicaoMeshes";
+          else if (classePilhaMeshes.includes(first))
+            type = "classePilhaMeshes";
+          else if (classeCaisTemporarioMeshes.includes(first))
+            type = "classeCaisTemporarioMeshes";
 
           tooltip.innerHTML = `<strong>${type}</strong><br>
       <strong>X</strong>: ${pos.x.toFixed(2)}
@@ -1366,7 +1983,7 @@
       }
 
       // Function to create spaces from JSON data using InstancedMesh ISTO É O PICKING BASICAMENTE MAS A AVERIGUAR
-      function createSpacesFromJSON() {
+      /* function createSpacesFromJSON() {
         const spaceColor = 0x00ff00;
         const spaceOpacity = 0.95;
         const shrinkFactor = 0.65;
@@ -1421,7 +2038,7 @@
 
         spaceGroup.add(instancedMesh);
         console.log(`Spaces created: ${spaces.length}`);
-      }
+      }*/
 
       function addLabelForSingleComponent(component, type = "", name = "") {
         if (!component || !component.Spazio) return;
@@ -1558,6 +2175,7 @@
           ...data.classeTransporte,
           ...data.classeArmaz,
           ...data.classeDist,
+          ...data.classeTransicao,
         ]
 
           .map((item) => parseFloat(item.Spazio_coord_draw_a))
@@ -1605,19 +2223,21 @@
 
       async function extractDataFromJSON(data) {
         // Filtros por classe
-        const classeDivEspacos = data.filter((d) => d.Spazio_classe === "04"); // Divisões Espaços
-        const classeExec = data.filter((d) => d.Spazio_classe === "01"); // Execução
-        const classeDocks = data.filter((d) => d.Spazio_classe === "03"); // Cais
-        const classeStacks = data.filter((d) => d.Spazio_classe === "09"); // Pilha
-        const classeTransporte = data.filter((d) => d.Spazio_classe === "07"); // Transportes
+        const classeExec = data.filter((d) => d.Spazio_classe === "01"); // Execução DONE
         const classeArmaz = data.filter((d) => d.Spazio_classe === "02"); // Armazenamento DONE
+        const classeDocks = data.filter((d) => d.Spazio_classe === "03"); // Cais DONE
+        const classeDivEspacos = data.filter((d) => d.Spazio_classe === "04"); // Divisões Espaços
+        const classeZoneAnom = data.filter((d) => d.Spazio_classe === "05"); // Zonas Anómalas(RF)
         const classeDist = data.filter((d) => d.Spazio_classe === "06"); // Estações de Loja DONE
+        const classeTransporte = data.filter((d) => d.Spazio_classe === "07"); // Transportes Not To Be Done
+        const classeTransicao = data.filter((d) => d.Spazio_classe === "08"); // Zonas de Transição DONE
+        const classeStacks = data.filter((d) => d.Spazio_classe === "09"); // Pilha DONE
+        const classeTempDocks = data.filter((d) => d.Spazio_classe === "10"); // Cais temporário DONE
         // Bounding box com base nas racks
         const relevantWalls = classeDivEspacos.filter(
           (e) => parseFloat(e.Spazio_coord_alto) !== 0
         );
 
-        
         wallBoundingBoxCoords = calculateWallBoundingBox(relevantWalls);
         boundingBoxCenter.copy(wallBoundingBoxCoords.center);
 
@@ -1634,10 +2254,14 @@
         orbitControls.target.set(boundingBoxCenter.x, 50, boundingBoxCenter.z);
 
         // Chamada das funções com os dados corretos
-
-        // await createDistributionFromJSON(classeDist); // <- GM
-        // await createWarahouseSpacesFromJSON(classeArmaz); // GM
+        await createSpacesFromJSON(classeExec); //GM
+        await createWarehouseSpacesFromJSON(classeArmaz); // GM
         await createDockFromJSON(classeDocks); //GM
+        await createAnomalousZonesFromJSON(classeZoneAnom); // GM
+        await createDistributionFromJSON(classeDist); // <- GM
+        await createTransitionZonesFromJSON(classeTransicao); // GM
+        await createStacksFromJSON(classeStacks); // GM
+        await createTemporaryDockFromJSON(classeTempDocks); //GM
 
         createWarehouseAreaFromComponentsAll();
         addFlatLabelsToWarehouse();
@@ -1653,6 +2277,7 @@
           classeTransporte,
           classeArmaz,
           classeDist,
+          classeTransicao,
         };
       }
 
@@ -1747,7 +2372,7 @@
       } */
 
       //ESTA FUNÇA USADA PARA GERAR AS PILHAS -> GM ALTERAÇÃO
-      async function createStacksFromJSON(stacks) {
+      /*async function createStacksFromJSON(stacks) {
         const stackColor = 0x9966ff;
         const stackOpacity = 0.95;
         const boxHeight = 0.6; // altura de cada caixa empilhada (em metros)
@@ -1824,7 +2449,7 @@
 
         console.log(`Pilhas desenhadas: ${stacks.length}`);
       }
-
+ */
       //ESTA FUNÇÃO É USADA PARA GERAR DRIVE-INS
       async function createDriveInsFromJSON(driveIns) {
         driveIns.forEach((driveIn) => {
@@ -1883,8 +2508,6 @@
         });
       }
 
- 
-
       document.querySelectorAll(".label-toggle").forEach((checkbox) => {
         checkbox.addEventListener("change", (e) => {
           const type = e.target.value;
@@ -1920,7 +2543,11 @@
                 break;
               case "classeTransportesMeshes":
                 classeTransportesMeshes?.forEach((c) =>
-                  addLabelForSingleComponent(c, "classeTransportesMeshes", "corredor")
+                  addLabelForSingleComponent(
+                    c,
+                    "classeTransportesMeshes",
+                    "corredor"
+                  )
                 );
                 break;
               case "classeTransicaoMeshes":
@@ -1935,7 +2562,11 @@
                 break;
               case "classeCaisTemporarioMeshes":
                 classeCaisTemporarioMeshes?.forEach((s) =>
-                  addLabelForSingleComponent(s, "classeCaisTemporarioMeshes", "")
+                  addLabelForSingleComponent(
+                    s,
+                    "classeCaisTemporarioMeshes",
+                    ""
+                  )
                 );
                 break;
             }
@@ -1954,24 +2585,13 @@
         fetch("resources/data/dados_limpo.json")
           .then((response) => response.json())
           .then(async (data) => {
-            const val=await extractDataFromJSON(data);
-            mirrorDataXCoordinates(val);
+            trocarCoordenadasBC(data);
+            const val = await extractDataFromJSON(data);
+            //mirrorDataXCoordinates(val);
 
             //ALTERAÇAO GM
             // Adicionar o GridHelper com base no tamanho real do armazém
-            const bounds = new THREE.Box3();
-            [
-          ...classeEspExecMeshes,
-          ...classeCaisMeshes,
-          ...classeDivEspacosMeshes,
-          ...classeZonAnomalasMeshes,
-          ...classeEspacoDistrMeshes,
-          ...classeTransportesMeshes,
-          ...classeTransicaoMeshes,
-          ...classePilhaMeshes,
-          ...classeCaisTemporarioMeshes
-
-            ].forEach((mesh) => bounds.expandByObject(mesh));
+            const bounds = new THREE.Box3().setFromObject(scene);
 
             const originalMargin = 20;
 
@@ -2023,6 +2643,14 @@
           })
           .catch((error) => console.error("Error fetching JSON:", error));
       };
+
+      function trocarCoordenadasBC(array) {
+        array.forEach((item) => {
+          const temp = item.Spazio_coord_draw_b;
+          item.Spazio_coord_draw_b = item.Spazio_coord_draw_c;
+          item.Spazio_coord_draw_c = temp;
+        });
+      }
 
       function isNotHidden(obj) {
         if (obj.userData.hidden) return false;
