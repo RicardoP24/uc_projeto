@@ -190,55 +190,7 @@
             <span>TOGGLE LABELS</span>
           </span>
         </summary>
-        <ul id="label-toggle-list">
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="racks" />
-              Racks</label
-            >
-          </li>
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="docks" />
-              Cais</label
-            >
-          </li>
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="stacks" />
-              Pilhas</label
-            >
-          </li>
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="driveins" />
-              DriveIns</label
-            >
-          </li>
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="buffers" />
-              Buffers</label
-            >
-          </li>
-          <li>
-            <label
-              ><input
-                type="checkbox"
-                class="label-toggle"
-                value="corridors"
-                checked
-              />
-              Corredores</label
-            >
-          </li>
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="picking" />
-              Picking</label
-            >
-          </li>
-        </ul>
+        <ul id="label-toggle-list"></ul>
       </details>
     </div>
 
@@ -286,6 +238,9 @@
       let classeTransicaoMeshes = [];
       let classePilhaMeshes = [];
       let classeCaisTemporarioMeshes = [];
+      let outlinesArray = [];
+      let EspacosAll = [];
+let hoveredInstance = null; // guarda instância ativa no hover
 
       const bufferOriginalScales = {}; // índice → escala real
 
@@ -859,13 +814,6 @@
       // F2 change parameter name in all document
       // Create walls around the bounding box with a margin
 
-      // Update createWalls function to use bounding box
-      function createWalls(wallBoundingBoxCoords) {
-        if (racks && racks.length > 0) {
-          createWallsAroundRacks(wallBoundingBoxCoords);
-        }
-      }
-
       // Calcula se algum vetor interseta com um bounding box
       function playerCollisions() {
         const result = worldOctree.capsuleIntersect(playerCollider);
@@ -1045,6 +993,10 @@
           );
         }
 
+        outlinesArray.forEach(({ outline, position }) => {
+          const dist = activeCamera.position.distanceTo(position);
+          outline.visible = dist < 150; // Podes ajustar o valor de 40
+        });
         renderer.render(scene, activeCamera);
         labelRenderer.render(scene, activeCamera);
 
@@ -1208,50 +1160,108 @@
       }
 
       // END NEW DYNAMIC FUNCTIONS TO DRAW SPACES
-
       async function createRacksFromJSON(racks) {
-        racks.forEach((rack, index) => {
-          const x = parseFloat(rack.Spazio_coord_draw_a) / 100;
-          const y = parseFloat(rack.Spazio_coord_draw_b) / 100;
-          const z = parseFloat(rack.Spazio_coord_draw_c) / 100;
+        const shrinkFactor = 0.95;
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const dummy = new THREE.Object3D();
+        const outlineGroup = new THREE.Group();
+        const defaultColor = new THREE.Color("#5865f2");
+        const count = racks.length;
+
+        const material = new THREE.MeshBasicMaterial({
+          color: defaultColor,
+          transparent: true,
+          opacity: 0.3,
+          depthWrite: false,
+        });
+
+        const instancedMesh = new THREE.InstancedMesh(
+          geometry,
+          material,
+          count
+        );
+        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+        const outlineGeometry = new THREE.EdgesGeometry(geometry);
+        const outlineMaterial = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 1,
+        });
+
+        const color = new THREE.Color();
+        const colorArray = new Float32Array(count * 3); // RGB por instância
+        instancedMesh.userData.tipo = "rack";
+
+        racks.forEach((rack, i) => {
+          const x = parseFloat(rack.Spazio_coord_draw_a || 0) / 100;
+          const y = parseFloat(rack.Spazio_coord_draw_b || 0) / 100;
+          const z = parseFloat(rack.Spazio_coord_draw_c || 0) / 100;
 
           let width = parseFloat(rack.Spazio_coord_largo || 120) / 100;
           const height = parseFloat(rack.Spazio_coord_alto || 925) / 100;
           let depth = parseFloat(rack.Spazio_coord_fondo || 320) / 100;
 
-          // Respeitar a orientação (1 = X, 2 = Z)
-          const orientation = rack.Spazio_orientamento;
-          if (orientation === "1") {
-            const temp = width;
-            width = depth;
-            depth = temp;
-          }
+          const orientation = String(rack.Spazio_orientamento || "").trim();
+          if (orientation === "1") [width, depth] = [depth, width];
 
-          const geometry = new THREE.BoxGeometry(width, height, depth);
-          const material = new THREE.MeshBasicMaterial({
-            color: 0x5865f2,
-            transparent: true,
-            opacity: 0.2,
-            depthWrite: false,
+          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+          dummy.scale.set(
+            width * shrinkFactor,
+            height * shrinkFactor,
+            depth * shrinkFactor
+          );
+          dummy.updateMatrix();
+
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+          instancedMesh.userData.tipo = rack.Spazio_tipo;
+          instancedMesh.userData.tipoD = rack.Spazio_tipoD;
+          instancedMesh.userData.spazio_disp = rack.Spazio_disponibile;
+
+          // Cria contorno invisível
+          const outline = new THREE.LineSegments(
+            outlineGeometry,
+            outlineMaterial.clone()
+          );
+          outline.applyMatrix4(dummy.matrix);
+          outline.visible = false;
+          outline.userData.tipo = rack.Spazio_tipo;
+          outlineGroup.add(outline);
+
+          // Armazena para hover ou seleção futura
+          outlinesArray.push({
+            outline,
+            position: dummy.position.clone(),
           });
 
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          mesh.userData.tipo = rack.Spazio_tipo;
+          let colorString = rack.ColoreD;
+          try {
+            if (colorString && typeof colorString === "string") {
+              color.set(colorString.toLowerCase());
+            } else {
+              color.copy(defaultColor);
+            }
+          } catch (err) {
+            console.warn(`Cor inválida no rack[${i}]:`, rack.ColoreD);
+            color.copy(defaultColor);
+          }
 
-          rackGroup.add(mesh);
-          classeDivEspacosMeshes.push(mesh);
-
-          const edges = new THREE.EdgesGeometry(geometry);
-          const line = new THREE.LineSegments(
-            edges,
-            new THREE.LineBasicMaterial({ color: 0xffffff })
-          );
-          line.position.copy(mesh.position);
-          line.userData.tipo = rack.Spazio_tipo;
-
-          rackGroup.add(line);
+          color.toArray(colorArray, i * 3);
         });
+
+        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+          colorArray,
+          3
+        );
+        instancedMesh.instanceMatrix.needsUpdate = true;
+        rackGroup.add(instancedMesh);
+
+        outlineGroup.children.forEach((child) => {
+          rackGroup.add(child);
+        });
+        classeDivEspacosMeshes.push(instancedMesh);
+
+        console.log(`Racks desenhados: ${count}`);
       }
 
       const raycaster = new THREE.Raycaster();
@@ -1272,61 +1282,62 @@
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
         raycaster.setFromCamera(mouse, activeCamera);
-        const hoverTargets = [
-          ...classeEspExecMeshes,
-          ...classeCaisMeshes,
-          ...classeDivEspacosMeshes,
-          ...classeZonAnomalasMeshes,
-          ...classeEspacoDistrMeshes,
-          ...classeTransportesMeshes,
-          ...classeTransicaoMeshes,
-          ...classePilhaMeshes,
-          ...classeCaisTemporarioMeshes,
+
+        // Você pode incluir mais objetos instanciados aqui se quiser
+        const instancedTargets = [
+          ...classeDivEspacosMeshes.filter((m) => m.isInstancedMesh),
         ];
 
-        // ✅ Só considerar objetos visíveis
-        const visibleTargets = hoverTargets.filter(isFullyVisible);
-        const intersects = raycaster.intersectObjects(visibleTargets);
+        const intersects = raycaster.intersectObjects(instancedTargets, true);
 
         if (intersects.length > 0) {
-          const first = intersects[0].object;
+          const intersect = intersects[0];
+            
+          const mesh = intersect.object;
+          const instanceId = intersect.instanceId;
 
-          if (hoveredRack !== first) {
-            hoveredRack = first;
+          if (mesh && mesh.isInstancedMesh && typeof instanceId === "number") {
+            // Se mudou de instância
+            if (
+              hoveredInstance &&
+              (hoveredInstance.mesh !== mesh ||
+                hoveredInstance.id !== instanceId)
+            ) {
+              // Restaura cor anterior
+        
+              hoveredInstance = null;
+            }
+
+            if (!hoveredInstance) {
+ 
+
+              hoveredInstance = {
+                mesh,
+                id: instanceId,
+              };
+            }
+
+            // Tooltip
+            const pos = intersect.point;
+            tooltip.style.left = event.clientX + 10 + "px";
+            tooltip.style.top = event.clientY + 10 + "px";
+            tooltip.innerHTML = `<strong>${mesh.userData.tipoD}</strong><br>ID: ${instanceId}<br>
+${mesh.userData.spazio_disp=="0"?"Espaço Indisponível":"Espaço Disponível"}`;
+            tooltip.style.display = "block";
             document.body.style.cursor = "pointer";
+            return;
           }
-
-          tooltip.style.left = event.clientX + 10 + "px";
-          tooltip.style.top = event.clientY + 10 + "px";
-          const pos = first.position;
-          let type = "Objeto";
-          if (classeEspExecMeshes.includes(first)) type = "classeEspExecMeshes";
-          else if (classeCaisMeshes.includes(first)) type = "classeCaisMeshes";
-          else if (classeDivEspacosMeshes.includes(first))
-            type = "classeDivEspacosMeshes";
-          else if (classeZonAnomalasMeshes.includes(first))
-            type = "classeZonAnomalasMeshes";
-          else if (classeEspacoDistrMeshes.includes(first))
-            type = "classeEspacoDistrMeshes";
-          else if (classeTransportesMeshes.includes(first))
-            type = "classeTransportesMeshes";
-          else if (classeTransicaoMeshes.includes(first))
-            type = "classeTransicaoMeshes";
-          else if (classePilhaMeshes.includes(first))
-            type = "classePilhaMeshes";
-          else if (classeCaisTemporarioMeshes.includes(first))
-            type = "classeCaisTemporarioMeshes";
-
-          tooltip.innerHTML = `<strong>${type}</strong><br>
-      <strong>X</strong>: ${pos.x.toFixed(2)}
-      <strong>Y</strong>: ${pos.y.toFixed(2)}
-      <strong>Z</strong>: ${pos.z.toFixed(2)}`;
-          tooltip.style.display = "block";
-        } else {
-          hoveredRack = null;
-          document.body.style.cursor = "default";
-          tooltip.style.display = "none";
         }
+
+        // Nenhum hover válido
+        if (hoveredInstance) {
+ 
+           
+          hoveredInstance = null;
+        }
+
+        tooltip.style.display = "none";
+        document.body.style.cursor = "default";
       }
 
       window.addEventListener("mousemove", onMouseMove);
@@ -1456,14 +1467,21 @@
         labelObj.rotation.x = -Math.PI / 2;
 
         const dummy = new THREE.Object3D();
-        if (name == "corredor")
+
+        const isCorridor = corridorGroup.children.some((child) => {
+          if (child.isInstancedMesh) {
+            return child.userData?.tipo === component.Spazio_tipo;
+          }
+          return false;
+        });
+
+        if (isCorridor) {
           dummy.position.set(x + width / 2, 0, z + depth / 2);
-        else if (name == "buffer" || name == "picking")
-          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
-        else dummy.position.set(x + width / 2, y + height, z + depth / 2);
+        } else {
+          dummy.position.set(x + width / 2, y + height, z + depth / 2);
+        }
 
         dummy.add(labelObj);
-
         scene.add(dummy);
       }
 
@@ -1599,12 +1617,46 @@
         // buffers?.forEach((b) =>
         //   addLabelForSingleComponent(b, "buffers", "buffer")
         // );
-        corredor?.forEach((c) =>
-          addLabelForSingleComponent(c, "corridors", "corredor")
-        );
+        corredor?.forEach((c) => addLabelForSingleComponent(c));
         // spaces?.forEach((s) =>
         //   addLabelForSingleComponent(s, "spaces", "picking")
         // );
+      }
+
+      function gerarMenuToggleLabels(...listas) {
+        const labelToggleList = document.getElementById("label-toggle-list");
+        labelToggleList.innerHTML = ""; // Limpa entradas anteriores
+
+        const tiposMap = new Map(); // Para evitar duplicados
+
+        listas.forEach((lista) => {
+          lista.forEach((item) => {
+            const tipo = item.Spazio_tipo?.trim() || "Desconhecido";
+            const label = item.Spazio_tipoD?.trim() || tipo;
+
+            if (!tiposMap.has(tipo)) {
+              tiposMap.set(tipo, label);
+            }
+          });
+        });
+
+        for (const [tipo, label] of tiposMap.entries()) {
+          const li = document.createElement("li");
+
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.className = "label-toggle";
+          input.value = tipo;
+          input.id = `toggle-label-${tipo}`;
+
+          const inputLabel = document.createElement("label");
+          inputLabel.setAttribute("for", input.id);
+          inputLabel.appendChild(input);
+          inputLabel.append(` ${label}`);
+
+          li.appendChild(inputLabel);
+          labelToggleList.appendChild(li);
+        }
       }
 
       async function extractDataFromJSON(data) {
@@ -1640,11 +1692,67 @@
 
         // await createDistributionFromJSON(classeDist); // <- GM
         // await createWarahouseSpacesFromJSON(classeArmaz); // GM
-        await createDockFromJSON(classeDocks); //GM
+        // await createDockFromJSON(classeDocks); //GM
         await processDivSpacesClass(classeDivEspacos);
         createWarehouseAreaFromComponentsAll();
-        addFlatLabelsToWarehouse();
+        // addFlatLabelsToWarehouse();
+        gerarMenuToggleLabels(
+          classeDivEspacos,
+          classeExec,
+          classeDocks,
+          classeStacks,
+          classeTransporte,
+          classeArmaz,
+          classeDist
+        );
         applyInitialLabelVisibilityFromMenu();
+
+        EspacosAll = [
+          ...classeDivEspacos,
+          ...classeExec,
+          ...classeDocks,
+          ...classeStacks,
+          ...classeTransporte,
+          ...classeArmaz,
+          ...classeDist,
+        ];
+
+        const EspacosPorTipo = {};
+
+        EspacosAll.forEach((item) => {
+          const tipo = item.Spazio_tipoD?.trim() || "Desconhecido";
+
+          if (!EspacosPorTipo[tipo]) {
+            EspacosPorTipo[tipo] = [];
+          }
+
+          EspacosPorTipo[tipo].push(item);
+        });
+
+        document.querySelectorAll(".label-toggle").forEach((checkbox) => {
+          checkbox.addEventListener("change", (e) => {
+            const type = e.target.value;
+            const isVisible = e.target.checked;
+
+            const labelsExist = document.querySelector(`.toggle-label-${type}`);
+            if (isVisible && !labelsExist) {
+              // Cria as labels apenas se ainda não existem
+              EspacosAll.forEach((item) => {
+                const itemTipo = (item.Spazio_tipo || "").trim();
+                if (itemTipo === type) {
+                  addLabelForSingleComponent(item, type, ""); // Usa o tipo como classe
+                }
+              });
+            }
+
+            // Atualiza visibilidade das labels desse tipo
+            labelRenderer.domElement
+              .querySelectorAll(`.toggle-label-${type}`)
+              .forEach((el) => {
+                el.style.visibility = isVisible ? "visible" : "hidden";
+              });
+          });
+        });
 
         createEmployee();
         const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
@@ -1791,7 +1899,9 @@
 
               // Garantir que nenhum outro filho permaneça no grupo
               corridorGroup.children
-                .filter((child) => child.userData?.tipo === tipo)
+                .filter((child) => {
+                  child.userData?.tipo === tipo;
+                })
                 .forEach((child) => {
                   corridorGroup.remove(child);
                   child.geometry?.dispose?.();
@@ -1810,56 +1920,107 @@
       }
 
       //Nova função realizada por GM para representar os espaços
-      function createCorridorsFromJSON(corridors) {
-        const height = 0.02;
+      async function createCorridorsFromJSON(corridors) {
+        const corridorOpacity = 0.95;
+        const shrinkFactor = 1.0;
+        const defaultColor = new THREE.Color("#3399ff");
 
-        corridors.forEach((corridor, index) => {
-          const colorName = capitalizeFirstLetter(corridor.ColoreD || "gray");
-          let corridorMaterial = new THREE.MeshBasicMaterial({
-            color: colorName,
-            transparent: true,
-            opacity: 0.95,
-            depthWrite: false,
-          });
-          const x = parseFloat(corridor.Spazio_coord_draw_a) / 100;
-          const z = parseFloat(corridor.Spazio_coord_draw_c) / 100;
+        const baseGeometry = new THREE.PlaneGeometry(1, 1);
+        const dummy = new THREE.Object3D();
+        const count = corridors.length;
 
-          let width = parseFloat(corridor.Spazio_coord_largo) / 100; // mesma largura que usas nas racks
-          let depth = parseFloat(corridor.Spazio_coord_fondo) / 100; // mesma profundidade que usas nas racks
-
-          const orientation = String(corridor.Spazio_orientamento).trim();
-          if (orientation === "1") {
-            const temp = width;
-            width = depth;
-            depth = temp;
-          }
-          const geometry = new THREE.PlaneGeometry(width, depth);
-          const mesh = new THREE.Mesh(geometry, corridorMaterial);
-          mesh.rotation.x = -Math.PI / 2;
-
-          // Posiciona o plano centrado como as racks
-          mesh.position.set(x + width / 2, height, z + depth / 2);
-          mesh.userData.tipo = corridor.Spazio_tipo;
-
-          corridorGroup.add(mesh);
-          classeDivEspacosMeshes.push(mesh);
-
-          //Adicionar contorno preto
-          const edgeGeometry = new THREE.EdgesGeometry(geometry);
-          const edgeMaterial = new THREE.LineBasicMaterial({
-            color: 0x000000,
-            transparent: true,
-            opacity: 0.6, // mais suave
-          });
-          const line = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-          line.rotation.x = -Math.PI / 2;
-          line.position.set(x + width / 2, height + 0.001, z + depth / 2);
-          line.userData.tipo = corridor.Spazio_tipo;
-
-          corridorGroup.add(line);
+        const material = new THREE.MeshBasicMaterial({
+          vertexColors: true,
+          transparent: true,
+          opacity: corridorOpacity,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: -1,
+          polygonOffsetUnits: -1,
         });
 
-        console.log(`Corredores desenhados: ${corridors.length}`);
+        const instancedMesh = new THREE.InstancedMesh(
+          baseGeometry,
+          material,
+          count
+        );
+        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); // caso queira atualizá-los depois
+        instancedMesh.userData.tipo = "corridorMesh"; // valor genérico (pode ser sobrescrito)
+
+        const colorArray = new Float32Array(count * 3);
+        const color = new THREE.Color();
+
+        const outlineGeometry = new THREE.EdgesGeometry(baseGeometry);
+        const outlineMaterial = new THREE.LineBasicMaterial({
+          color: 0x000000,
+          transparent: true,
+          opacity: 0.6,
+        });
+
+        const outlineGroup = new THREE.Group();
+
+        corridors.forEach((corridor, index) => {
+          const x = parseFloat(corridor.Spazio_coord_draw_a || 0) / 100;
+          const z = parseFloat(corridor.Spazio_coord_draw_c || 0) / 100;
+
+          let width = parseFloat(corridor.Spazio_coord_largo || 100) / 100;
+          let depth = parseFloat(corridor.Spazio_coord_fondo || 100) / 100;
+
+          const orientation = String(corridor.Spazio_orientamento || "").trim();
+          if (orientation === "1") [width, depth] = [depth, width];
+
+          const scaleX = width * shrinkFactor;
+          const scaleZ = depth * shrinkFactor;
+          const y = 0.01 + index * 0.0001; // evita z-fighting
+
+          // Matriz de transformação
+          dummy.position.set(x + width / 2, y, z + depth / 2);
+          dummy.rotation.x = -Math.PI / 2;
+          dummy.scale.set(scaleX, scaleZ, 1);
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(index, dummy.matrix);
+          instancedMesh.userData.tipo = corridor.Spazio_tipo;
+          instancedMesh.userData.tipoD = corridor.Spazio_tipoD;
+          instancedMesh.userData.spazio_disp = corridor.Spazio_disponibile;
+
+          // Cor por instância
+          try {
+            color.set((corridor.ColoreD || "#3399ff").toLowerCase());
+          } catch {
+            color.copy(defaultColor);
+          }
+          color.toArray(colorArray, index * 3);
+
+          // Contorno
+          const outline = new THREE.LineSegments(
+            outlineGeometry.clone(),
+            outlineMaterial.clone()
+          );
+          outline.applyMatrix4(dummy.matrix);
+          outline.visible = true; // pode ser false se quiser só mostrar onHover
+          outline.userData.tipo = corridor.Spazio_tipo;
+ 
+          outlineGroup.add(outline);
+          outlinesArray.push({
+            outline,
+            position: dummy.position.clone(),
+          });
+          classeDivEspacosMeshes.push(outline);
+        });
+
+        instancedMesh.geometry.setAttribute(
+          "color",
+          new THREE.InstancedBufferAttribute(colorArray, 3)
+        );
+        instancedMesh.instanceMatrix.needsUpdate = true;
+
+        corridorGroup.add(instancedMesh);
+        corridorGroup.add(outlineGroup);
+
+        classeDivEspacosMeshes.push(instancedMesh);
+
+        console.log(`Corredores desenhados (instanced): ${count}`);
       }
 
       //FUNÇÃO PARA CRIAÇÃO DE CAIS ALTERAÇÃO GM
@@ -2040,79 +2201,6 @@
           });
         });
       }
-
-      document.querySelectorAll(".label-toggle").forEach((checkbox) => {
-        checkbox.addEventListener("change", (e) => {
-          const type = e.target.value;
-          const isVisible = e.target.checked;
-
-          // Cria a label se necessário
-          if (isVisible && !document.querySelector(`.toggle-label-${type}`)) {
-            switch (type) {
-              case "classeEspExecMeshes":
-                classeEspExecMeshes?.forEach((r) =>
-                  addLabelForSingleComponent(r, "classeEspExecMeshes", "")
-                );
-                break;
-              case "classeCaisMeshes":
-                classeCaisMeshes?.forEach((d) =>
-                  addLabelForSingleComponent(d, "classeCaisMeshes", "")
-                );
-                break;
-              case "classeDivEspacosMeshes":
-                classeDivEspacosMeshes?.forEach((s) =>
-                  addLabelForSingleComponent(s, "classeDivEspacosMeshes", "")
-                );
-                break;
-              case "classeZonAnomalasMeshes":
-                classeZonAnomalasMeshes?.forEach((d) =>
-                  addLabelForSingleComponent(d, "classeZonAnomalasMeshes", "")
-                );
-                break;
-              case "classeEspacoDistrMeshes":
-                classeEspacoDistrMeshes?.forEach((b) =>
-                  addLabelForSingleComponent(b, "classeEspacoDistrMeshes", "")
-                );
-                break;
-              case "classeTransportesMeshes":
-                classeTransportesMeshes?.forEach((c) =>
-                  addLabelForSingleComponent(
-                    c,
-                    "classeTransportesMeshes",
-                    "corredor"
-                  )
-                );
-                break;
-              case "classeTransicaoMeshes":
-                classeTransicaoMeshes?.forEach((s) =>
-                  addLabelForSingleComponent(s, "classeTransicaoMeshes", "")
-                );
-                break;
-              case "classePilhaMeshes":
-                classePilhaMeshes?.forEach((s) =>
-                  addLabelForSingleComponent(s, "classePilhaMeshes", "")
-                );
-                break;
-              case "classeCaisTemporarioMeshes":
-                classeCaisTemporarioMeshes?.forEach((s) =>
-                  addLabelForSingleComponent(
-                    s,
-                    "classeCaisTemporarioMeshes",
-                    ""
-                  )
-                );
-                break;
-            }
-          }
-
-          // Atualiza visibilidade
-          labelRenderer.domElement
-            .querySelectorAll(`.toggle-label-${type}`)
-            .forEach((el) => {
-              el.style.visibility = isVisible ? "visible" : "hidden";
-            });
-        });
-      });
 
       window.onload = function () {
         fetch("resources/data/dados_limpo.json")
