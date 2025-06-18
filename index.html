@@ -1889,7 +1889,7 @@
           tooltip.style.display = "none";
         }
       }
-
+    
       window.addEventListener("mousemove", onMouseMove);
 
       const topCamMoveSpeed = 5;
@@ -2538,7 +2538,7 @@
           "06": distribGroup,
           "08": transitionGroup,
           "09": stackGroup,
-          10: tempDockGroup,
+          "10": tempDockGroup,
         };
 
         const filteredItems = data.filter(
@@ -2613,8 +2613,58 @@
         );
       }
 
-      function toggleActiveSpaces(tipo, isVisible) {
-        console.log("Active spaces:", tipo, isVisible);
+      function toggleActiveSpaces(tipoD, isChecked, data) {
+        const allGroups = {
+          "01": spaceGroup,
+          "02": bufferGroup,
+          "03": dockGroup,
+          "05": anomalousGroup,
+          "06": distribGroup,
+          "08": transitionGroup,
+          "09": stackGroup,
+          "10": tempDockGroup,
+        };
+
+        const filteredItems = data.filter(
+          (item) => item.Spazio_tipoD === tipoD
+        );
+        if (filteredItems.length === 0) return;
+
+        const targetClass = filteredItems[0].Spazio_classe;
+        const targetGroup = allGroups[targetClass];
+        if (!targetGroup) return;
+
+        const instancedMesh = targetGroup.children.find(
+          (child) => child.isInstancedMesh
+        );
+        if (!instancedMesh) return;
+
+        const color = new THREE.Color();
+
+        filteredItems.forEach((item, i) => {
+          if (item.Spazio_classe !== targetClass) return;
+
+          let cor;
+          if (isChecked && item.Spazio_disponibile === "0") {
+            cor = "#ff0000"; // indisponível → pinta de vermelho
+          } else {
+            cor = item.ColoreD; // original ou fallback
+          }
+
+          try {
+            color.set(cor.toLowerCase());
+          } catch (e) {
+            color.set("#aaaaaa"); // fallback se inválida
+          }
+
+          instancedMesh.setColorAt(i, color);
+        });
+
+        instancedMesh.instanceColor.needsUpdate = true;
+
+        console.log(
+          `Espaços do tipo ${tipoD} atualizados com Check Active → ${isChecked}`
+        );
       }
 
       function toggleHeight2D(tipo, isFlat) {
@@ -2710,7 +2760,7 @@
                 <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}" checked /> Layout</label></li>
                 <li><label><input type="checkbox" class="toggle-labels" data-tipo="${tipo}" /> Labels</label></li>
                 <li><button class="btn-levels" data-tipo="${tipo}">Levels</button></li>
-                <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}" checked /> Check Active Spaces </label></li>
+                <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}"  /> Check Availability </label></li>
                 <li><label><input type="checkbox" class="toggle-height" data-tipo="${tipo}" /> Flatten Height (2D)</label></li>
               </ul>
             `;
@@ -2726,7 +2776,7 @@
               } else if (e.target.classList.contains("toggle-labels")) {
                 toggleLabelsVisbility(tipo, e.target.checked);
               } else if (e.target.classList.contains("toggle-active")) {
-                toggleActiveSpaces(tipo, e.target.checked);
+                toggleActiveSpaces(tipo, e.target.checked, data);
               } else if (e.target.classList.contains("toggle-height")) {
                 toggleHeight2D(tipo, e.target.checked);
               }
