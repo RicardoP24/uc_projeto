@@ -95,83 +95,7 @@
     <!-- Sidebar HTML -->
     <div id="sidebar">
       <h2 class="arm">Armazém Alpha</h2>
-
-      <div class="section">
-        <details class="dropdown-group" open>
-          <summary>
-            <span style="display: flex; align-items: center; gap: 6px">
-              <i class="ph ph-layout"></i>
-              <span>LAYOUT</span>
-            </span>
-          </summary>
-
-          <ul>
-            <li>
-              <label
-                ><input type="checkbox" value="racks" checked /> Racks</label
-              >
-            </li>
-            <li>
-              <label
-                ><input type="checkbox" value="corridors" checked />
-                Corredores</label
-              >
-            </li>
-            <li>
-              <label
-                ><input type="checkbox" value="buffers" checked />
-                Buffers</label
-              >
-            </li>
-            <li>
-              <label
-                ><input type="checkbox" value="spaces" checked /> Picking</label
-              >
-            </li>
-            <li>
-              <label
-                ><input type="checkbox" value="docks" checked /> Cais</label
-              >
-            </li>
-            <li>
-              <label
-                ><input type="checkbox" value="stacks" checked /> Pilhas</label
-              >
-            </li>
-            <li>
-              <label
-                ><input type="checkbox" value="driveins" checked />
-                DriveIns</label
-              >
-            </li>
-          </ul>
-        </details>
-      </div>
-
-      <!-- DROPDOWN BUFFER LEVELS ESTILIZADO -->
-      <details class="dropdown-group" open>
-        <summary>
-          <span style="display: flex; align-items: center; gap: 6px">
-            <i class="ph ph-sliders-horizontal"></i>
-            <span>BUFFER LEVELS</span>
-          </span>
-        </summary>
-
-        <div>
-          <select id="buffer-level" class="buffer-select">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="10" selected>10</option>
-          </select>
-        </div>
-      </details>
+      <div id="sidebar-dynamic-container"></div>
 
       <!-- CHECKBOX CAPTIONS SIMPLES E ALINHADO -->
       <details class="dropdown-group" open>
@@ -181,64 +105,6 @@
             <span>TOGGLE CAPTIONS</span>
           </span>
         </summary>
-      </details>
-
-      <details class="dropdown-group" open>
-        <summary style="cursor: pointer">
-          <span style="display: flex; align-items: center; gap: 6px">
-            <i class="ph ph-tag"></i>
-            <span>TOGGLE LABELS</span>
-          </span>
-        </summary>
-        <ul id="label-toggle-list">
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="racks" />
-              Racks</label
-            >
-          </li>
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="docks" />
-              Cais</label
-            >
-          </li>
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="stacks" />
-              Pilhas</label
-            >
-          </li>
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="driveins" />
-              DriveIns</label
-            >
-          </li>
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="buffers" />
-              Buffers</label
-            >
-          </li>
-          <li>
-            <label
-              ><input
-                type="checkbox"
-                class="label-toggle"
-                value="corridors"
-                checked
-              />
-              Corredores</label
-            >
-          </li>
-          <li>
-            <label
-              ><input type="checkbox" class="label-toggle" value="picking" />
-              Picking</label
-            >
-          </li>
-        </ul>
       </details>
     </div>
 
@@ -277,7 +143,6 @@
       let buffers;
       let boundingBoxCenter = new THREE.Vector3();
       let classeEspExecMeshes = []; // Add this at the top of your script
-      let classeEspArmMeshes = [];
       let classeCaisMeshes = [];
       let classeDivEspacosMeshes = [];
       let classeZonAnomalasMeshes = [];
@@ -286,6 +151,17 @@
       let classeTransicaoMeshes = [];
       let classePilhaMeshes = [];
       let classeCaisTemporarioMeshes = [];
+      const originalScalesByClasse = {
+        "01": {},
+        "02": {},
+        "03": {},
+        "05": {},
+        "06": {},
+        "08": {},
+        "09": {},
+        10: {},
+      };
+
       const outlinesArray = [];
 
       const bufferOriginalScales = {}; // índice → escala real
@@ -390,13 +266,13 @@
         '#sidebar input[type="checkbox"]'
       );
 
-      const bufferLevelSelect = document.getElementById("buffer-level");
+      /*const bufferLevelSelect = document.getElementById("buffer-level");
       let currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
 
       bufferLevelSelect.addEventListener("change", () => {
         currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
         //updateBufferLevels(currentMaxBufferLevel);
-      });
+      }); */
 
       //FUNCTION formatSpazioLabel(spazio) MADE MY GM
       function formatSpazioLabel(spazio) {
@@ -488,8 +364,9 @@
 
         instancedMesh.instanceMatrix.needsUpdate = true;
       }
+      //MANEIRA ANTIGA DE VER O LAYOUT
 
-      viewCheckboxes.forEach((checkbox) => {
+      /*viewCheckboxes.forEach((checkbox) => {
         checkbox.addEventListener("change", () => {
           const selected = Array.from(viewCheckboxes)
             .filter((cb) => cb.checked)
@@ -503,7 +380,7 @@
           stackGroup.visible = selected.includes("stacks");
           driveInGroup.visible = selected.includes("driveins");
         });
-      });
+      }); */
 
       resetTopCamBtn.addEventListener("click", () => {
         if (activeCamera === topCamera) {
@@ -577,13 +454,17 @@
 
       let employeeModel;
 
-      let rackGroup = new THREE.Group();
-      let corridorGroup = new THREE.Group();
-      let bufferGroup = new THREE.Group();
-      let spaceGroup = new THREE.Group();
-      let dockGroup = new THREE.Group();
-      let stackGroup = new THREE.Group();
-      let driveInGroup = new THREE.Group();
+      let rackGroup = new THREE.Group(); // -> AINDA USADO R
+      let corridorGroup = new THREE.Group(); // -> AINDA USADO R
+      let bufferGroup = new THREE.Group(); // AINDA USADO
+      let spaceGroup = new THREE.Group(); // AINDA USADO
+      let dockGroup = new THREE.Group(); // AINDA USADO
+      let stackGroup = new THREE.Group(); // AINDA USADO
+      let anomalousGroup = new THREE.Group(); // NOVO USADO
+      let distribGroup = new THREE.Group(); // NOVO USADO
+      let transitionGroup = new THREE.Group(); // NOVO USADO
+      let tempDockGroup = new THREE.Group(); // NOVO USADO
+      let driveInGroup = new THREE.Group(); //-> NAO USADO
 
       scene.add(
         rackGroup,
@@ -592,7 +473,11 @@
         spaceGroup,
         dockGroup,
         stackGroup,
-        driveInGroup
+        driveInGroup,
+        anomalousGroup,
+        distribGroup,
+        transitionGroup,
+        tempDockGroup
       );
       console.log("Buffer group tem filhos:", bufferGroup.children.length);
 
@@ -791,7 +676,6 @@
       function createWarehouseAreaFromComponentsAll() {
         const allMeshes = [
           ...classeEspExecMeshes,
-          ...classeEspArmMeshes,
           ...classeDivEspacosMeshes,
           ...classeZonAnomalasMeshes,
           ...classeEspacoDistrMeshes,
@@ -1048,8 +932,9 @@
         }
 
         outlinesArray.forEach(({ outline, position }) => {
+          if (outline.userData.hiddenByLayout) return; // <- só mostra se não foi desligado
           const dist = activeCamera.position.distanceTo(position);
-          outline.visible = dist < 250; // Podes ajustar o valor de 40
+          outline.visible = dist < 170;
         });
 
         renderer.render(scene, activeCamera);
@@ -1057,6 +942,7 @@
 
         stats.update();
       }
+
       // NEW DYNAMIC FUNCTIONS TO DRAW SPACES GM -------------------------------------------------------------------------------------------------------------------------------------
 
       //Spazio_classe === "01"
@@ -1128,6 +1014,13 @@
           }
 
           color.toArray(colorArray, i * 3);
+
+          //Guardar a escala para a funçao toggleVisibility
+          originalScalesByClasse["01"][i] = {
+            x: width * shrinkFactor,
+            y: height * shrinkFactor,
+            z: depth * shrinkFactor,
+          };
         });
 
         instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
@@ -1209,6 +1102,13 @@
           }
 
           color.toArray(colorArray, i * 3);
+
+          //Guardar a escala para a funçao toggleVisibility
+          originalScalesByClasse["02"][i] = {
+            x: width * shrinkFactor,
+            y: height * shrinkFactor,
+            z: depth * shrinkFactor,
+          };
         });
         instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
           colorArray,
@@ -1226,7 +1126,7 @@
         const shrinkFactor = 1;
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const dummy = new THREE.Object3D();
-        const dockGroup = new THREE.Group();
+        dockGroup.clear();
         const outlineGroup = new THREE.Group();
         const defaultColor = new THREE.Color("#0080ff"); // azul suave para docks
 
@@ -1281,6 +1181,7 @@
           );
           outline.applyMatrix4(dummy.matrix);
           outline.visible = false;
+          outline.userData.tipoD = dock.Spazio_tipoD;
           outlineGroup.add(outline);
 
           outlinesArray.push({
@@ -1305,6 +1206,13 @@
           }
 
           color.toArray(colorArray, i * 3);
+
+          //Guardar a escala para a funçao toggleVisibility
+          originalScalesByClasse["03"][i] = {
+            x: width * shrinkFactor,
+            y: 0.05,
+            z: depth * shrinkFactor,
+          };
         });
 
         instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
@@ -1327,7 +1235,7 @@
         const shrinkFactor = 1;
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const dummy = new THREE.Object3D();
-        const anomalousGroup = new THREE.Group();
+        anomalousGroup.clear();
         const outlineGroup = new THREE.Group();
         const defaultColor = new THREE.Color("#ff4d4d"); // vermelho claro de alerta
 
@@ -1382,6 +1290,7 @@
           );
           outline.applyMatrix4(dummy.matrix);
           outline.visible = false;
+          outline.userData.tipoD = item.Spazio_tipoD;
           outlineGroup.add(outline);
 
           outlinesArray.push({
@@ -1403,6 +1312,13 @@
           }
 
           color.toArray(colorArray, i * 3);
+
+          //Guardar a escala para a funçao toggleVisibility
+          originalScalesByClasse["05"][i] = {
+            x: width * shrinkFactor,
+            y: 0.05,
+            z: depth * shrinkFactor,
+          };
         });
 
         instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
@@ -1425,7 +1341,7 @@
         const shrinkFactor = 1;
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const dummy = new THREE.Object3D();
-        const distribGroup = new THREE.Group();
+        distribGroup.clear();
         const outlineGroup = new THREE.Group();
         const defaultColor = new THREE.Color("#ffc107");
         const count = distribuicoes.length;
@@ -1477,6 +1393,7 @@
           );
           outline.applyMatrix4(dummy.matrix);
           outline.visible = false;
+          outline.userData.tipoD = item.Spazio_tipoD;
           outlineGroup.add(outline);
 
           // Guarda no array global
@@ -1502,6 +1419,13 @@
           }
 
           color.toArray(colorArray, i * 3);
+
+          //Guardar a escala para a funçao toggleVisibility
+          originalScalesByClasse["06"][i] = {
+            x: width * shrinkFactor,
+            y: height * shrinkFactor,
+            z: depth * shrinkFactor,
+          };
         });
         instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
           colorArray,
@@ -1519,7 +1443,6 @@
         );
       }
 
-
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "08" Transition Zones
 
@@ -1527,7 +1450,7 @@
         const shrinkFactor = 1;
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const dummy = new THREE.Object3D();
-        const transitionGroup = new THREE.Group();
+        transitionGroup.clear();
         const outlineGroup = new THREE.Group();
         const defaultColor = new THREE.Color("#80d8ff"); // azul claro
 
@@ -1584,6 +1507,7 @@
           );
           outline.applyMatrix4(dummy.matrix);
           outline.visible = false;
+          outline.userData.tipoD = item.Spazio_tipoD;
           outlineGroup.add(outline);
 
           outlinesArray.push({
@@ -1604,6 +1528,13 @@
           }
 
           color.toArray(colorArray, i * 3);
+
+          //Guardar a escala para a funçao toggleVisibility
+          originalScalesByClasse["08"][i] = {
+            x: width * shrinkFactor,
+            y: height * shrinkFactor,
+            z: depth * shrinkFactor,
+          };
         });
 
         instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
@@ -1625,6 +1556,7 @@
         const shrinkFactor = 1;
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const dummy = new THREE.Object3D();
+        stackGroup.clear();
         const outlineGroup = new THREE.Group();
         const defaultColor = new THREE.Color("#9966ff");
         const count = stacksArray.length;
@@ -1679,6 +1611,7 @@
           );
           outline.applyMatrix4(dummy.matrix);
           outline.visible = false;
+          outline.userData.tipoD = item.Spazio_tipoD;
           outlineGroup.add(outline);
 
           outlinesArray.push({
@@ -1701,6 +1634,13 @@
           }
 
           color.toArray(colorArray, i * 3);
+
+          //Guardar a escala para a funçao toggleVisibility
+          originalScalesByClasse["09"][i] = {
+            x: width * shrinkFactor,
+            y: height * shrinkFactor,
+            z: depth * shrinkFactor,
+          };
         });
 
         instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
@@ -1722,7 +1662,7 @@
         const shrinkFactor = 1;
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const dummy = new THREE.Object3D();
-        const tempDockGroup = new THREE.Group();
+        tempDockGroup.clear();
         const outlineGroup = new THREE.Group();
         const defaultColor = new THREE.Color("#ffb74d"); // Cor suave
         const count = tempDocks.length;
@@ -1780,6 +1720,7 @@
           );
           outline.applyMatrix4(dummy.matrix);
           outline.visible = false;
+          outline.userData.tipoD = item.Spazio_tipoD;
           outlineGroup.add(outline);
 
           outlinesArray.push({
@@ -1803,6 +1744,13 @@
           }
 
           color.toArray(colorArray, i * 3);
+
+          //Guardar a escala para a funçao toggleVisibility
+          originalScalesByClasse["10"][i] = {
+            x: width * shrinkFactor,
+            y: 0.05,
+            z: depth * shrinkFactor,
+          };
         });
 
         instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
@@ -1817,7 +1765,7 @@
 
         console.log(`Cais Temporários desenhados (classe 10): ${count}`);
       }
-      
+
       // END NEW DYNAMIC FUNCTIONS TO DRAW SPACES
 
       async function createRacksFromJSON(racks) {
@@ -2451,7 +2399,7 @@
       }
  */
       //ESTA FUNÇÃO É USADA PARA GERAR DRIVE-INS
-      async function createDriveInsFromJSON(driveIns) {
+      /*async function createDriveInsFromJSON(driveIns) {
         driveIns.forEach((driveIn) => {
           const x = parseFloat(driveIn.Spazio_coord_draw_a) / 100;
           const y = parseFloat(driveIn.Spazio_coord_draw_b) / 100;
@@ -2492,8 +2440,7 @@
         });
 
         console.log(`Drive-ins desenhados: ${driveIns.length}`);
-      }
-      // Fetch JSON data and start rendering
+      } */
 
       function applyInitialLabelVisibilityFromMenu() {
         document.querySelectorAll(".label-toggle").forEach((checkbox) => {
@@ -2581,6 +2528,105 @@
         });
       });
 
+      //NEW FUNCTIONS FOR DYNAMIC SIDE BAR ---------------------------------------------------------------------------
+      function toggleLayoutVisibility(spazioTipoDLabel, isVisible, data) {
+        const allGroups = {
+          "01": spaceGroup,
+          "02": bufferGroup,
+          "03": dockGroup,
+          "05": anomalousGroup,
+          "06": distribGroup,
+          "08": transitionGroup,
+          "09": stackGroup,
+          10: tempDockGroup,
+        };
+
+        const filteredItems = data.filter(
+          (item) => item.Spazio_tipoD === spazioTipoDLabel
+        );
+
+        if (filteredItems.length === 0) {
+          console.warn(
+            "Nenhum item encontrado com Spazio_tipoD =",
+            spazioTipoDLabel
+          );
+          return;
+        }
+
+        const targetClass = filteredItems[0].Spazio_classe;
+        const targetGroup = allGroups[targetClass];
+
+        if (!targetGroup) {
+          console.warn("Grupo não encontrado para classe:", targetClass);
+          return;
+        }
+
+        const instancedMesh = targetGroup.children.find(
+          (child) => child.isInstancedMesh
+        );
+        if (!instancedMesh) {
+          console.warn("InstancedMesh não encontrado no grupo:", targetClass);
+          return;
+        }
+
+        const dummy = new THREE.Object3D();
+
+        let index = 0;
+        data.forEach((item) => {
+          if (item.Spazio_classe !== targetClass) return;
+
+          instancedMesh.getMatrixAt(index, dummy.matrix);
+          dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+          if (item.Spazio_tipoD === spazioTipoDLabel) {
+            let scale = { x: 1, y: 1, z: 1 };
+
+            if (!isVisible) {
+              scale = { x: 0.0001, y: 0.0001, z: 0.0001 };
+            } else if (originalScalesByClasse[targetClass]?.[index]) {
+              scale = originalScalesByClasse[targetClass][index];
+            }
+
+            dummy.scale.set(scale.x, scale.y, scale.z);
+            dummy.updateMatrix();
+            instancedMesh.setMatrixAt(index, dummy.matrix);
+          }
+
+          index++;
+        });
+        instancedMesh.instanceMatrix.needsUpdate = true;
+        outlinesArray.forEach(({ outline }) => {
+          if (outline.userData.tipoD === spazioTipoDLabel) {
+            if (!isVisible) {
+              outline.visible = false;
+              outline.userData.hiddenByLayout = true; // <- marca como escondido
+            } else {
+              outline.userData.hiddenByLayout = false; // <- permite reexibir no animate
+            }
+          }
+        });
+
+        console.log(
+          `Toggled "${spazioTipoDLabel}" (classe ${targetClass}) → ${
+            isVisible ? "ON" : "OFF"
+          }`
+        );
+      }
+
+      function toggleActiveSpaces(tipo, isVisible) {
+        console.log("Active spaces:", tipo, isVisible);
+      }
+
+      function toggleHeight2D(tipo, isFlat) {
+        console.log("2D Height:", tipo, isFlat);
+      }
+
+      function showLevels(tipo) {
+        console.log("Show levels:", tipo);
+      }
+
+      //END OF NEW FUNCTIONS FOR DYNAMIC SIDE BAR ---------------------------------------------------------------------------
+
       window.onload = function () {
         fetch("resources/data/dados_limpo.json")
           .then((response) => response.json())
@@ -2640,6 +2686,58 @@
 
             container.appendChild(stats.domElement);
             toggleCamera();
+
+            //Gerar dinamicamento os Spazio_tipoD na interface ---------------------------------------------------------------------------
+
+            const uniqueSpazioTipoD = [
+              ...new Set(data.map((d) => d.Spazio_tipoD)),
+            ];
+            const sidebarContainer = document.getElementById(
+              "sidebar-dynamic-container"
+            );
+
+            uniqueSpazioTipoD.forEach((tipo) => {
+              const section = document.createElement("details");
+              section.className = "dropdown-group";
+              section.innerHTML = `
+            <summary>
+              <span style="display: flex; align-items: center; gap: 6px">
+                <i class="ph ph-cube"></i>
+              <span>${tipo}</span>
+              </span>
+            </summary>
+              <ul>
+                <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}" checked /> Layout</label></li>
+                <li><label><input type="checkbox" class="toggle-labels" data-tipo="${tipo}" /> Labels</label></li>
+                <li><button class="btn-levels" data-tipo="${tipo}">Levels</button></li>
+                <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}" checked /> Check Active Spaces </label></li>
+                <li><label><input type="checkbox" class="toggle-height" data-tipo="${tipo}" /> Flatten Height (2D)</label></li>
+              </ul>
+            `;
+              sidebarContainer.appendChild(section);
+            });
+
+            // EVENT LISTENERS ---------------------------------------------------------------------------
+
+            document.addEventListener("change", (e) => {
+              const tipo = e.target.dataset.tipo;
+              if (e.target.classList.contains("toggle-layout")) {
+                toggleLayoutVisibility(tipo, e.target.checked, data);
+              } else if (e.target.classList.contains("toggle-labels")) {
+                toggleLabelsVisbility(tipo, e.target.checked);
+              } else if (e.target.classList.contains("toggle-active")) {
+                toggleActiveSpaces(tipo, e.target.checked);
+              } else if (e.target.classList.contains("toggle-height")) {
+                toggleHeight2D(tipo, e.target.checked);
+              }
+            });
+
+            document.addEventListener("click", (e) => {
+              if (e.target.classList.contains("btn-levels")) {
+                const tipo = e.target.dataset.tipo;
+                showLevels(tipo);
+              }
+            });
           })
           .catch((error) => console.error("Error fetching JSON:", error));
       };
@@ -2685,7 +2783,7 @@
         }
       });
 
-      //SIDE BAR JS ALTERAÇÃO GM
+      //SIDE BAR JS ALTERAÇÃO GM ---------------------------------------------------------------------------
       const sidebarToggle = document.getElementById("sidebar-toggle");
       const sidebar = document.getElementById("sidebar");
 
@@ -2704,6 +2802,7 @@
           sidebarToggle.style.left = "0px";
         }
       });
+      // FIM SIDE BAR JS ALTERAÇÃO GM ---------------------------------------------------------------------------
 
       //TOGGLE CAPTIONS JS ALTERAÇÃO GM
       const toggleCaptionsBtn = document.getElementById("toggle-captions-btn");
