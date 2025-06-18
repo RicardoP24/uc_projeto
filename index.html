@@ -157,19 +157,8 @@
           </span>
         </summary>
 
-        <div>
-          <select id="buffer-level" class="buffer-select">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="10" selected>10</option>
-          </select>
+        <div id="buffer-level-container">
+          <!-- Aqui entraremos dinamicamente -->
         </div>
       </details>
 
@@ -240,7 +229,7 @@
       let classeCaisTemporarioMeshes = [];
       let outlinesArray = [];
       let EspacosAll = [];
-let hoveredInstance = null; // guarda instância ativa no hover
+      let hoveredInstance = null; // guarda instância ativa no hover
 
       const bufferOriginalScales = {}; // índice → escala real
 
@@ -344,13 +333,13 @@ let hoveredInstance = null; // guarda instância ativa no hover
         '#sidebar input[type="checkbox"]'
       );
 
-      const bufferLevelSelect = document.getElementById("buffer-level");
-      let currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
+      // const bufferLevelSelect = document.getElementById("buffer-level");
+      // let currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
 
-      bufferLevelSelect.addEventListener("change", () => {
-        currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
-        updateBufferLevels(currentMaxBufferLevel);
-      });
+      // bufferLevelSelect.addEventListener("change", () => {
+      //   currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
+      //   updateBufferLevels(currentMaxBufferLevel);
+      // });
 
       //FUNCTION formatSpazioLabel(spazio) MADE MY GM
       function formatSpazioLabel(spazio) {
@@ -705,6 +694,180 @@ let hoveredInstance = null; // guarda instância ativa no hover
         // Atualiza centro
         boundingBoxCenter.x = 2 * centerX - boundingBoxCenter.x;
       }
+      function createSelectsLevels() {
+        const container = document.getElementById("buffer-level-container");
+        container.innerHTML = "";
+
+        const tiposMap = new Map();
+
+        EspacosAll.forEach((espaco) => {
+          const tipo = (espaco.Spazio_tipo || "Desconhecido").trim();
+          const nome = (espaco.Spazio_tipoD || tipo).trim();
+
+          if (!tiposMap.has(tipo)) {
+            tiposMap.set(tipo, { nome, objetos: [] });
+          }
+          tiposMap.get(tipo).objetos.push(espaco);
+        });
+
+        tiposMap.forEach(({ nome, objetos }, tipo) => {
+          const espacos = objetos.map((obj) => {
+            const base = parseFloat(obj.Spazio_coord_draw_b || 0);
+            const altura = parseFloat(obj.Spazio_coord_alto || 0);
+            const topo = base + altura;
+            return { base, topo, altura };
+          });
+
+          const niveis = [];
+
+          // Organizar espaços em níveis com lógica progressiva
+          let restantes = [...espacos].filter((e) => e.altura > 0);
+
+          while (restantes.length > 0) {
+            // Encontrar o espaço com a menor base
+            let menor = restantes.reduce((a, b) => (a.base < b.base ? a : b));
+            let nivelAtual = [menor];
+
+            // Definir topo do menor
+            let topoMin = menor.topo;
+
+            // Adicionar ao nível atual todos que tenham base < topoMin
+            restantes = restantes.filter((e) => {
+              if (e === menor) return false;
+              if (e.base < topoMin) {
+                nivelAtual.push(e);
+                return false;
+              }
+              return true;
+            });
+
+            niveis.push(nivelAtual);
+          }
+
+          // Adicionar elementos de altura zero ao nível 1
+          const zeroAltura = espacos.filter((e) => e.altura === 0);
+          if (zeroAltura.length > 0) {
+            if (!niveis[0]) niveis[0] = [];
+            niveis[0].push(...zeroAltura);
+          }
+
+          // Debug: exibir info dos níveis
+          console.log(
+            `🧱 Tipo: ${nome} (${tipo}) - Total de níveis: ${niveis.length}`
+          );
+          niveis.forEach((nivel, i) => {
+            const baseMin = Math.min(...nivel.map((e) => e.base));
+            const topoMax = Math.max(...nivel.map((e) => e.topo));
+            console.log(
+              `  ➤ Nível ${i + 1}: base mínima = ${baseMin.toFixed(
+                2
+              )}, topo máxima = ${topoMax.toFixed(2)}, itens = ${nivel.length}`
+            );
+          });
+
+          const maxNivel = niveis.length;
+
+          // UI
+          const row = document.createElement("div");
+          row.style.display = "flex";
+          row.style.alignItems = "center";
+          row.style.gap = "8px";
+          row.style.marginBottom = "6px";
+
+          const label = document.createElement("label");
+          label.textContent = nome;
+          label.style.minWidth = "120px";
+
+          const select = document.createElement("select");
+          select.className = "buffer-select";
+          select.dataset.tipo = tipo;
+
+          for (let i = 1; i <= maxNivel; i++) {
+            const option = document.createElement("option");
+            option.value = i;
+            option.textContent = i;
+            if (i === maxNivel) option.selected = true;
+            select.appendChild(option);
+          }
+
+          select.addEventListener("change", (e) => {
+            const tipoSelecionado = e.target.dataset.tipo;
+            const nivel = parseInt(e.target.value);
+            updateBufferLevelsPorTipo(tipoSelecionado, nivel);
+          });
+
+          row.appendChild(label);
+          row.appendChild(select);
+          container.appendChild(row);
+        });
+      }
+
+    function updateBufferLevelsPorTipo(tipo, nivelMax) {
+  const allGroups = [
+    rackGroup,
+    corridorGroup,
+    bufferGroup,
+    spaceGroup,
+    dockGroup,
+    stackGroup,
+    driveInGroup,
+  ];
+
+  const objetos = [];
+
+  // Coletar objetos do tipo específico
+  allGroups.forEach((group) => {
+    group.children.forEach((child) => {
+      if ((child.userData?.tipo || "").trim() === tipo) {
+        objetos.push(child);
+      }
+    });
+  });
+
+  const espacos = objetos.map((obj) => {
+    const box = new THREE.Box3().setFromObject(obj);
+    const altura = box.max.y - box.min.y;
+    const base = box.min.y;
+    const topo = box.max.y;
+    return { obj, base, topo, altura };
+  });
+
+  const niveis = [];
+
+  let restantes = [...espacos].filter(e => e.altura > 0);
+
+  while (restantes.length > 0) {
+    const menor = restantes.reduce((a, b) => (a.base < b.base ? a : b));
+    const nivelAtual = [menor];
+    const topoMin = menor.topo;
+
+    restantes = restantes.filter((e) => {
+      if (e === menor) return false;
+      if (e.base < topoMin) {
+        nivelAtual.push(e);
+        return false;
+      }
+      return true;
+    });
+
+    niveis.push(nivelAtual);
+  }
+
+  // Adicionar altura zero no nível 1
+  const nivelZero = espacos.filter(e => e.altura === 0);
+  if (nivelZero.length > 0) {
+    if (!niveis[0]) niveis[0] = [];
+    niveis[0].push(...nivelZero);
+  }
+
+  // Atualizar visibilidade
+  niveis.forEach((nivel, i) => {
+    const mostrar = i < nivelMax;
+    nivel.forEach(({ obj }) => {
+      obj.visible = mostrar;
+    });
+  });
+}
 
       // Calculate the bounding box of all the racks and the center
       function calculateWallBoundingBox(racks) {
@@ -1292,7 +1455,7 @@ let hoveredInstance = null; // guarda instância ativa no hover
 
         if (intersects.length > 0) {
           const intersect = intersects[0];
-            
+
           const mesh = intersect.object;
           const instanceId = intersect.instanceId;
 
@@ -1304,13 +1467,11 @@ let hoveredInstance = null; // guarda instância ativa no hover
                 hoveredInstance.id !== instanceId)
             ) {
               // Restaura cor anterior
-        
+
               hoveredInstance = null;
             }
 
             if (!hoveredInstance) {
- 
-
               hoveredInstance = {
                 mesh,
                 id: instanceId,
@@ -1321,8 +1482,12 @@ let hoveredInstance = null; // guarda instância ativa no hover
             const pos = intersect.point;
             tooltip.style.left = event.clientX + 10 + "px";
             tooltip.style.top = event.clientY + 10 + "px";
-            tooltip.innerHTML = `<strong>${mesh.userData.tipoD}</strong><br>ID: ${instanceId}<br>
-${mesh.userData.spazio_disp=="0"?"Espaço Indisponível":"Espaço Disponível"}`;
+            tooltip.innerHTML = `<strong>${
+              mesh.userData.tipoD
+            }</strong><br>ID: ${instanceId}<br>
+${
+  mesh.userData.spazio_disp == "0" ? "Espaço Indisponível" : "Espaço Disponível"
+}`;
             tooltip.style.display = "block";
             document.body.style.cursor = "pointer";
             return;
@@ -1331,8 +1496,6 @@ ${mesh.userData.spazio_disp=="0"?"Espaço Indisponível":"Espaço Disponível"}`
 
         // Nenhum hover válido
         if (hoveredInstance) {
- 
-           
           hoveredInstance = null;
         }
 
@@ -1729,6 +1892,8 @@ ${mesh.userData.spazio_disp=="0"?"Espaço Indisponível":"Espaço Disponível"}`
           EspacosPorTipo[tipo].push(item);
         });
 
+        createSelectsLevels();
+
         document.querySelectorAll(".label-toggle").forEach((checkbox) => {
           checkbox.addEventListener("change", (e) => {
             const type = e.target.value;
@@ -2000,7 +2165,7 @@ ${mesh.userData.spazio_disp=="0"?"Espaço Indisponível":"Espaço Disponível"}`
           outline.applyMatrix4(dummy.matrix);
           outline.visible = true; // pode ser false se quiser só mostrar onHover
           outline.userData.tipo = corridor.Spazio_tipo;
- 
+
           outlineGroup.add(outline);
           outlinesArray.push({
             outline,
