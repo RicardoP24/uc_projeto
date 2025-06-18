@@ -41,37 +41,7 @@
       <button id="reset-topcam">↺</button>
     </div>
     <!-- END OF HEADER NAVIGATION -->
-    <div id="legend-popup" class="legend-popup hidden" draggable="true">
-      <div class="legend-item">
-        <div class="legend-color rack"></div>
-        Racks (caixas azuis translúcidas)
-      </div>
-      <div class="legend-item">
-        <div class="legend-color space"></div>
-        Picking(verde)
-      </div>
-      <div class="legend-item">
-        <div class="legend-color buffer"></div>
-        Buffers (rosa)
-      </div>
-      <div class="legend-item">
-        <div class="legend-color corridor"></div>
-        classeTransportesMeshes (planos azuis semi-translúcidos)
-      </div>
-
-      <div class="legend-item">
-        <div class="legend-color dock" style="background-color: #ffa500"></div>
-        Cais (laranja)
-      </div>
-      <div class="legend-item">
-        <div class="legend-color stack" style="background-color: #9966ff"></div>
-        Pilhas (roxo)
-      </div>
-      <div class="legend-item">
-        <div class="legend-color stack" style="background-color: #00ccff"></div>
-        Drive In (roxo)
-      </div>
-    </div>
+    <div id="legend-popup" class="legend-popup hidden" draggable="true"></div>
 
     <div
       id="tooltip"
@@ -932,9 +902,13 @@
         }
 
         outlinesArray.forEach(({ outline, position }) => {
-          if (outline.userData.hiddenByLayout) return; // <- só mostra se não foi desligado
           const dist = activeCamera.position.distanceTo(position);
-          outline.visible = dist < 170;
+
+          const isHiddenByLayout = outline.userData.hiddenByLayout;
+          const isHiddenByHeight2D = outline.userData.hiddenByHeight2D;
+
+          outline.visible =
+            !isHiddenByLayout && !isHiddenByHeight2D && dist < 170;
         });
 
         renderer.render(scene, activeCamera);
@@ -1889,7 +1863,7 @@
           tooltip.style.display = "none";
         }
       }
-    
+
       window.addEventListener("mousemove", onMouseMove);
 
       const topCamMoveSpeed = 5;
@@ -2211,6 +2185,7 @@
         await createStacksFromJSON(classeStacks); // GM
         await createTemporaryDockFromJSON(classeTempDocks); //GM
 
+        generateDynamicLegend(data); // GM legendas
         createWarehouseAreaFromComponentsAll();
         addFlatLabelsToWarehouse();
         applyInitialLabelVisibilityFromMenu();
@@ -2538,7 +2513,7 @@
           "06": distribGroup,
           "08": transitionGroup,
           "09": stackGroup,
-          "10": tempDockGroup,
+          10: tempDockGroup,
         };
 
         const filteredItems = data.filter(
@@ -2622,7 +2597,7 @@
           "06": distribGroup,
           "08": transitionGroup,
           "09": stackGroup,
-          "10": tempDockGroup,
+          10: tempDockGroup,
         };
 
         const filteredItems = data.filter(
@@ -2667,14 +2642,96 @@
         );
       }
 
-      function toggleHeight2D(tipo, isFlat) {
-        console.log("2D Height:", tipo, isFlat);
+      function toggleHeight2D(tipoD, isChecked, data) {
+        const allGroups = {
+          "01": spaceGroup,
+          "02": bufferGroup,
+          "03": dockGroup,
+          "05": anomalousGroup,
+          "06": distribGroup,
+          "08": transitionGroup,
+          "09": stackGroup,
+          10: tempDockGroup,
+        };
+
+        const filteredItems = data.filter(
+          (item) => item.Spazio_tipoD === tipoD
+        );
+        if (filteredItems.length === 0) return;
+
+        const targetClass = filteredItems[0].Spazio_classe;
+        const targetGroup = allGroups[targetClass];
+        if (!targetGroup) return;
+
+        const instancedMesh = targetGroup.children.find(
+          (child) => child.isInstancedMesh
+        );
+        if (!instancedMesh) return;
+
+        const dummy = new THREE.Object3D();
+
+        filteredItems.forEach((item, i) => {
+          if (item.Spazio_classe !== targetClass) return;
+
+          instancedMesh.getMatrixAt(i, dummy.matrix);
+          dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+          if (isChecked) {
+            dummy.scale.y = 0.001;
+          } else {
+            const original = originalScalesByClasse[targetClass]?.[i];
+            if (original) dummy.scale.y = original.y;
+          }
+
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+        });
+
+        instancedMesh.instanceMatrix.needsUpdate = true;
+
+        // ⬇️ Aqui atualizamos os outlines corretamente
+        outlinesArray.forEach(({ outline }) => {
+          if (outline.userData.tipoD === tipoD) {
+            outline.userData.hiddenByHeight2D = isChecked;
+          }
+        });
+
+        console.log(
+          `Espaços do tipo ${tipoD} atualizados para ${
+            isChecked ? "2D" : "altura normal"
+          }`
+        );
       }
 
       function showLevels(tipo) {
         console.log("Show levels:", tipo);
       }
 
+      function generateDynamicLegend(data) {
+        const legendContainer = document.getElementById("legend-popup");
+        legendContainer.innerHTML = "";
+
+        const uniqueTypes = [...new Set(data.map((d) => d.Spazio_tipoD))];
+        uniqueTypes.forEach((type) => {
+          const sample = data.find((d) => d.Spazio_tipoD === type);
+          let color = (sample?.ColoreD || "#ffffff").toLowerCase();
+
+          // validate the color
+          try {
+            new THREE.Color(color);
+          } catch {
+            color = "#ffffff";
+          }
+
+          const item = document.createElement("div");
+          item.className = "legend-item";
+          item.innerHTML = `
+      <div class="legend-color" style="background-color: ${color};"></div>
+      ${type}
+    `;
+          legendContainer.appendChild(item);
+        });
+      }
       //END OF NEW FUNCTIONS FOR DYNAMIC SIDE BAR ---------------------------------------------------------------------------
 
       window.onload = function () {
@@ -2746,25 +2803,41 @@
               "sidebar-dynamic-container"
             );
 
+            const wrapper = document.createElement("details");
+            wrapper.className = "dropdown-group";
+            wrapper.open = false;
+            wrapper.innerHTML = `
+  <summary>
+    <span style="display: flex; align-items: center; gap: 6px">
+      <i class="ph ph-stack"></i>
+      <span>SPACES</span>
+    </span>
+  </summary>
+  <div id="espacos-content"></div>
+`;
+            sidebarContainer.appendChild(wrapper);
+
+            const espacosContent = wrapper.querySelector("#espacos-content");
+
             uniqueSpazioTipoD.forEach((tipo) => {
               const section = document.createElement("details");
               section.className = "dropdown-group";
               section.innerHTML = `
-            <summary>
-              <span style="display: flex; align-items: center; gap: 6px">
-                <i class="ph ph-cube"></i>
-              <span>${tipo}</span>
-              </span>
-            </summary>
-              <ul>
-                <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}" checked /> Layout</label></li>
-                <li><label><input type="checkbox" class="toggle-labels" data-tipo="${tipo}" /> Labels</label></li>
-                <li><button class="btn-levels" data-tipo="${tipo}">Levels</button></li>
-                <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}"  /> Check Availability </label></li>
-                <li><label><input type="checkbox" class="toggle-height" data-tipo="${tipo}" /> Flatten Height (2D)</label></li>
-              </ul>
-            `;
-              sidebarContainer.appendChild(section);
+    <summary>
+      <span style="display: flex; align-items: center; gap: 6px">
+        <i class="ph ph-cube"></i>
+        <span>${tipo}</span>
+      </span>
+    </summary>
+    <ul>
+      <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}" checked /> Layout</label></li>
+      <li><label><input type="checkbox" class="toggle-labels" data-tipo="${tipo}" /> Labels</label></li>
+      <li><button class="btn-levels" data-tipo="${tipo}">Levels</button></li>
+      <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}"  /> Check Availability </label></li>
+      <li><label><input type="checkbox" class="toggle-height" data-tipo="${tipo}" /> Flatten Height (2D)</label></li>
+    </ul>
+  `;
+              espacosContent.appendChild(section);
             });
 
             // EVENT LISTENERS ---------------------------------------------------------------------------
@@ -2778,7 +2851,7 @@
               } else if (e.target.classList.contains("toggle-active")) {
                 toggleActiveSpaces(tipo, e.target.checked, data);
               } else if (e.target.classList.contains("toggle-height")) {
-                toggleHeight2D(tipo, e.target.checked);
+                toggleHeight2D(tipo, e.target.checked, data);
               }
             });
 
