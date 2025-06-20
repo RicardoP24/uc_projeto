@@ -76,18 +76,7 @@
           </span>
         </summary>
       </details>
-      <details class="dropdown-group" open>
-        <summary>
-          <span style="display: flex; align-items: center; gap: 6px">
-            <i class="ph ph-sliders-horizontal"></i>
-            <span>BUFFER LEVELS</span>
-          </span>
-        </summary>
-
-        <div id="buffer-level-container">
-          <!-- Aqui entraremos dinamicamente -->
-        </div>
-      </details>
+     
 
       <details class="dropdown-group" open>
         <summary style="cursor: pointer">
@@ -262,12 +251,12 @@
       );
 
       /*const bufferLevelSelect = document.getElementById("buffer-level");
-      let currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
+            let currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
 
-      bufferLevelSelect.addEventListener("change", () => {
-        currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
-        //updateBufferLevels(currentMaxBufferLevel);
-      }); */
+            bufferLevelSelect.addEventListener("change", () => {
+              currentMaxBufferLevel = parseInt(bufferLevelSelect.value);
+              //updateBufferLevels(currentMaxBufferLevel);
+            }); */
 
       //FUNCTION formatSpazioLabel(spazio) MADE MY GM
       function formatSpazioLabel(spazio) {
@@ -359,23 +348,6 @@
 
         instancedMesh.instanceMatrix.needsUpdate = true;
       }
-      //MANEIRA ANTIGA DE VER O LAYOUT
-
-      /*viewCheckboxes.forEach((checkbox) => {
-        checkbox.addEventListener("change", () => {
-          const selected = Array.from(viewCheckboxes)
-            .filter((cb) => cb.checked)
-            .map((cb) => cb.value);
-
-          rackGroup.visible = selected.includes("racks");
-          corridorGroup.visible = selected.includes("corridors");
-          bufferGroup.visible = selected.includes("buffers");
-          spaceGroup.visible = selected.includes("spaces");
-          dockGroup.visible = selected.includes("docks");
-          stackGroup.visible = selected.includes("stacks");
-          driveInGroup.visible = selected.includes("driveins");
-        });
-      }); */
 
       resetTopCamBtn.addEventListener("click", () => {
         if (activeCamera === topCamera) {
@@ -706,46 +678,47 @@
         // Define o centro do armazém para efeitos de teleport ou câmera
         boundingBoxCenter.set(centerX, 0, centerZ);
 
-        // Cria as 4 paredes
-        createWall(
-          new THREE.Vector3(centerX, wallHeight / 2, adjustedMin.z),
-          new THREE.Vector3(width + wallThickness, wallHeight, wallThickness)
-        );
-        createWall(
-          new THREE.Vector3(centerX, wallHeight / 2, adjustedMax.z),
-          new THREE.Vector3(width + wallThickness, wallHeight, wallThickness)
-        );
-        createWall(
-          new THREE.Vector3(adjustedMin.x, wallHeight / 2, centerZ),
-          new THREE.Vector3(wallThickness, wallHeight, depth + wallThickness)
-        );
-        createWall(
-          new THREE.Vector3(adjustedMax.x, wallHeight / 2, centerZ),
-          new THREE.Vector3(wallThickness, wallHeight, depth + wallThickness)
-        );
+        // // Cria as 4 paredes
+        // createWall(
+        //   new THREE.Vector3(centerX, wallHeight / 2, adjustedMin.z),
+        //   new THREE.Vector3(width + wallThickness, wallHeight, wallThickness)
+        // );
+        // createWall(
+        //   new THREE.Vector3(centerX, wallHeight / 2, adjustedMax.z),
+        //   new THREE.Vector3(width + wallThickness, wallHeight, wallThickness)
+        // );
+        // createWall(
+        //   new THREE.Vector3(adjustedMin.x, wallHeight / 2, centerZ),
+        //   new THREE.Vector3(wallThickness, wallHeight, depth + wallThickness)
+        // );
+        // createWall(
+        //   new THREE.Vector3(adjustedMax.x, wallHeight / 2, centerZ),
+        //   new THREE.Vector3(wallThickness, wallHeight, depth + wallThickness)
+        // );
 
         // Cria o chão
         const floorGeometry = new THREE.PlaneGeometry(width, depth);
         const floorMaterial = new THREE.MeshLambertMaterial({
           color: 0x30384f,
         });
-        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-        floor.rotation.x = -Math.PI / 2;
-        floor.position.set(centerX, 0, centerZ);
-        floor.receiveShadow = true;
-        scene.add(floor);
-        worldOctree.fromGraphNode(floor);
+        // const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        // floor.rotation.x = -Math.PI / 2;
+        // floor.position.set(centerX, 0, centerZ);
+
+        // scene.add(floor);
+        // worldOctree.fromGraphNode(floor);
+        addGridWithFloorBounds(adjustedMin, adjustedMax);
       }
 
       // F2 change parameter name in all document
       // Create walls around the bounding box with a margin
 
-      // Update createWalls function to use bounding box
-      function createWalls(wallBoundingBoxCoords) {
-        if (racks && racks.length > 0) {
-          createWallsAroundRacks(wallBoundingBoxCoords);
-        }
-      }
+      // // Update createWalls function to use bounding box
+      // function createWalls(wallBoundingBoxCoords) {
+      //   if (racks && racks.length > 0) {
+      //     createWallsAroundRacks(wallBoundingBoxCoords);
+      //   }
+      // }
 
       // Calcula se algum vetor interseta com um bounding box
       function playerCollisions() {
@@ -1928,9 +1901,11 @@
             tooltip.innerHTML = `<strong>${
               mesh.userData.tipoD
             }</strong><br>ID: ${instanceId}<br>
-${
-  mesh.userData.spazio_disp == "0" ? "Espaço Indisponível" : "Espaço Disponível"
-}`;
+      ${
+        mesh.userData.spazio_disp == "0"
+          ? "Espaço Indisponível"
+          : "Espaço Disponível"
+      }`;
             tooltip.style.display = "block";
             document.body.style.cursor = "pointer";
             return;
@@ -1988,61 +1963,61 @@ ${
 
       // Function to create spaces from JSON data using InstancedMesh ISTO É O PICKING BASICAMENTE MAS A AVERIGUAR
       /* function createSpacesFromJSON() {
-        const spaceColor = 0x00ff00;
-        const spaceOpacity = 0.95;
-        const shrinkFactor = 0.65;
+              const spaceColor = 0x00ff00;
+              const spaceOpacity = 0.95;
+              const shrinkFactor = 0.65;
 
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshBasicMaterial({
-          color: spaceColor,
-          transparent: true,
-          opacity: spaceOpacity,
-          depthWrite: true,
-          side: THREE.DoubleSide,
-        });
+              const geometry = new THREE.BoxGeometry(1, 1, 1);
+              const material = new THREE.MeshBasicMaterial({
+                color: spaceColor,
+                transparent: true,
+                opacity: spaceOpacity,
+                depthWrite: true,
+                side: THREE.DoubleSide,
+              });
 
-        const instancedMesh = new THREE.InstancedMesh(
-          geometry,
-          material,
-          spaces.length
-        );
+              const instancedMesh = new THREE.InstancedMesh(
+                geometry,
+                material,
+                spaces.length
+              );
 
-        const dummy = new THREE.Object3D();
+              const dummy = new THREE.Object3D();
 
-        spaces.forEach((space, i) => {
-          const x = parseFloat(space.Spazio_coord_draw_a) / 100;
-          const y = parseFloat(space.Spazio_coord_draw_b) / 100;
-          const z = parseFloat(space.Spazio_coord_draw_c) / 100;
+              spaces.forEach((space, i) => {
+                const x = parseFloat(space.Spazio_coord_draw_a) / 100;
+                const y = parseFloat(space.Spazio_coord_draw_b) / 100;
+                const z = parseFloat(space.Spazio_coord_draw_c) / 100;
 
-          let width = parseFloat(space.Spazio_coord_largo || 80) / 100;
-          const height = parseFloat(space.Spazio_coord_alto || 180) / 100;
-          let depth = parseFloat(space.Spazio_coord_fondo || 120) / 100;
+                let width = parseFloat(space.Spazio_coord_largo || 80) / 100;
+                const height = parseFloat(space.Spazio_coord_alto || 180) / 100;
+                let depth = parseFloat(space.Spazio_coord_fondo || 120) / 100;
 
-          const orientation = String(space.Spazio_orientamento).trim();
-          if (orientation === "1") {
-            const temp = width;
-            width = depth;
-            depth = temp;
-          }
+                const orientation = String(space.Spazio_orientamento).trim();
+                if (orientation === "1") {
+                  const temp = width;
+                  width = depth;
+                  depth = temp;
+                }
 
-          const px = x + width / 2;
-          const py = y + height / 2;
-          const pz = z + depth / 2;
+                const px = x + width / 2;
+                const py = y + height / 2;
+                const pz = z + depth / 2;
 
-          dummy.position.set(px, py, pz);
-          dummy.scale.set(
-            width * shrinkFactor,
-            height * shrinkFactor,
-            depth * shrinkFactor
-          );
+                dummy.position.set(px, py, pz);
+                dummy.scale.set(
+                  width * shrinkFactor,
+                  height * shrinkFactor,
+                  depth * shrinkFactor
+                );
 
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-        });
+                dummy.updateMatrix();
+                instancedMesh.setMatrixAt(i, dummy.matrix);
+              });
 
-        spaceGroup.add(instancedMesh);
-        console.log(`Spaces created: ${spaces.length}`);
-      }*/
+              spaceGroup.add(instancedMesh);
+              console.log(`Spaces created: ${spaces.length}`);
+            }*/
 
       function addLabelForSingleComponent(component, type = "", name = "") {
         if (!component || !component.Spazio) return;
@@ -2083,60 +2058,6 @@ ${
 
         scene.add(dummy);
       }
-
-      //Create buffers from the JSON -> GM ALTERAÇÃO FUNÇAO CREATEBUFFERFROMJSON
-      /* function createBufferFromJSON(bufferArray) {
-        const bufferColor = 0xd48c8c;
-        const bufferOpacity = 0.95;
-        const shrinkFactor = 0.65;
-
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshBasicMaterial({
-          color: bufferColor,
-          transparent: true,
-          opacity: bufferOpacity,
-        });
-
-        const count = bufferArray.length;
-        const instancedMesh = new THREE.InstancedMesh(
-          geometry,
-          material,
-          count
-        );
-        const dummy = new THREE.Object3D();
-
-        bufferArray.forEach((item, i) => {
-          const x = parseFloat(item.Spazio_coord_draw_a) / 100;
-          const y = parseFloat(item.Spazio_coord_draw_b) / 100;
-          const z = parseFloat(item.Spazio_coord_draw_c) / 100;
-
-          let width = parseFloat(item.Spazio_coord_largo || 80) / 100;
-          const height = parseFloat(item.Spazio_coord_alto || 180) / 100;
-          let depth = parseFloat(item.Spazio_coord_fondo || 120) / 100;
-
-          const orientation = String(item.Spazio_orientamento).trim();
-          if (orientation === "1") {
-            [width, depth] = [depth, width];
-          }
-
-          const scaleX = width * shrinkFactor;
-          const scaleY = height * shrinkFactor;
-          const scaleZ = depth * shrinkFactor;
-
-          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          dummy.scale.set(scaleX, scaleY, scaleZ);
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-
-          // ✅ Salva a escala real
-          bufferOriginalScales[i] = { x: scaleX, y: scaleY, z: scaleZ };
-        });
-
-        bufferGroup.add(instancedMesh);
-        bufferInstancedMesh = instancedMesh;
-
-        console.log(`Buffers desenhados: ${count}`);
-      } */
 
       function mirrorDataXCoordinates(data) {
         const centerX = getLayoutCenterX(data);
@@ -2224,6 +2145,31 @@ ${
         //   addLabelForSingleComponent(s, "spaces", "picking")
         // );
       }
+      function addGridWithFloorBounds(adjustedMin, adjustedMax) {
+        const width = adjustedMax.x - adjustedMin.x;
+        const depth = adjustedMax.z - adjustedMin.z;
+        const centerX = (adjustedMin.x + adjustedMax.x) / 2;
+        const centerZ = (adjustedMin.z + adjustedMax.z) / 2;
+
+          
+        const gridStep = 15;
+        const gridSize = Math.max(width, depth);
+        const gridDivisions = Math.floor(gridSize / gridStep); // 5 metros por célula (ajustável)
+
+        const gridHelper = new THREE.GridHelper(
+          gridSize,
+          gridDivisions,
+          0x888888, // cor igual para eixos centrais e secundários
+          0x888888
+        );
+
+        gridHelper.position.set(centerX, -0.01, centerZ); // Abaixo de tudo
+        gridHelper.material.depthWrite = false;
+        gridHelper.material.transparent = true;
+        gridHelper.renderOrder = -9999; // <--- sempre atrás
+
+        scene.add(gridHelper);
+      }
 
       async function extractDataFromJSON(data) {
         // Filtros por classe
@@ -2281,6 +2227,7 @@ ${
         );
         addFlatLabelsToWarehouse();
         applyInitialLabelVisibilityFromMenu();
+
         EspacosAll = [
           ...classeDivEspacos,
           ...classeExec,
@@ -2331,6 +2278,7 @@ ${
         });
 
         createEmployee();
+
         const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
         return {
           classeDivEspacos,
@@ -2380,113 +2328,88 @@ ${
         }
       }
 
-      function createSelectsLevels() {
-        const container = document.getElementById("buffer-level-container");
-        container.innerHTML = "";
+     function createSelectsLevels() {
+  const tiposMap = new Map();
 
-        const tiposMap = new Map();
+  EspacosAll.forEach((espaco) => {
+    const tipo = (espaco.Spazio_tipo || "Desconhecido").trim();
+    const nome = (espaco.Spazio_tipoD || tipo).trim();
 
-        EspacosAll.forEach((espaco) => {
-          const tipo = (espaco.Spazio_tipo || "Desconhecido").trim();
-          const nome = (espaco.Spazio_tipoD || tipo).trim();
+    if (!tiposMap.has(tipo)) {
+      tiposMap.set(tipo, { nome, objetos: [] });
+    }
+    tiposMap.get(tipo).objetos.push(espaco);
+  });
 
-          if (!tiposMap.has(tipo)) {
-            tiposMap.set(tipo, { nome, objetos: [] });
-          }
-          tiposMap.get(tipo).objetos.push(espaco);
-        });
+  tiposMap.forEach(({ nome, objetos }, tipo) => {
+    const espacos = objetos.map((obj) => {
+      const base = parseFloat(obj.Spazio_coord_draw_b || 0);
+      const altura = parseFloat(obj.Spazio_coord_alto || 0);
+      const topo = base + altura;
+      return { base, topo, altura };
+    });
 
-        tiposMap.forEach(({ nome, objetos }, tipo) => {
-          const espacos = objetos.map((obj) => {
-            const base = parseFloat(obj.Spazio_coord_draw_b || 0);
-            const altura = parseFloat(obj.Spazio_coord_alto || 0);
-            const topo = base + altura;
-            return { base, topo, altura };
-          });
+    const niveis = [];
+    let restantes = espacos.filter((e) => e.altura > 0);
 
-          const niveis = [];
+    while (restantes.length > 0) {
+      let menor = restantes.reduce((a, b) => (a.base < b.base ? a : b));
+      let nivelAtual = [menor];
+      let topoMin = menor.topo;
 
-          // Organizar espaços em níveis com lógica progressiva
-          let restantes = [...espacos].filter((e) => e.altura > 0);
+      restantes = restantes.filter((e) => {
+        if (e === menor) return false;
+        if (e.base < topoMin) {
+          nivelAtual.push(e);
+          return false;
+        }
+        return true;
+      });
 
-          while (restantes.length > 0) {
-            // Encontrar o espaço com a menor base
-            let menor = restantes.reduce((a, b) => (a.base < b.base ? a : b));
-            let nivelAtual = [menor];
+      niveis.push(nivelAtual);
+    }
 
-            // Definir topo do menor
-            let topoMin = menor.topo;
+    const zeroAltura = espacos.filter((e) => e.altura === 0);
+    if (zeroAltura.length > 0) {
+      if (!niveis[0]) niveis[0] = [];
+      niveis[0].push(...zeroAltura);
+    }
 
-            // Adicionar ao nível atual todos que tenham base < topoMin
-            restantes = restantes.filter((e) => {
-              if (e === menor) return false;
-              if (e.base < topoMin) {
-                nivelAtual.push(e);
-                return false;
-              }
-              return true;
-            });
+    const maxNivel = niveis.length;
 
-            niveis.push(nivelAtual);
-          }
+    // 🔍 Encontra a <li> LEVELS da secção do tipo
+    const levelLi = document.querySelector(
+      `.dropdown-group [data-tipo="${tipo}"]`
+    )?.closest("ul")?.querySelector("li:nth-child(3)");
 
-          // Adicionar elementos de altura zero ao nível 1
-          const zeroAltura = espacos.filter((e) => e.altura === 0);
-          if (zeroAltura.length > 0) {
-            if (!niveis[0]) niveis[0] = [];
-            niveis[0].push(...zeroAltura);
-          }
+    if (!levelLi) return;
 
-          // Debug: exibir info dos níveis
-          console.log(
-            `🧱 Tipo: ${nome} (${tipo}) - Total de níveis: ${niveis.length}`
-          );
-          niveis.forEach((nivel, i) => {
-            const baseMin = Math.min(...nivel.map((e) => e.base));
-            const topoMax = Math.max(...nivel.map((e) => e.topo));
-            console.log(
-              `  ➤ Nível ${i + 1}: base mínima = ${baseMin.toFixed(
-                2
-              )}, topo máxima = ${topoMax.toFixed(2)}, itens = ${nivel.length}`
-            );
-          });
+    // Cria o novo <li> com o <select>
+    const row = document.createElement("li");
+    row.innerHTML = `
+      <label style="display: flex; align-items: center; gap: 8px; margin-left: 4px;">
+        <span style="min-width: 40px;">&nbsp;</span>
+        <select class="buffer-select" data-tipo="${tipo}" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid #ccc;">
+          ${Array.from({ length: maxNivel }, (_, i) => {
+            const num = i + 1;
+            return `<option value="${num}" ${num === maxNivel ? "selected" : ""}>${num}</option>`;
+          }).join("")}
+        </select>
+      </label>
+    `;
 
-          const maxNivel = niveis.length;
+    // ✅ Insere logo a seguir ao "LEVELS"
+    levelLi.insertAdjacentElement("afterend", row);
 
-          // UI
-          const row = document.createElement("div");
-          row.style.display = "flex";
-          row.style.alignItems = "center";
-          row.style.gap = "8px";
-          row.style.marginBottom = "6px";
+    const select = row.querySelector("select");
+    select.addEventListener("change", (e) => {
+      const tipoSelecionado = e.target.dataset.tipo;
+      const nivel = parseInt(e.target.value);
+      updateBufferLevelsPorTipo(tipoSelecionado, nivel);
+    });
+  });
+}
 
-          const label = document.createElement("label");
-          label.textContent = nome;
-          label.style.minWidth = "120px";
-
-          const select = document.createElement("select");
-          select.className = "buffer-select";
-          select.dataset.tipo = tipo;
-
-          for (let i = 1; i <= maxNivel; i++) {
-            const option = document.createElement("option");
-            option.value = i;
-            option.textContent = i;
-            if (i === maxNivel) option.selected = true;
-            select.appendChild(option);
-          }
-
-          select.addEventListener("change", (e) => {
-            const tipoSelecionado = e.target.dataset.tipo;
-            const nivel = parseInt(e.target.value);
-            updateBufferLevelsPorTipo(tipoSelecionado, nivel);
-          });
-
-          row.appendChild(label);
-          row.appendChild(select);
-          container.appendChild(row);
-        });
-      }
 
       function processDivSpacesClass(componentes) {
         const tiposMap = {};
@@ -2519,13 +2442,13 @@ ${
           }
         }
         controlBox.innerHTML = `
- 
-              <span   style="display: flex; align-items: center; gap: 6px; font-weight:bold">
-              <i class="ph ph-layout"></i>
-              <span id="toggle-tipos" >ALTURA DE ESPAÇOS</span>
-            </span>
-  <ul id="grupo-lista-tipos" style="padding-left: 10px; margin-top: 6px;"></ul>
-`;
+
+                    <span   style="display: flex; align-items: center; gap: 6px; font-weight:bold">
+                    <i class="ph ph-layout"></i>
+                    <span id="toggle-tipos" >ALTURA DE ESPAÇOS</span>
+                  </span>
+        <ul id="grupo-lista-tipos" style="padding-left: 10px; margin-top: 6px;"></ul>
+      `;
         const toggleHeader = controlBox.querySelector("#toggle-tipos");
         const tipoLista = controlBox.querySelector("#grupo-lista-tipos");
 
@@ -2796,171 +2719,6 @@ ${
           });
         });
       }
-
-      //FUNÇÃO PARA CRIAÇÃO DE CAIS ALTERAÇÃO GM
-      /*async function createDockFromJSON(docks) {
-        docks.forEach((dock) => {
-          const x = parseFloat(dock.Spazio_coord_draw_a) / 100;
-          const z = parseFloat(dock.Spazio_coord_draw_c) / 100;
-
-          let width = parseFloat(dock.Spazio_coord_largo) / 100;
-          let depth = parseFloat(dock.Spazio_coord_fondo) / 100;
-
-          const orientation = String(dock.Spazio_orientamento).trim();
-          if (orientation === "1") {
-            const temp = width;
-            width = depth;
-            depth = temp;
-          }
-          const geometry = new THREE.BoxGeometry(width, 0, depth);
-          const material = new THREE.MeshStandardMaterial({
-            color: dock.cor || "#73a7f5",
-            transparent: true,
-            opacity: 0.9,
-            depthWrite: false,
-          });
-
-          const mesh = new THREE.Mesh(geometry, material);
-
-          // Y mínimo para aparecer no chão mas sem afundar
-          mesh.position.set(x + width / 2, 0.03, z + depth / 2);
-
-          dockGroup.add(mesh);
-
-          const edges = new THREE.EdgesGeometry(geometry);
-          const line = new THREE.LineSegments(
-            edges,
-            new THREE.LineBasicMaterial({ color: 0xffffff })
-          );
-          line.position.copy(mesh.position);
-          classeCaisMeshes.push(mesh);
-
-          dockGroup.add(line);
-        });
-      } */
-
-      //ESTA FUNÇA USADA PARA GERAR AS PILHAS -> GM ALTERAÇÃO
-      /*async function createStacksFromJSON(stacks) {
-        const stackColor = 0x9966ff;
-        const stackOpacity = 0.95;
-        const boxHeight = 0.6; // altura de cada caixa empilhada (em metros)
-
-        stacks.forEach((stack) => {
-          const x = parseFloat(stack.Spazio_coord_draw_a) / 100;
-          const y = parseFloat(stack.Spazio_coord_draw_b) / 100;
-          const z = parseFloat(stack.Spazio_coord_draw_c) / 100;
-
-          let width = parseFloat(stack.Spazio_coord_largo) / 100;
-          const height = parseFloat(stack.Spazio_coord_alto) / 100;
-          let depth = parseFloat(stack.Spazio_coord_fondo) / 100;
-
-          const orientation = String(stack.Spazio_orientamento).trim();
-          if (orientation === "1") {
-            const temp = width;
-            width = depth;
-            depth = temp;
-          }
-          const numBoxes = Math.floor(height / boxHeight);
-          const geometry = new THREE.BoxGeometry(width, boxHeight, depth);
-          const material = new THREE.MeshBasicMaterial({
-            color: stack.color || stackColor,
-            transparent: true,
-            opacity: stackOpacity,
-          });
-
-          for (let i = 0; i < numBoxes; i++) {
-            const box = new THREE.Mesh(geometry, material);
-            box.position.set(
-              x + width / 2,
-              y + boxHeight / 2 + i * boxHeight,
-              z + depth / 2
-            );
-            box.userData.type = "Pilha";
-
-            stackGroup.add(box);
-            stackMeshes.push(box);
-
-            const edges = new THREE.EdgesGeometry(geometry);
-            const line = new THREE.LineSegments(
-              edges,
-              new THREE.LineBasicMaterial({ color: 0xffffff })
-            );
-            line.position.copy(box.position);
-            stackGroup.add(line);
-          }
-
-          // Adiciona 4 linhas verticais na frente e atrás para visual
-          for (let i = 1; i < 4; i++) {
-            const offset = (width / 4) * i;
-
-            const geometryFront = new THREE.BufferGeometry().setFromPoints([
-              new THREE.Vector3(x + offset, y, z),
-              new THREE.Vector3(x + offset, y + height, z),
-            ]);
-            const lineFront = new THREE.Line(
-              geometryFront,
-              new THREE.LineBasicMaterial({ color: 0xffffff })
-            );
-            stackGroup.add(lineFront);
-
-            const geometryBack = new THREE.BufferGeometry().setFromPoints([
-              new THREE.Vector3(x + offset, y, z + depth),
-              new THREE.Vector3(x + offset, y + height, z + depth),
-            ]);
-            const lineBack = new THREE.Line(
-              geometryBack,
-              new THREE.LineBasicMaterial({ color: 0xffffff })
-            );
-            stackGroup.add(lineBack);
-          }
-        });
-
-        console.log(`Pilhas desenhadas: ${stacks.length}`);
-      }
- */
-      //ESTA FUNÇÃO É USADA PARA GERAR DRIVE-INS
-      /*async function createDriveInsFromJSON(driveIns) {
-        driveIns.forEach((driveIn) => {
-          const x = parseFloat(driveIn.Spazio_coord_draw_a) / 100;
-          const y = parseFloat(driveIn.Spazio_coord_draw_b) / 100;
-          const z = parseFloat(driveIn.Spazio_coord_draw_c) / 100;
-
-          let width = parseFloat(driveIn.Spazio_coord_largo) / 100;
-          const height = parseFloat(driveIn.Spazio_coord_alto) / 100;
-          let depth = parseFloat(driveIn.Spazio_coord_fondo) / 100;
-
-          const orientation = String(driveIn.Spazio_orientamento).trim();
-          if (orientation === "1") {
-            const temp = width;
-            width = depth;
-            depth = temp;
-          }
-          const geometry = new THREE.BoxGeometry(width, height, depth);
-          const material = new THREE.MeshBasicMaterial({
-            color: driveIn.cor || "#f7e36a",
-            transparent: true,
-            opacity: 0.95,
-            depthWrite: true,
-          });
-
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          driveInGroup.add(mesh);
-
-          const edges = new THREE.EdgesGeometry(geometry);
-          const line = new THREE.LineSegments(
-            edges,
-            new THREE.LineBasicMaterial({ color: 0xffffff })
-          );
-
-          line.position.copy(mesh.position);
-          driveInMeshes.push(mesh);
-
-          driveInGroup.add(line);
-        });
-
-        console.log(`Drive-ins desenhados: ${driveIns.length}`);
-      } */
 
       function applyInitialLabelVisibilityFromMenu() {
         document.querySelectorAll(".label-toggle").forEach((checkbox) => {
@@ -3271,9 +3029,9 @@ ${
           const item = document.createElement("div");
           item.className = "legend-item";
           item.innerHTML = `
-      <div class="legend-color" style="background-color: ${color};"></div>
-      ${type}
-    `;
+            <div class="legend-color" style="background-color: ${color};"></div>
+            ${type}
+          `;
           legendContainer.appendChild(item);
         });
       }
@@ -3286,32 +3044,9 @@ ${
             trocarCoordenadasBC(data);
             const val = await extractDataFromJSON(data);
             //mirrorDataXCoordinates(val);
+            // Adicionar o GridHelper com base no tamanho real do armazém
 
             //ALTERAÇAO GM
-            // Adicionar o GridHelper com base no tamanho real do armazém
-            const bounds = new THREE.Box3().setFromObject(scene);
-
-            const originalMargin = 20;
-
-            const adjustedMin = bounds.min.clone().subScalar(originalMargin);
-            const adjustedMax = bounds.max.clone().addScalar(originalMargin);
-
-            const largura = adjustedMax.x - adjustedMin.x;
-            const profundidade = adjustedMax.z - adjustedMin.z;
-            const centerX = (adjustedMin.x + adjustedMax.x) / 2;
-            const centerZ = (adjustedMin.z + adjustedMax.z) / 2;
-
-            const gridSize = Math.max(largura, profundidade);
-            const gridDivisions = Math.floor(gridSize / 5);
-
-            const gridHelper = new THREE.GridHelper(
-              gridSize,
-              gridDivisions,
-              0x555a66,
-              0x555a66
-            );
-            gridHelper.position.set(centerX, 0.01, centerZ);
-            scene.add(gridHelper);
 
             labelRenderer.setSize(window.innerWidth, window.innerHeight);
             labelRenderer.domElement.style.position = "absolute";
@@ -3352,14 +3087,14 @@ ${
             wrapper.className = "dropdown-group";
             wrapper.open = false;
             wrapper.innerHTML = `
-  <summary>
-    <span style="display: flex; align-items: center; gap: 6px">
-      <i class="ph ph-stack"></i>
-      <span>SPACES</span>
-    </span>
-  </summary>
-  <div id="espacos-content"></div>
-`;
+        <summary>
+          <span style="display: flex; align-items: center; gap: 6px">
+            <i class="ph ph-stack"></i>
+            <span>SPACES</span>
+          </span>
+        </summary>
+        <div id="espacos-content"></div>
+      `;
             sidebarContainer.appendChild(wrapper);
 
             const espacosContent = wrapper.querySelector("#espacos-content");
@@ -3368,20 +3103,20 @@ ${
               const section = document.createElement("details");
               section.className = "dropdown-group";
               section.innerHTML = `
-    <summary>
-      <span style="display: flex; align-items: center; gap: 6px">
-        <i class="ph ph-cube"></i>
-        <span>${tipo}</span>
-      </span>
-    </summary>
-    <ul>
-      <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}" checked /> Layout</label></li>
-      <li><label><input type="checkbox" class="toggle-labels" data-tipo="${tipo}" /> Labels</label></li>
-      <li><button class="btn-levels" data-tipo="${tipo}">Levels</button></li>
-      <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}"  /> Check Availability </label></li>
-      <li><label><input type="checkbox" class="toggle-height" data-tipo="${tipo}" /> Flatten Height (2D)</label></li>
-    </ul>
-  `;
+          <summary>
+            <span style="display: flex; align-items: center; gap: 6px">
+              <i class="ph ph-cube"></i>
+              <span>${tipo}</span>
+            </span>
+          </summary>
+          <ul>
+            <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}" checked /> Layout</label></li>
+            <li><label><input type="checkbox" class="toggle-labels" data-tipo="${tipo}" /> Labels</label></li>
+            <li><button class="btn-levels" data-tipo="${tipo}">Levels</button></li>
+            <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}"  /> Check Availability </label></li>
+            <li><label><input type="checkbox" class="toggle-height" data-tipo="${tipo}" /> Flatten Height (2D)</label></li>
+          </ul>
+        `;
               espacosContent.appendChild(section);
             });
 
