@@ -76,7 +76,6 @@
           </span>
         </summary>
       </details>
-     
 
       <details class="dropdown-group" open>
         <summary style="cursor: pointer">
@@ -2151,7 +2150,6 @@
         const centerX = (adjustedMin.x + adjustedMax.x) / 2;
         const centerZ = (adjustedMin.z + adjustedMax.z) / 2;
 
-          
         const gridStep = 15;
         const gridSize = Math.max(width, depth);
         const gridDivisions = Math.floor(gridSize / gridStep); // 5 metros por célula (ajustável)
@@ -2250,7 +2248,7 @@
           EspacosPorTipo[tipo].push(item);
         });
 
-        createSelectsLevels();
+        
 
         document.querySelectorAll(".label-toggle").forEach((checkbox) => {
           checkbox.addEventListener("change", (e) => {
@@ -2328,88 +2326,121 @@
         }
       }
 
-     function createSelectsLevels() {
-  const tiposMap = new Map();
+      function createSelectsLevels() {
+      
+        const tiposMap = new Map();
 
-  EspacosAll.forEach((espaco) => {
-    const tipo = (espaco.Spazio_tipo || "Desconhecido").trim();
-    const nome = (espaco.Spazio_tipoD || tipo).trim();
+        EspacosAll.forEach((espaco) => {
+          const tipo = (espaco.Spazio_tipoD || "Desconhecido").trim();
+          const nome = tipo;
 
-    if (!tiposMap.has(tipo)) {
-      tiposMap.set(tipo, { nome, objetos: [] });
-    }
-    tiposMap.get(tipo).objetos.push(espaco);
-  });
+          if (!tiposMap.has(tipo)) {
+            tiposMap.set(tipo, { nome, objetos: [] });
+          }
+          tiposMap.get(tipo).objetos.push(espaco);
+        });
 
-  tiposMap.forEach(({ nome, objetos }, tipo) => {
-    const espacos = objetos.map((obj) => {
-      const base = parseFloat(obj.Spazio_coord_draw_b || 0);
-      const altura = parseFloat(obj.Spazio_coord_alto || 0);
-      const topo = base + altura;
-      return { base, topo, altura };
-    });
+        tiposMap.forEach(({ nome, objetos }, tipo) => {
+          const espacos = objetos.map((obj) => {
+            const base = parseFloat(obj.Spazio_coord_draw_b || 0);
+            const altura = parseFloat(obj.Spazio_coord_alto || 0);
+            const topo = base + altura;
+            return { base, topo, altura };
+          });
 
-    const niveis = [];
-    let restantes = espacos.filter((e) => e.altura > 0);
+          const niveis = [];
 
-    while (restantes.length > 0) {
-      let menor = restantes.reduce((a, b) => (a.base < b.base ? a : b));
-      let nivelAtual = [menor];
-      let topoMin = menor.topo;
+          // Organizar espaços em níveis com lógica progressiva
+          let restantes = [...espacos].filter((e) => e.altura > 0);
 
-      restantes = restantes.filter((e) => {
-        if (e === menor) return false;
-        if (e.base < topoMin) {
-          nivelAtual.push(e);
-          return false;
-        }
-        return true;
-      });
+          while (restantes.length > 0) {
+            // Encontrar o espaço com a menor base
+            let menor = restantes.reduce((a, b) => (a.base < b.base ? a : b));
+            let nivelAtual = [menor];
 
-      niveis.push(nivelAtual);
-    }
+            // Definir topo do menor
+            let topoMin = menor.topo;
 
-    const zeroAltura = espacos.filter((e) => e.altura === 0);
-    if (zeroAltura.length > 0) {
-      if (!niveis[0]) niveis[0] = [];
-      niveis[0].push(...zeroAltura);
-    }
+            // Adicionar ao nível atual todos que tenham base < topoMin
+            restantes = restantes.filter((e) => {
+              if (e === menor) return false;
+              if (e.base < topoMin) {
+                nivelAtual.push(e);
+                return false;
+              }
+              return true;
+            });
 
-    const maxNivel = niveis.length;
+            niveis.push(nivelAtual);
+          }
 
-    // 🔍 Encontra a <li> LEVELS da secção do tipo
-    const levelLi = document.querySelector(
-      `.dropdown-group [data-tipo="${tipo}"]`
-    )?.closest("ul")?.querySelector("li:nth-child(3)");
+          // Adicionar elementos de altura zero ao nível 1
+          const zeroAltura = espacos.filter((e) => e.altura === 0);
+          if (zeroAltura.length > 0) {
+            if (!niveis[0]) niveis[0] = [];
+            niveis[0].push(...zeroAltura);
+          }
 
-    if (!levelLi) return;
+          // Debug: exibir info dos níveis
+          console.log(
+            `🧱 Tipo: ${nome} (${tipo}) - Total de níveis: ${niveis.length}`
+          );
+          niveis.forEach((nivel, i) => {
+            const baseMin = Math.min(...nivel.map((e) => e.base));
+            const topoMax = Math.max(...nivel.map((e) => e.topo));
+            console.log(
+              `  ➤ Nível ${i + 1}: base mínima = ${baseMin.toFixed(
+                2
+              )}, topo máxima = ${topoMax.toFixed(2)}, itens = ${nivel.length}`
+            );
+          });
 
-    // Cria o novo <li> com o <select>
-    const row = document.createElement("li");
-    row.innerHTML = `
-      <label style="display: flex; align-items: center; gap: 8px; margin-left: 4px;">
-        <span style="min-width: 40px;">&nbsp;</span>
-        <select class="buffer-select" data-tipo="${tipo}" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid #ccc;">
-          ${Array.from({ length: maxNivel }, (_, i) => {
-            const num = i + 1;
-            return `<option value="${num}" ${num === maxNivel ? "selected" : ""}>${num}</option>`;
-          }).join("")}
-        </select>
-      </label>
-    `;
+          const maxNivel = niveis.length;
 
-    // ✅ Insere logo a seguir ao "LEVELS"
-    levelLi.insertAdjacentElement("afterend", row);
+          // UI
+          const row = document.createElement("div");
+          row.style.display = "flex";
+          row.style.alignItems = "center";
+          row.style.gap = "8px";
+          row.style.marginBottom = "6px";
 
-    const select = row.querySelector("select");
-    select.addEventListener("change", (e) => {
-      const tipoSelecionado = e.target.dataset.tipo;
-      const nivel = parseInt(e.target.value);
-      updateBufferLevelsPorTipo(tipoSelecionado, nivel);
-    });
-  });
-}
+          const label = document.createElement("label");
+          label.textContent = nome;
+          label.style.minWidth = "120px";
 
+          const select = document.createElement("select");
+          select.className = "buffer-select";
+          select.dataset.tipo = tipo;
+
+          for (let i = 1; i <= maxNivel; i++) {
+            const option = document.createElement("option");
+            option.value = i;
+            option.textContent = i;
+            if (i === maxNivel) option.selected = true;
+            select.appendChild(option);
+          }
+
+          select.addEventListener("change", (e) => {
+            const tipoSelecionado = e.target.dataset.tipo;
+            const nivel = parseInt(e.target.value);
+            updateBufferLevelsPorTipo(tipoSelecionado, nivel);
+          });
+
+          row.appendChild(label);
+          row.appendChild(select);
+          // Tenta encontrar o <li> dentro do menu SPACES
+          const liTarget = document.querySelector(
+            `.btn-levels[data-tipo="${tipo}"]`
+          );
+          if (liTarget) {
+            liTarget.innerHTML = ""; // limpa o conteúdo do <li>
+            liTarget.appendChild(row); // mete lá o dropdown
+          } else {
+            // fallback → ainda mete no buffer-level-container se não for SPACES
+            container.appendChild(row);
+          }
+        });
+      }
 
       function processDivSpacesClass(componentes) {
         const tiposMap = {};
@@ -2653,26 +2684,42 @@
         console.log(`Corredores desenhados (instanced): ${count}`);
       }
 
-      function updateBufferLevelsPorTipo(tipo, nivelMax) {
-        const allGroups = [
-          rackGroup,
-          corridorGroup,
-          bufferGroup,
-          spaceGroup,
-          dockGroup,
-          stackGroup,
-          driveInGroup,
-        ];
+      function updateBufferLevelsPorTipo(tipoD, nivelMax) {
+        const allGroups = {
+          "01": spaceGroup,
+          "02": bufferGroup,
+          "03": dockGroup,
+          "05": anomalousGroup,
+          "06": distribGroup,
+          "08": transitionGroup,
+          "09": stackGroup,
+          10: tempDockGroup,
+        };
 
         const objetos = [];
 
-        // Coletar objetos do tipo específico
-        allGroups.forEach((group) => {
-          group.children.forEach((child) => {
-            if ((child.userData?.tipo || "").trim() === tipo) {
-              objetos.push(child);
-            }
-          });
+        // Primeiro: encontra a classe correspondente ao tipoD
+        const matching = EspacosAll.filter(
+          (e) => (e.Spazio_tipoD || "").trim() === tipoD
+        );
+        if (matching.length === 0) {
+          console.warn("Nenhum espaço encontrado para tipoD:", tipoD);
+          return;
+        }
+
+        const classe = matching[0].Spazio_classe;
+        const targetGroup = allGroups[classe];
+
+        if (!targetGroup) {
+          console.warn("Grupo não encontrado para classe:", classe);
+          return;
+        }
+
+        // Agora apanha os filhos do grupo (mesh instanciados)
+        targetGroup.children.forEach((child) => {
+          if (child.isMesh || child.isInstancedMesh) {
+            objetos.push(child);
+          }
         });
 
         const espacos = objetos.map((obj) => {
@@ -2718,6 +2765,10 @@
             obj.visible = mostrar;
           });
         });
+
+        console.log(
+          `🔄 Tipo ${tipoD} → visível até nível ${nivelMax} (${niveis.length} níveis total)`
+        );
       }
 
       function applyInitialLabelVisibilityFromMenu() {
@@ -2954,7 +3005,7 @@
           "06": distribGroup,
           "08": transitionGroup,
           "09": stackGroup,
-          10: tempDockGroup,
+          "10": tempDockGroup,
         };
 
         const filteredItems = data.filter(
@@ -3112,13 +3163,16 @@
           <ul>
             <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}" checked /> Layout</label></li>
             <li><label><input type="checkbox" class="toggle-labels" data-tipo="${tipo}" /> Labels</label></li>
-            <li><button class="btn-levels" data-tipo="${tipo}">Levels</button></li>
+            <li class="btn-levels" data-tipo="${tipo}"></li>
+
+
             <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}"  /> Check Availability </label></li>
             <li><label><input type="checkbox" class="toggle-height" data-tipo="${tipo}" /> Flatten Height (2D)</label></li>
           </ul>
         `;
               espacosContent.appendChild(section);
             });
+            createSelectsLevels();
 
             // EVENT LISTENERS ---------------------------------------------------------------------------
 
