@@ -1619,6 +1619,7 @@
 
       // END NEW DYNAMIC FUNCTIONS TO DRAW SPACES
       async function createRacksFromJSON(racks) {
+         
         const shrinkFactor = 0.95;
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const dummy = new THREE.Object3D();
@@ -1699,7 +1700,7 @@
 
         instancedMesh.userData.espacos = [...racks];
         instancedMesh.userData.tipoD = racks[0]?.Spazio_tipoD || "unknown";
-
+         
         rackGroup.add(instancedMesh);
         outlineGroup.children.forEach((child) => rackGroup.add(child));
         classeDivEspacosMeshes.push(instancedMesh);
@@ -1856,17 +1857,17 @@
         labelDiv.style.backgroundColor = "transparent";
         labelDiv.style.padding = "2px 4px";
         labelDiv.style.borderRadius = "4px";
-
+        labelDiv.style.zIndex = "-1";
         const labelObj = new CSS2DObject(labelDiv);
         labelObj.position.set(0, 0.05, 0);
         labelObj.rotation.x = -Math.PI / 2;
 
         const dummy = new THREE.Object3D();
-        if (name == "corredor")
+         
+        if (component.Spazio_coord_alto==="0.001")
           dummy.position.set(x + width / 2, 0, z + depth / 2);
-        else if (name == "buffer" || name == "picking")
-          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
-        else dummy.position.set(x + width / 2, y + height, z + depth / 2);
+ 
+        else dummy.position.set(x + width / 2, height, z + depth / 2);
 
         dummy.add(labelObj);
 
@@ -1944,21 +1945,7 @@
         object.add(label);
       }
 
-      function addFlatLabelsToWarehouse() {
-        // racks?.forEach((r) => addLabelForSingleComponent(r, "racks", ""));
-        // docks?.forEach((d) => addLabelForSingleComponent(d, "docks", ""));
-        // stacks?.forEach((s) => addLabelForSingleComponent(s, "stacks", ""));
-        // driveIns?.forEach((d) => addLabelForSingleComponent(d, "driveins", ""));
-        // buffers?.forEach((b) =>
-        //   addLabelForSingleComponent(b, "buffers", "buffer")
-        // );
-        corredor?.forEach((c) =>
-          addLabelForSingleComponent(c, "corridors", "corredor")
-        );
-        // spaces?.forEach((s) =>
-        //   addLabelForSingleComponent(s, "spaces", "picking")
-        // );
-      }
+ 
       function addGridWithFloorBounds(adjustedMin, adjustedMax) {
         const width = adjustedMax.x - adjustedMin.x;
         const depth = adjustedMax.z - adjustedMin.z;
@@ -2135,84 +2122,98 @@
       }
 
       function gerarMenuToggleLabels(...listas) {
-        const tiposMap = new Map(); // tipo => label
+  const tiposMap = new Map(); // tipo => label
 
-        // Agrupar tipos únicos com seus rótulos
-        listas.flat().forEach((item) => {
-          const tipo = item.Spazio_tipo?.trim() || "Desconhecido";
-          const label = item.Spazio_tipoD?.trim() || tipo;
+  listas.flat().forEach((item) => {
+    const tipo = item.Spazio_tipo?.trim() || "Desconhecido";
+    const label = item.Spazio_tipoD?.trim() || tipo;
+    if (!tiposMap.has(tipo)) {
+      tiposMap.set(tipo, label);
+    }
+  });
 
-          if (!tiposMap.has(tipo)) {
-            tiposMap.set(tipo, label);
+  tiposMap.forEach((label, tipo) => {
+    const allSections = document.querySelectorAll("#espacos-content > details");
+    const section = [...allSections].find(
+      (s) => s.querySelector("summary span span")?.textContent === label
+    );
+
+    if (!section) return;
+
+    let ul = section.querySelector("ul");
+    if (!ul) {
+      ul = document.createElement("ul");
+      section.appendChild(ul);
+    }
+
+    const li = document.createElement("li");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.className = "label-toggle";
+    input.id = `toggle-label-${tipo}`;
+    input.value = tipo;
+
+    const labelElement = document.createElement("label");
+    labelElement.appendChild(input);
+    labelElement.append(label, " ", "Label");
+
+    li.appendChild(labelElement);
+    ul.appendChild(li);
+  });
+document.querySelectorAll(".label-toggle").forEach((checkbox) => {
+  checkbox.addEventListener("change", (e) => {
+    const type = e.target.value;
+    const isVisible = e.target.checked;
+
+    const labelContainer = labelRenderer.domElement;
+
+    if (isVisible) {
+      // 🧹 Remover todas as labels do tipo antes de recriar
+      labelContainer
+        .querySelectorAll(`.toggle-label-${type}`)
+        .forEach((el) => el.remove());
+
+      // 🧠 Adicionar novas labels do tipo
+      EspacosAll.forEach((item) => {
+        const itemTipo = (item.Spazio_tipo || "").trim();
+        if (itemTipo !== type) return;
+
+        if (item.Spazio_classe === "04") {
+          const pertenceAoRack = rackGroup.children.some((child) =>
+          Array.isArray(child.userData?.espacos) &&
+          child.userData.espacos.some((e) => e.Spazio === item.Spazio)
+        );
+        
+        
+          if (pertenceAoRack) {
+            console.log(pertenceAoRack)
+            addLabelForSingleComponent(item, type, "");
+          } else {
+            
+            const itemClone = { ...item, Spazio_coord_alto: "0.001" };
+            addLabelForSingleComponent(itemClone, type, "");
           }
-        });
+        } else {
+          addLabelForSingleComponent(item, type, "");
+        }
+      });
+    }
 
-        // Para cada tipo, encontrar o <details> correspondente e adicionar o checkbox "Labels"
-        tiposMap.forEach((label, tipo) => {
-          const allSections = document.querySelectorAll(
-            "#espacos-content > details"
-          );
-          const section = [...allSections].find(
-            (s) => s.querySelector("summary span span")?.textContent === label
-          );
+    // 👁️ Atualizar visibilidade
+    labelContainer
+      .querySelectorAll(`.toggle-label-${type}`)
+      .forEach((el) => {
+        el.style.visibility = isVisible ? "visible" : "hidden";
+      });
+  });
+});
 
-          if (!section) return;
+ 
+  const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
+  return { listas };
+}
 
-          // Pega ou cria o <ul> dentro do <details>
-          let ul = section.querySelector("ul");
-          if (!ul) {
-            ul = document.createElement("ul");
-            section.appendChild(ul);
-          }
-
-          // Criar <li> com checkbox "Labels"
-          const li = document.createElement("li");
-
-          const input = document.createElement("input");
-          input.type = "checkbox";
-          input.className = "label-toggle";
-          input.id = `toggle-label-${tipo}`;
-          input.value = tipo;
-
-          const labelElement = document.createElement("label");
-          labelElement.appendChild(input);
-          labelElement.append(label, " ", "Label");
-
-          li.appendChild(labelElement);
-          ul.appendChild(li);
-        });
-
-        document.querySelectorAll(".label-toggle").forEach((checkbox) => {
-          checkbox.addEventListener("change", (e) => {
-            const type = e.target.value;
-            const isVisible = e.target.checked;
-
-            const labelsExist = document.querySelector(`.toggle-label-${type}`);
-            if (isVisible && !labelsExist) {
-              // Cria as labels apenas se ainda não existem
-              EspacosAll.forEach((item) => {
-                const itemTipo = (item.Spazio_tipo || "").trim();
-                if (itemTipo === type) {
-                  addLabelForSingleComponent(item, type, ""); // Usa o tipo como classe
-                }
-              });
-            }
-
-            // Atualiza visibilidade das labels desse tipo
-            labelRenderer.domElement
-              .querySelectorAll(`.toggle-label-${type}`)
-              .forEach((el) => {
-                el.style.visibility = isVisible ? "visible" : "hidden";
-              });
-          });
-        });
-
-        const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
-        return {
-          listas,
-        };
-      }
-
+ 
       const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
 
       function encontrarObjetos3D(tipo, grupos) {
@@ -3115,7 +3116,6 @@
             });
             createSelectsLevels();
 
-            applyInitialLabelVisibilityFromMenu();
 
             gerarMenuToggleLabels(...EspacosAll);
             gerarSelectsBufferPorTipo(...EspacosAll);
