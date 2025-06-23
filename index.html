@@ -249,15 +249,12 @@
         '#sidebar input[type="checkbox"]'
       );
 
- 
-
       //FUNCTION formatSpazioLabel(spazio) MADE MY GM
       function formatSpazioLabel(spazio) {
         const s = String(spazio).padStart(4, "0");
         return `${s.slice(0, 2)}.${s.slice(2)}`;
       }
 
-     
       resetTopCamBtn.addEventListener("click", () => {
         if (activeCamera === topCamera) {
           topCamera.position.copy(rotatedPosition);
@@ -822,20 +819,19 @@
         );
 
         instancedMesh.instanceMatrix.needsUpdate = true;
-        
-
 
         // Associar os dados ao instancedMesh para o toggle funcionar corretamente
         instancedMesh.userData.espacos = [...spacesArray];
-        instancedMesh.userData.tipoD = spacesArray[0]?.Spazio_tipoD || "unknown";
+        instancedMesh.userData.tipoD =
+          spacesArray[0]?.Spazio_tipoD || "unknown";
         spaceGroup.add(instancedMesh);
         console.log(
           `Espaços de execucao desenhados (classe 01): ${spacesArray.length}`
         );
       }
-//-------------------------------------------------------------------------------------------------------------------------------------
+      //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "02"
-       async function createWarehouseSpacesFromJSON(bufferArray) {
+      async function createWarehouseSpacesFromJSON(bufferArray) {
         const bufferOpacity = 0.9;
         const shrinkFactor = 0.65;
         const defaultColor = new THREE.Color("#d48c8c");
@@ -915,14 +911,14 @@
 
         instancedMesh.instanceMatrix.needsUpdate = true;
         instancedMesh.userData.espacos = [...bufferArray];
-        instancedMesh.userData.tipoD = bufferArray[0]?.Spazio_tipoD || "unknown";
+        instancedMesh.userData.tipoD =
+          bufferArray[0]?.Spazio_tipoD || "unknown";
 
         bufferGroup.add(instancedMesh);
-
         console.log(`Espaços Armazenamento desenhados (classe 02): ${count}`);
       }
 
-   //-------------------------------------------------------------------------------------------------------------------------------------
+      //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "03" // SEM OPÇAO DE METER ALTURA AINDA
       async function createDockFromJSON(docks) {
         const shrinkFactor = 1;
@@ -1025,7 +1021,6 @@
         );
         instancedMesh.instanceMatrix.needsUpdate = true;
 
-       
         instancedMesh.userData.espacos = [...docks];
         instancedMesh.userData.tipoD = docks[0]?.Spazio_tipoD || "unknown";
 
@@ -1033,7 +1028,7 @@
         outlineGroup.children.forEach((child) => {
           dockGroup.add(child);
         });
-                classeCaisMeshes.push(instancedMesh);
+        classeCaisMeshes.push(instancedMesh);
 
         scene.add(dockGroup);
 
@@ -1143,7 +1138,6 @@
 
         instancedMesh.userData.espacos = [...zonas];
         instancedMesh.userData.tipoD = zonas[0]?.Spazio_tipoD || "unknown";
-
 
         anomalousGroup.add(instancedMesh);
         outlineGroup.children.forEach((child) => {
@@ -1258,14 +1252,14 @@
         instancedMesh.instanceMatrix.needsUpdate = true;
 
         instancedMesh.userData.espacos = [...distribuicoes];
-        instancedMesh.userData.tipoD = distribuicoes[0]?.Spazio_tipoD || "unknown";
-
+        instancedMesh.userData.tipoD =
+          distribuicoes[0]?.Spazio_tipoD || "unknown";
 
         distribGroup.add(instancedMesh);
         outlineGroup.children.forEach((child) => {
           distribGroup.add(child);
-        });     
-           classeEspacoDistrMeshes.push(instancedMesh);
+        });
+        classeEspacoDistrMeshes.push(instancedMesh);
 
         scene.add(distribGroup);
 
@@ -1377,14 +1371,14 @@
         instancedMesh.instanceMatrix.needsUpdate = true;
 
         instancedMesh.userData.espacos = [...transitionZones];
-        instancedMesh.userData.tipoD = transitionZones[0]?.Spazio_tipoD || "unknown";
-
+        instancedMesh.userData.tipoD =
+          transitionZones[0]?.Spazio_tipoD || "unknown";
 
         transitionGroup.add(instancedMesh);
         outlineGroup.children.forEach((child) => {
           transitionGroup.add(child);
         });
-                scene.add(transitionGroup);
+        scene.add(transitionGroup);
         classeTransicaoMeshes.push(instancedMesh);
 
         console.log(`Zonas de Transição desenhadas (classe 08): ${count}`);
@@ -1492,13 +1486,14 @@
         instancedMesh.instanceMatrix.needsUpdate = true;
 
         instancedMesh.userData.espacos = [...stacksArray];
-        instancedMesh.userData.tipoD = stacksArray[0]?.Spazio_tipoD || "unknown";
+        instancedMesh.userData.tipoD =
+          stacksArray[0]?.Spazio_tipoD || "unknown";
 
         stackGroup.add(instancedMesh);
         outlineGroup.children.forEach((child) => {
           stackGroup.add(child);
         });
-                scene.add(stackGroup);
+        scene.add(stackGroup);
         classePilhaMeshes.push(instancedMesh);
 
         console.log(`Pilhas desenhados (classe 09): ${count}`);
@@ -1612,12 +1607,11 @@
         instancedMesh.userData.espacos = [...tempDocks];
         instancedMesh.userData.tipoD = tempDocks[0]?.Spazio_tipoD || "unknown";
 
-
         tempDockGroup.add(instancedMesh);
         outlineGroup.children.forEach((child) => {
           tempDockGroup.add(child);
         });
-                scene.add(tempDockGroup);
+        scene.add(tempDockGroup);
         classeCaisTemporarioMeshes.push(instancedMesh);
 
         console.log(`Cais Temporários desenhados (classe 10): ${count}`);
@@ -1630,7 +1624,7 @@
         const dummy = new THREE.Object3D();
         const outlineGroup = new THREE.Group();
         const count = racks.length;
- 
+
         const material = new THREE.MeshBasicMaterial({
           color: 0x000000,
           transparent: true,
@@ -1839,7 +1833,6 @@
         scene.add(employeeModel);
       }
 
-      
       function addLabelForSingleComponent(component, type = "", name = "") {
         if (!component || !component.Spazio) return;
 
@@ -1880,7 +1873,6 @@
         scene.add(dummy);
       }
 
-     
       function mirrorDataXCoordinates(data) {
         const centerX = getLayoutCenterX(data);
 
@@ -2101,8 +2093,8 @@
         //   classeTempDocks,
         //   classeDist
         // );
-        addFlatLabelsToWarehouse();
-        applyInitialLabelVisibilityFromMenu();
+        // addFlatLabelsToWarehouse();
+        // applyInitialLabelVisibilityFromMenu();
 
         EspacosAll = [
           ...classeDivEspacos,
@@ -2215,232 +2207,329 @@
           });
         });
 
-
         const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
         return {
-   listas
+          listas,
+        };
       }
-    }
 
       const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
- 
-function encontrarObjetos3D(tipo, grupos) {
-  const objetos = [];
-  
-  grupos.forEach(group => {
-    group.children.forEach(child => {
-      const tipoChild = (child.userData?.tipo || child.userData?.tipoD || "").trim();
-      if (tipoChild === tipo) objetos.push(child);
-    });
-  });
-  return objetos;
-}
 
- function agruparEspacosEmNiveis(espacos) {
-  const restantes = [...espacos].sort((a, b) => a.base - b.base || a.topo - b.topo);
-  const niveis = [];
+      function encontrarObjetos3D(tipo, grupos) {
+        const objetos = [];
 
-  while (restantes.length > 0) {
-    // Encontra o menor base possível
-    const baseMin = restantes[0].base;
-
-    // Encontra todos os com base == baseMin
-    const nivelAtual = restantes.filter(e => e.base === baseMin);
-
-    // Remove esses do conjunto
-    for (const e of nivelAtual) {
-      const idx = restantes.indexOf(e);
-      if (idx !== -1) restantes.splice(idx, 1);
-    }
-
-    // Agora adiciona todos os espaços cuja base seja maior que baseMin e menor que topoMax
-    const topoMax = Math.max(...nivelAtual.map(e => e.topo));
-    const entreBaseETopo = restantes.filter(e => e.base > baseMin && e.base < topoMax);
-
-    for (const e of entreBaseETopo) {
-      nivelAtual.push(e);
-    }
-
-    // Remove esses também
-    for (const e of entreBaseETopo) {
-      const idx = restantes.indexOf(e);
-      if (idx !== -1) restantes.splice(idx, 1);
-    }
-
-    niveis.push(nivelAtual);
-  }
-
-  return niveis;
-} 
-function createSelectsLevels() {
-  const container = document.getElementById("buffer-level-container");
-  if (!container) return;
-  container.innerHTML = "";
-
-  if (!Array.isArray(EspacosAll) || EspacosAll.length === 0) {
-    console.warn("EspacosAll está vazio ou não é um array.");
-    return;
-  }
-
-  const tiposMap = new Map();
-
-  EspacosAll.forEach(espaco => {
-    const tipo = (espaco.Spazio_tipo || "Desconhecido").trim();
-    const nome = (espaco.Spazio_tipoD || tipo).trim();
-
-    if (!tiposMap.has(tipo)) {
-      tiposMap.set(tipo, { nome, objetos: [] });
-    }
-    tiposMap.get(tipo).objetos.push(espaco);
-  });
-
-  const grupos = [
-    rackGroup, corridorGroup, bufferGroup, spaceGroup, dockGroup,
-    stackGroup, driveInGroup, anomalousGroup, distribGroup,
-    transitionGroup, tempDockGroup
-  ];
-
-  tiposMap.forEach(({ nome, objetos }, tipo) => {
-    const espacosData = objetos.map(obj => {
-      const base = parseFloat(obj.Spazio_coord_draw_b || 0);
-      const altura = parseFloat(obj.Spazio_coord_alto || 0);
-      const topo = base + altura;
-      return { base, topo, altura, tipo: obj.Spazio_tipo };
-    });
-
-const niveisBrutos = agruparEspacosEmNiveis(espacosData);
-let niveis = corrigirNiveisEspacos(niveisBrutos);
-
-    const todosObjetos = encontrarObjetos3D(tipo, grupos);
-
-    if (tipo === "05" && todosObjetos.length === 0) {
-      console.warn("❌ Nenhum objeto 3D encontrado com tipo 05 em nenhum grupo.");
-    }
-
-    const niveisObjetos = niveis.map(nivel =>
-      nivel.map(item =>
-        todosObjetos.find(obj => obj.userData?.tipo == item.tipo)
-      ).filter(Boolean)
-    );
-
-    const totalMeshes = niveisObjetos.reduce((acc, arr) => acc + arr.length, 0);
-    if (totalMeshes === 0) {
-      console.warn(`⚠️ Tipo ${tipo} sem objetos 3D válidos — não será exibido`);
-      return;
-    }
-
-    bufferLevelsByTipo.set(tipo, niveisObjetos);
-
-    // Criar UI (label + select)
-    const row = document.createElement("div");
-    row.style.display = "flex";
-    row.style.alignItems = "center";
-    row.style.gap = "8px";
-    row.style.marginBottom = "6px";
-
-    const label = document.createElement("label");
-    label.textContent = nome;
-    label.style.minWidth = "120px";
-
-    const select = document.createElement("select");
-    select.className = "buffer-select";
-    select.dataset.tipo = tipo;
-
-    const maxNivel = niveisObjetos.length;
-    for (let i = 1; i <= maxNivel; i++) {
-      const option = document.createElement("option");
-      option.value = i;
-      option.textContent = i;
-      if (i === maxNivel) option.selected = true;
-      select.appendChild(option);
-    }
-
-    select.addEventListener("change", (e) => {
-      const tipoSelecionado = e.target.dataset.tipo;
-      const nivel = parseInt(e.target.value);
-      updateBufferLevelsPorTipo(tipoSelecionado, nivel);
-    });
-
-    row.appendChild(label);
-    row.appendChild(select);
-    container.appendChild(row);
-
-    console.log(`✅ Criado seletor para tipo '${tipo}' (${nome}) com ${maxNivel} níveis`);
-  });
-}
- 
- function corrigirNiveisEspacos(niveis) {
-  let mudou;
-
-  do {
-    mudou = false;
-
-    for (let i = 1; i < niveis.length; i++) {
-      const nivelAnterior = niveis[i - 1];
-      const nivelAtual = niveis[i];
-
-      const topoAnterior = Math.max(...nivelAnterior.map(e => e.topo));
-
-      // Separar elementos válidos e inválidos
-      const invalidos = nivelAtual.filter(e => e.base < topoAnterior);
-
-      if (invalidos.length > 0) {
-        // Remover do nível atual e colocar no anterior
-        niveis[i] = nivelAtual.filter(e => e.base >= topoAnterior);
-        niveis[i - 1].push(...invalidos);
-        mudou = true;
-        break; // reinicia o processo após qualquer alteração
-      }
-    }
-  } while (mudou);
-
-  return niveis;
-}
-
-
-function updateBufferLevelsPorTipo(tipo, nivelMax) {
-  const niveis = bufferLevelsByTipo.get(tipo);
-  if (!niveis) return;
-
-  const dummy = new THREE.Object3D();
-
-  niveis.forEach((nivel, i) => {
-    const mostrar = i < nivelMax;
-
-    nivel.forEach((obj, index) => {
-      if (!obj || !obj instanceof THREE.InstancedMesh) return;
-
-      const mesh = obj;
-      const meshIndex = mesh.instanceId !== undefined ? mesh.instanceId : index;
-
-      // Pegamos a escala original, caso tenha sido salva antes
-      const original = bufferOriginalScales[meshIndex] || { x: 1, y: 1, z: 1 };
-
-      // Obtemos a matriz atual da instância
-      mesh.getMatrixAt(meshIndex, dummy.matrix);
-      dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
-
-      if (mostrar) {
-        // Restaura a escala original
-        dummy.scale.set(original.x, original.y, original.z);
-      } else {
-        // Reduz a escala para "esconder"
-        dummy.scale.set(0.001, 0.001, 0.001);
+        grupos.forEach((group) => {
+          group.children.forEach((child) => {
+            const tipoChild = (
+              child.userData?.tipo ||
+              child.userData?.tipoD ||
+              ""
+            ).trim();
+            if (tipoChild === tipo) objetos.push(child);
+          });
+        });
+        return objetos;
       }
 
-      dummy.updateMatrix();
-      mesh.setMatrixAt(meshIndex, dummy.matrix);
-    });
+      function agruparEspacosEmNiveis(espacos) {
+        const restantes = [...espacos].sort(
+          (a, b) => a.base - b.base || a.topo - b.topo
+        );
+        const niveis = [];
 
-    // Após alterar as matrizes, marque-as para atualização
-    if (nivel[0] && nivel[0].instanceMatrix) {
-      nivel[0].instanceMatrix.needsUpdate = true;
-    }
-  });
-}
+        while (restantes.length > 0) {
+          // Encontra o menor base possível
+          const baseMin = restantes[0].base;
 
+          // Encontra todos os com base == baseMin
+          const nivelAtual = restantes.filter((e) => e.base === baseMin);
 
-function processDivSpacesClass(componentes) {
+          // Remove esses do conjunto
+          for (const e of nivelAtual) {
+            const idx = restantes.indexOf(e);
+            if (idx !== -1) restantes.splice(idx, 1);
+          }
+
+          // Agora adiciona todos os espaços cuja base seja maior que baseMin e menor que topoMax
+          const topoMax = Math.max(...nivelAtual.map((e) => e.topo));
+          const entreBaseETopo = restantes.filter(
+            (e) => e.base > baseMin && e.base < topoMax
+          );
+
+          for (const e of entreBaseETopo) {
+            nivelAtual.push(e);
+          }
+
+          // Remove esses também
+          for (const e of entreBaseETopo) {
+            const idx = restantes.indexOf(e);
+            if (idx !== -1) restantes.splice(idx, 1);
+          }
+
+          niveis.push(nivelAtual);
+        }
+
+        return niveis;
+      }
+
+      function createSelectsLevels() {
+        if (!Array.isArray(EspacosAll) || EspacosAll.length === 0) {
+          console.warn("EspacosAll está vazio ou não é um array.");
+          return;
+        }
+
+        const tiposMap = new Map();
+
+        EspacosAll.forEach((espaco) => {
+          const tipo = (espaco.Spazio_tipo || "Desconhecido").trim();
+          const nome = (espaco.Spazio_tipoD || tipo).trim();
+
+          if (!tiposMap.has(tipo)) {
+            tiposMap.set(tipo, { nome, objetos: [] });
+          }
+          tiposMap.get(tipo).objetos.push(espaco);
+        });
+
+        const grupos = [
+          rackGroup,
+          corridorGroup,
+          bufferGroup,
+          spaceGroup,
+          dockGroup,
+          stackGroup,
+          driveInGroup,
+          anomalousGroup,
+          distribGroup,
+          transitionGroup,
+          tempDockGroup,
+        ];
+
+        tiposMap.forEach(({ nome, objetos }, tipo) => {
+          const espacosData = objetos.map((obj) => {
+            const base = parseFloat(obj.Spazio_coord_draw_b || 0);
+            const altura = parseFloat(obj.Spazio_coord_alto || 0);
+            const topo = base + altura;
+            return { base, topo, altura, tipo: obj.Spazio_tipo };
+          });
+
+          const espacosValidos = espacosData.filter((e) => e.altura > 0);
+          const niveisBrutos = agruparEspacosEmNiveis(espacosValidos);
+          const niveis = corrigirNiveisEspacos(niveisBrutos);
+
+          const todosObjetos = encontrarObjetos3D(tipo, grupos);
+
+          if (tipo === "05" && todosObjetos.length === 0) {
+            console.warn(
+              "❌ Nenhum objeto 3D encontrado com tipo 05 em nenhum grupo."
+            );
+          }
+
+          const niveisObjetos = niveis.map((nivel) =>
+            nivel
+              .map((item) =>
+                todosObjetos.find((obj) => obj.userData?.tipo == item.tipo)
+              )
+              .filter(Boolean)
+          );
+
+          const totalMeshes = niveisObjetos.reduce(
+            (acc, arr) => acc + arr.length,
+            0
+          );
+          if (totalMeshes === 0) {
+            console.warn(
+              `⚠️ Tipo ${tipo} sem objetos 3D válidos — não será exibido`
+            );
+            return;
+          }
+
+          bufferLevelsByTipo.set(tipo, niveisObjetos);
+
+          console.log(
+            `✅ Criado seletor para tipo '${tipo}' (${nome}) com ${niveisObjetos.length} níveis`
+          );
+        });
+      }
+
+      function gerarSelectsBufferPorTipo(...listas) {
+        const tiposMap = new Map(); // tipo => { label, espacos }
+
+        // Agrupar tipos com rótulo e objetos
+        listas.flat().forEach((item) => {
+          const tipo = (item.Spazio_tipo || "Desconhecido").trim();
+          const nome = (item.Spazio_tipoD || tipo).trim();
+          if (!tiposMap.has(tipo)) {
+            tiposMap.set(tipo, { nome, objetos: [] });
+          }
+          tiposMap.get(tipo).objetos.push(item);
+        });
+
+        const grupos = [
+          rackGroup,
+          corridorGroup,
+          bufferGroup,
+          spaceGroup,
+          dockGroup,
+          stackGroup,
+          driveInGroup,
+          anomalousGroup,
+          distribGroup,
+          transitionGroup,
+          tempDockGroup,
+        ];
+
+        tiposMap.forEach(({ nome, objetos }, tipo) => {
+          const espacosData = objetos.map((obj) => {
+            const base = parseFloat(obj.Spazio_coord_draw_b || 0);
+            const altura = parseFloat(obj.Spazio_coord_alto || 0);
+            const topo = base + altura;
+            return { base, topo, altura, tipo: obj.Spazio_tipo };
+          });
+
+          const niveisBrutos = agruparEspacosEmNiveis(espacosData);
+          const niveis = corrigirNiveisEspacos(niveisBrutos);
+
+          const todosObjetos = encontrarObjetos3D(tipo, grupos);
+          const niveisObjetos = niveis.map((nivel) =>
+            nivel
+              .map((item) =>
+                todosObjetos.find((obj) => obj.userData?.tipo == item.tipo)
+              )
+              .filter(Boolean)
+          );
+
+          bufferLevelsByTipo.set(tipo, niveisObjetos);
+
+          // Procurar <details> correspondente no DOM
+          const allSections = document.querySelectorAll(
+            "#espacos-content > details"
+          );
+          const section = [...allSections].find(
+            (s) => s.querySelector("summary span span")?.textContent === nome
+          );
+          if (!section) return;
+
+          // Criar <div> para os controles
+          const container = document.createElement("div");
+          container.style.display = "flex";
+          container.style.alignItems = "center";
+          container.style.gap = "6px";
+          container.style.margin = "4px 0";
+
+          // <label>
+          const label = document.createElement("label");
+          label.textContent = "Níveis";
+          label.style.minWidth = "60px";
+
+          // <select>
+          const select = document.createElement("select");
+          select.className = "buffer-select";
+          select.dataset.tipo = tipo;
+
+          const maxNivel = niveisObjetos.length;
+          for (let i = 1; i <= maxNivel; i++) {
+            const option = document.createElement("option");
+            option.value = i;
+            option.textContent = i;
+            if (i === maxNivel) option.selected = true;
+            select.appendChild(option);
+          }
+
+          select.addEventListener("change", (e) => {
+            const tipoSelecionado = e.target.dataset.tipo;
+            const nivel = parseInt(e.target.value);
+            updateBufferLevelsPorTipo(tipoSelecionado, nivel);
+          });
+
+          container.appendChild(label);
+          container.appendChild(select);
+
+          // Adicionar dentro da <section>
+          section.appendChild(container);
+
+          console.log(`✅ Criado menu de níveis para tipo '${tipo}' (${nome})`);
+        });
+      }
+
+      function corrigirNiveisEspacos(niveis) {
+        let mudou;
+
+        do {
+          mudou = false;
+
+          for (let i = 1; i < niveis.length; i++) {
+            const nivelAnterior = niveis[i - 1];
+            const nivelAtual = niveis[i];
+
+            const topoAnterior = Math.max(...nivelAnterior.map((e) => e.topo));
+
+            // Separar elementos válidos e inválidos
+            const invalidos = nivelAtual.filter((e) => e.base < topoAnterior);
+
+            if (invalidos.length > 0) {
+              // Remover do nível atual e colocar no anterior
+              niveis[i] = nivelAtual.filter((e) => e.base >= topoAnterior);
+              niveis[i - 1].push(...invalidos);
+              mudou = true;
+              break; // reinicia o processo após qualquer alteração
+            }
+          }
+        } while (mudou);
+
+        return niveis;
+      }
+
+      function updateBufferLevelsPorTipo(tipo, nivelMax) {
+        const niveis = bufferLevelsByTipo.get(tipo);
+        if (!niveis) return;
+
+        const dummy = new THREE.Object3D();
+
+        niveis.forEach((nivel, i) => {
+          const mostrar = i < nivelMax;
+
+          nivel.forEach((obj, index) => {
+            if (!obj || !obj instanceof THREE.InstancedMesh) return;
+
+            const mesh = obj;
+            const meshIndex =
+              mesh.instanceId !== undefined ? mesh.instanceId : index;
+
+            // Pegamos a escala original, caso tenha sido salva antes
+            const original = bufferOriginalScales[meshIndex] || {
+              x: 1,
+              y: 1,
+              z: 1,
+            };
+
+            // Obtemos a matriz atual da instância
+            mesh.getMatrixAt(meshIndex, dummy.matrix);
+            dummy.matrix.decompose(
+              dummy.position,
+              dummy.quaternion,
+              dummy.scale
+            );
+
+            if (mostrar) {
+              // Restaura a escala original
+              dummy.scale.set(original.x, original.y, original.z);
+            } else {
+              // Reduz a escala para "esconder"
+              dummy.scale.set(0.001, 0.001, 0.001);
+            }
+
+            dummy.updateMatrix();
+            mesh.setMatrixAt(meshIndex, dummy.matrix);
+          });
+
+          // Após alterar as matrizes, marque-as para atualização
+          if (nivel[0] && nivel[0].instanceMatrix) {
+            nivel[0].instanceMatrix.needsUpdate = true;
+          }
+        });
+      }
+
+      function processDivSpacesClass(componentes) {
         const tiposMap = {};
 
         // Agrupar por tipo de espaço
@@ -2472,119 +2561,123 @@ function processDivSpacesClass(componentes) {
       }
 
       //Nova função realizada por GM para representar os espaços
-async function createCorridorsFromJSON(corridors) {
-  const corridorOpacity = 0.95;
-  const shrinkFactor = 1.0;
-  const defaultColor = new THREE.Color("#3399ff");
-  const baseGeometry = new THREE.PlaneGeometry(1, 1);
-  const dummy = new THREE.Object3D();
+      async function createCorridorsFromJSON(corridors) {
+        const corridorOpacity = 0.95;
+        const shrinkFactor = 1.0;
+        const defaultColor = new THREE.Color("#3399ff");
+        const baseGeometry = new THREE.PlaneGeometry(1, 1);
+        const dummy = new THREE.Object3D();
 
-  const outlineGeometry = new THREE.EdgesGeometry(baseGeometry);
-  const outlineMaterial = new THREE.LineBasicMaterial({
-    color: 0x000000,
-    transparent: true,
-    opacity: 0.6,
-  });
-
-  const corredoresPorTipo = new Map();
-  corridors.forEach((item) => {
-    const tipo = (item.Spazio_tipo || "Desconhecido").trim();
-    if (!corredoresPorTipo.has(tipo)) {
-      corredoresPorTipo.set(tipo, []);
-    }
-    corredoresPorTipo.get(tipo).push(item);
-  });
-
-  corredoresPorTipo.forEach((corrs, tipo) => {
-    const count = corrs.length;
-    const material = new THREE.MeshBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      opacity: corridorOpacity,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
-    });
-
-    const instancedMesh = new THREE.InstancedMesh(baseGeometry, material, count);
-    instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    instancedMesh.userData.tipo = tipo;
-
-    const colorArray = new Float32Array(count * 3);
-    const color = new THREE.Color();
-    const outlineGroup = new THREE.Group();
-
-    corrs.forEach((corridor, index) => {
-      const x = parseFloat(corridor.Spazio_coord_draw_a || 0) / 100;
-      const z = parseFloat(corridor.Spazio_coord_draw_c || 0) / 100;
-
-      let width = parseFloat(corridor.Spazio_coord_largo || 100) / 100;
-      let depth = parseFloat(corridor.Spazio_coord_fondo || 100) / 100;
-
-      const orientation = String(corridor.Spazio_orientamento || "").trim();
-      if (orientation === "1") [width, depth] = [depth, width];
-
-      const scaleX = width * shrinkFactor;
-      const scaleZ = depth * shrinkFactor;
-      const y = 0.01 + index * 0.0001;
-
-      dummy.position.set(x + width / 2, y, z + depth / 2);
-      dummy.rotation.x = -Math.PI / 2;
-      dummy.scale.set(scaleX, scaleZ, 1);
-      dummy.updateMatrix();
-      instancedMesh.setMatrixAt(index, dummy.matrix);
-
-      instancedMesh.userData.tipo = corridor.Spazio_tipo;
-      instancedMesh.userData.tipoD = corridor.Spazio_tipoD;
-      instancedMesh.userData.spazio_disp = corridor.Spazio_disponibile;
-
-          // Cor por instância
-          try {
-            color.set((corridor.ColoreD || "#3399ff").toLowerCase());
-          } catch {
-            color.copy(defaultColor);
-          }
-          color.toArray(colorArray, index * 3);
-
-          // Contorno
-          const outline = new THREE.LineSegments(
-            outlineGeometry.clone(),
-            outlineMaterial.clone()
-          );
-          outline.applyMatrix4(dummy.matrix);
-          outline.visible = true; // pode ser false se quiser só mostrar onHover
-          outline.userData.tipo = corridor.Spazio_tipo;
-
-          outlineGroup.add(outline);
-          outlinesArray.push({
-            outline,
-            position: dummy.position.clone(),
-          });
-          classeDivEspacosMeshes.push(outline);
+        const outlineGeometry = new THREE.EdgesGeometry(baseGeometry);
+        const outlineMaterial = new THREE.LineBasicMaterial({
+          color: 0x000000,
+          transparent: true,
+          opacity: 0.6,
         });
 
-        instancedMesh.geometry.setAttribute(
-          "color",
-          new THREE.InstancedBufferAttribute(colorArray, 3)
-        );
-        instancedMesh.instanceMatrix.needsUpdate = true;
+        const corredoresPorTipo = new Map();
+        corridors.forEach((item) => {
+          const tipo = (item.Spazio_tipo || "Desconhecido").trim();
+          if (!corredoresPorTipo.has(tipo)) {
+            corredoresPorTipo.set(tipo, []);
+          }
+          corredoresPorTipo.get(tipo).push(item);
+        });
 
+        corredoresPorTipo.forEach((corrs, tipo) => {
+          const count = corrs.length;
+          const material = new THREE.MeshBasicMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: corridorOpacity,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1,
+          });
 
-        instancedMesh.userData.espacos = [...corridors];
-        instancedMesh.userData.tipoD = corridors[0]?.Spazio_tipoD || "unknown";
+          const instancedMesh = new THREE.InstancedMesh(
+            baseGeometry,
+            material,
+            count
+          );
+          instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+          instancedMesh.userData.tipo = tipo;
 
-        corridorGroup.add(instancedMesh);
-        corridorGroup.add(outlineGroup);
+          const colorArray = new Float32Array(count * 3);
+          const color = new THREE.Color();
+          const outlineGroup = new THREE.Group();
 
-        classeDivEspacosMeshes.push(instancedMesh);
+          corrs.forEach((corridor, index) => {
+            const x = parseFloat(corridor.Spazio_coord_draw_a || 0) / 100;
+            const z = parseFloat(corridor.Spazio_coord_draw_c || 0) / 100;
 
-        console.log(`Corredores desenhados (instanced): ${count}`);
-      }); 
-    }
-    
- 
+            let width = parseFloat(corridor.Spazio_coord_largo || 100) / 100;
+            let depth = parseFloat(corridor.Spazio_coord_fondo || 100) / 100;
+
+            const orientation = String(
+              corridor.Spazio_orientamento || ""
+            ).trim();
+            if (orientation === "1") [width, depth] = [depth, width];
+
+            const scaleX = width * shrinkFactor;
+            const scaleZ = depth * shrinkFactor;
+            const y = 0.01 + index * 0.0001;
+
+            dummy.position.set(x + width / 2, y, z + depth / 2);
+            dummy.rotation.x = -Math.PI / 2;
+            dummy.scale.set(scaleX, scaleZ, 1);
+            dummy.updateMatrix();
+            instancedMesh.setMatrixAt(index, dummy.matrix);
+
+            instancedMesh.userData.tipo = corridor.Spazio_tipo;
+            instancedMesh.userData.tipoD = corridor.Spazio_tipoD;
+            instancedMesh.userData.spazio_disp = corridor.Spazio_disponibile;
+
+            // Cor por instância
+            try {
+              color.set((corridor.ColoreD || "#3399ff").toLowerCase());
+            } catch {
+              color.copy(defaultColor);
+            }
+            color.toArray(colorArray, index * 3);
+
+            // Contorno
+            const outline = new THREE.LineSegments(
+              outlineGeometry.clone(),
+              outlineMaterial.clone()
+            );
+            outline.applyMatrix4(dummy.matrix);
+            outline.visible = true; // pode ser false se quiser só mostrar onHover
+            outline.userData.tipo = corridor.Spazio_tipo;
+
+            outlineGroup.add(outline);
+            outlinesArray.push({
+              outline,
+              position: dummy.position.clone(),
+            });
+            classeDivEspacosMeshes.push(outline);
+          });
+
+          instancedMesh.geometry.setAttribute(
+            "color",
+            new THREE.InstancedBufferAttribute(colorArray, 3)
+          );
+          instancedMesh.instanceMatrix.needsUpdate = true;
+
+          instancedMesh.userData.espacos = [...corridors];
+          instancedMesh.userData.tipoD =
+            corridors[0]?.Spazio_tipoD || "unknown";
+
+          corridorGroup.add(instancedMesh);
+          corridorGroup.add(outlineGroup);
+
+          classeDivEspacosMeshes.push(instancedMesh);
+
+          console.log(`Corredores desenhados (instanced): ${count}`);
+        });
+      }
 
       function applyInitialLabelVisibilityFromMenu() {
         document.querySelectorAll(".label-toggle").forEach((checkbox) => {
@@ -2601,129 +2694,136 @@ async function createCorridorsFromJSON(corridors) {
 
       //NEW FUNCTIONS FOR DYNAMIC SIDE BAR ---------------------------------------------------------------------------
       async function toggleLayoutVisibility(spazioTipoDLabel, isVisible) {
-  const allGroups = {
-    "01": spaceGroup,
-    "02": bufferGroup,
-    "03": dockGroup,
-    "04": [corridorGroup, rackGroup],
-    "05": anomalousGroup,
-    "06": distribGroup,
-    "08": transitionGroup,
-    "09": stackGroup,
-    "10": tempDockGroup,
-  };
+        const allGroups = {
+          "01": spaceGroup,
+          "02": bufferGroup,
+          "03": dockGroup,
+          "04": [corridorGroup, rackGroup],
+          "05": anomalousGroup,
+          "06": distribGroup,
+          "08": transitionGroup,
+          "09": stackGroup,
+          "10": tempDockGroup,
+        };
 
-  const filteredItems = EspacosPorTipoD[spazioTipoDLabel];
-  if (!filteredItems || filteredItems.length === 0) {
-    console.warn("Nenhum item com Spazio_tipoD =", spazioTipoDLabel);
-    return;
-  }
+        const filteredItems = EspacosPorTipoD[spazioTipoDLabel];
+        if (!filteredItems || filteredItems.length === 0) {
+          console.warn("Nenhum item com Spazio_tipoD =", spazioTipoDLabel);
+          return;
+        }
 
-  const targetClasses = [...new Set(filteredItems.map((i) => i.Spazio_classe))];
+        const targetClasses = [
+          ...new Set(filteredItems.map((i) => i.Spazio_classe)),
+        ];
 
-  for (const targetClass of targetClasses) {
-    const itemsDaClasse = filteredItems.filter(
-      (i) => i.Spazio_classe === targetClass
-    );
+        for (const targetClass of targetClasses) {
+          const itemsDaClasse = filteredItems.filter(
+            (i) => i.Spazio_classe === targetClass
+          );
 
-    const targetGroups = Array.isArray(allGroups[targetClass])
-      ? allGroups[targetClass]
-      : [allGroups[targetClass]];
+          const targetGroups = Array.isArray(allGroups[targetClass])
+            ? allGroups[targetClass]
+            : [allGroups[targetClass]];
 
-    // Só desenha se ainda não estiver desenhado este tipo específico
-    const alreadyDrawn = targetGroups.some((g) =>
-      g.children.some((c) => c.userData?.tipoD === spazioTipoDLabel)
-    );
+          // Só desenha se ainda não estiver desenhado este tipo específico
+          const alreadyDrawn = targetGroups.some((g) =>
+            g.children.some((c) => c.userData?.tipoD === spazioTipoDLabel)
+          );
 
-    if (isVisible && !alreadyDrawn) {
-      switch (targetClass) {
-        case "01":
-          await createSpacesFromJSON(itemsDaClasse);
-          break;
-        case "02":
-          await createWarehouseSpacesFromJSON(itemsDaClasse);
-          break;
-        case "03":
-          await createDockFromJSON(itemsDaClasse);
-          break;
-        case "04":
-          await processDivSpacesClass(itemsDaClasse);
-          break;
-        case "05":
-          await createAnomalousZonesFromJSON(itemsDaClasse);
-          break;
-        case "06":
-          await createDistributionFromJSON(itemsDaClasse);
-          break;
-        case "08":
-          await createTransitionZonesFromJSON(itemsDaClasse);
-          break;
-        case "09":
-          await createStacksFromJSON(itemsDaClasse);
-          break;
-        case "10":
-          await createTemporaryDockFromJSON(itemsDaClasse);
-          break;
-      }
-    }
-
-    // Atualiza visibilidade (escala) das instâncias desenhadas
-    const dummy = new THREE.Object3D();
-
-    targetGroups.forEach((group) => {
-      if (!group) return;
-
-      group.children.forEach((child) => {
-        if (child.isInstancedMesh && Array.isArray(child.userData?.espacos)) {
-          const espacos = child.userData.espacos;
-
-          for (let i = 0; i < espacos.length; i++) {
-            const item = espacos[i];
-            if (
-              item.Spazio_classe === targetClass &&
-              item.Spazio_tipoD === spazioTipoDLabel
-            ) {
-              child.getMatrixAt(i, dummy.matrix);
-              dummy.matrix.decompose(
-                dummy.position,
-                dummy.quaternion,
-                dummy.scale
-              );
-
-              const original = originalScalesByClasse[targetClass]?.[i];
-              const scale = isVisible
-                ? original || dummy.scale
-                : { x: 0.0001, y: 0.0001, z: 0.0001 };
-
-              dummy.scale.set(scale.x, scale.y, scale.z);
-              dummy.updateMatrix();
-              child.setMatrixAt(i, dummy.matrix);
+          if (isVisible && !alreadyDrawn) {
+            switch (targetClass) {
+              case "01":
+                await createSpacesFromJSON(itemsDaClasse);
+                break;
+              case "02":
+                await createWarehouseSpacesFromJSON(itemsDaClasse);
+                break;
+              case "03":
+                await createDockFromJSON(itemsDaClasse);
+                break;
+              case "04":
+                await processDivSpacesClass(itemsDaClasse);
+                break;
+              case "05":
+                await createAnomalousZonesFromJSON(itemsDaClasse);
+                break;
+              case "06":
+                await createDistributionFromJSON(itemsDaClasse);
+                break;
+              case "08":
+                await createTransitionZonesFromJSON(itemsDaClasse);
+                break;
+              case "09":
+                await createStacksFromJSON(itemsDaClasse);
+                break;
+              case "10":
+                await createTemporaryDockFromJSON(itemsDaClasse);
+                break;
             }
           }
 
-          child.instanceMatrix.needsUpdate = true;
-        } else if (child.isLineSegments && child.userData?.tipoD === spazioTipoDLabel) {
-          child.visible = isVisible;
+          // Atualiza visibilidade (escala) das instâncias desenhadas
+          const dummy = new THREE.Object3D();
+
+          targetGroups.forEach((group) => {
+            if (!group) return;
+
+            group.children.forEach((child) => {
+              if (
+                child.isInstancedMesh &&
+                Array.isArray(child.userData?.espacos)
+              ) {
+                const espacos = child.userData.espacos;
+
+                for (let i = 0; i < espacos.length; i++) {
+                  const item = espacos[i];
+                  if (
+                    item.Spazio_classe === targetClass &&
+                    item.Spazio_tipoD === spazioTipoDLabel
+                  ) {
+                    child.getMatrixAt(i, dummy.matrix);
+                    dummy.matrix.decompose(
+                      dummy.position,
+                      dummy.quaternion,
+                      dummy.scale
+                    );
+
+                    const original = originalScalesByClasse[targetClass]?.[i];
+                    const scale = isVisible
+                      ? original || dummy.scale
+                      : { x: 0.0001, y: 0.0001, z: 0.0001 };
+
+                    dummy.scale.set(scale.x, scale.y, scale.z);
+                    dummy.updateMatrix();
+                    child.setMatrixAt(i, dummy.matrix);
+                  }
+                }
+
+                child.instanceMatrix.needsUpdate = true;
+              } else if (
+                child.isLineSegments &&
+                child.userData?.tipoD === spazioTipoDLabel
+              ) {
+                child.visible = isVisible;
+              }
+            });
+          });
+
+          // Atualiza contornos (outlines)
+          outlinesArray.forEach(({ outline }) => {
+            if (outline.userData?.tipoD === spazioTipoDLabel) {
+              outline.visible = isVisible;
+              outline.userData.hiddenByLayout = !isVisible;
+            }
+          });
+
+          console.log(
+            `✔ Layout "${spazioTipoDLabel}" (classe ${targetClass}) → ${
+              isVisible ? "ON" : "OFF"
+            }`
+          );
         }
-      });
-    });
-
-    // Atualiza contornos (outlines)
-    outlinesArray.forEach(({ outline }) => {
-      if (outline.userData?.tipoD === spazioTipoDLabel) {
-        outline.visible = isVisible;
-        outline.userData.hiddenByLayout = !isVisible;
       }
-    });
-
-    console.log(
-      `✔ Layout "${spazioTipoDLabel}" (classe ${targetClass}) → ${
-        isVisible ? "ON" : "OFF"
-      }`
-    );
-  }
-}
-
 
       function toggleActiveSpaces(tipoD, isChecked, data) {
         const allGroups = {
@@ -3005,7 +3105,6 @@ async function createCorridorsFromJSON(corridors) {
           </summary>
           <ul>
             <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}"  /> Layout</label></li>
-            <li class="btn-levels" data-tipo="${tipo}"></li>
 
 
             <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}"  /> Check Availability </label></li>
@@ -3018,8 +3117,8 @@ async function createCorridorsFromJSON(corridors) {
 
             applyInitialLabelVisibilityFromMenu();
 
-             
             gerarMenuToggleLabels(...EspacosAll);
+            gerarSelectsBufferPorTipo(...EspacosAll);
 
             // EVENT LISTENERS ---------------------------------------------------------------------------
 
