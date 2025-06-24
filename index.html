@@ -717,15 +717,35 @@ worldOctree.fromGraphNode(baseFloor);
           );
         }
 
-        outlinesArray.forEach(({ outline, position }) => {
-          const dist = activeCamera.position.distanceTo(position);
+// Definido fora da função animate (no escopo global, uma vez só):
+const frustum = new THREE.Frustum();
+const cameraViewProjectionMatrix = new THREE.Matrix4();
 
-          const isHiddenByLayout = outline.userData.hiddenByLayout;
-          const isHiddenByHeight2D = outline.userData.hiddenByHeight2D;
+// Dentro da função animate, substitui a parte antiga por:
+activeCamera.updateMatrixWorld(); // garantir matriz atualizada
+cameraViewProjectionMatrix.multiplyMatrices(
+  activeCamera.projectionMatrix,
+  activeCamera.matrixWorldInverse
+);
+frustum.setFromProjectionMatrix(cameraViewProjectionMatrix);
 
-          outline.visible =
-            !isHiddenByLayout && !isHiddenByHeight2D && dist < 300;
-        });
+for (let i = 0; i < outlinesArray.length; i++) {
+  const { outline, position } = outlinesArray[i];
+
+  const isHiddenByLayout = outline.userData.hiddenByLayout;
+  const isHiddenByHeight2D = outline.userData.hiddenByHeight2D;
+  const dist = activeCamera.position.distanceTo(position);
+  const isVisibleInFrustum = frustum.containsPoint(position);
+  const isNearEnough = dist < 200;
+
+  outline.visible =
+    !isHiddenByLayout &&
+    !isHiddenByHeight2D &&
+    isVisibleInFrustum &&
+    isNearEnough;
+}
+
+
 
         renderer.render(scene, activeCamera);
         labelRenderer.render(scene, activeCamera);
@@ -1154,121 +1174,117 @@ worldOctree.fromGraphNode(baseFloor);
       //-------------------------------------------------------------------------------------------------------------------------------------
       // Spazio_classe === "06" ZONAS DE DISTRIBUIÇAO
 
-      async function createDistributionFromJSON(distribuicoes) {
-        const shrinkFactor = 1;
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const dummy = new THREE.Object3D();
-        distribGroup.clear();
-        const outlineGroup = new THREE.Group();
-        const defaultColor = new THREE.Color("#ffc107");
-        const count = distribuicoes.length;
-        const material = new THREE.MeshBasicMaterial({
-          color: defaultColor,
-          transparent: true,
-          opacity: 0.9,
-        });
+    async function createDistributionFromJSON(distribuicoes) {
+  const shrinkFactor = 1;
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  distribGroup.clear();
+  const defaultColor = new THREE.Color("#ffc107");
 
-        const instancedMesh = new THREE.InstancedMesh(
-          geometry,
-          material,
-          count
-        );
+  const count = distribuicoes.length;
+  const material = new THREE.MeshBasicMaterial({
+    color: defaultColor,
+    transparent: true,
+    opacity: 0.9,
+  });
 
-        const outlineGeometry = new THREE.EdgesGeometry(geometry);
-        const outlineMaterial = new THREE.LineBasicMaterial({
-          color: 0xffffff,
-          transparent: true,
-          opacity: 1,
-        });
+  const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+  const dummy = new THREE.Object3D();
 
-        const color = new THREE.Color();
-        const colorArray = new Float32Array(count * 3); // RGB por instância
+  const outlineMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+  });
 
-        distribuicoes.forEach((item, i) => {
-          const width = parseFloat(item.Spazio_coord_largo || 100) / 100;
-          const height = parseFloat(item.Spazio_coord_alto || 100) / 100;
-          const depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
+  const color = new THREE.Color();
+  const colorArray = new Float32Array(count * 3); // RGB por instância
 
-          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
-          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
-          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+ 
 
-          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          dummy.scale.set(
-            width * shrinkFactor,
-            height * shrinkFactor,
-            depth * shrinkFactor
-          );
-          dummy.updateMatrix();
+  distribuicoes.forEach((item, i) => {
+    const width = parseFloat(item.Spazio_coord_largo || 100) / 100;
+    const height = parseFloat(item.Spazio_coord_alto || 100) / 100;
+    const depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
 
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-          instancedMesh.userData.tipo = item.Spazio_tipo;
-          instancedMesh.userData.tipoD = item.Spazio_tipoD;
-          instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
-          // Cria contorno, mas invisível
-          const outline = new THREE.LineSegments(
-            outlineGeometry,
-            outlineMaterial.clone()
-          );
-          outline.applyMatrix4(dummy.matrix);
-          outline.visible = false;
-          outline.userData.tipoD = item.Spazio_tipoD;
-          outlineGroup.add(outline);
+    const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+    const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+    const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
 
-          // Guarda no array global
-          outlinesArray.push({
-            outline,
-            position: dummy.position.clone(),
-          });
+    // InstancedMesh
+    dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    dummy.scale.set(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(i, dummy.matrix);
 
-          let colorString = item.ColoreD;
+    instancedMesh.userData.tipo = item.Spazio_tipo;
+    instancedMesh.userData.tipoD = item.Spazio_tipoD;
+    instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
 
-          try {
-            if (colorString && typeof colorString === "string") {
-              colorString = colorString.toLowerCase();
-              color.set(colorString);
-            } else {
-              color.copy(defaultColor);
-              colorString = "default";
-            }
-          } catch (err) {
-            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
-            color.copy(defaultColor);
-            colorString = "default";
-          }
-
-          color.toArray(colorArray, i * 3);
-
-          //Guardar a escala para a funçao toggleVisibility
-          originalScalesByClasse["06"][i] = {
-            x: width * shrinkFactor,
-            y: height * shrinkFactor,
-            z: depth * shrinkFactor,
-          };
-        });
-        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
-          colorArray,
-          3
-        );
-
-        instancedMesh.instanceMatrix.needsUpdate = true;
-
-        instancedMesh.userData.espacos = [...distribuicoes];
-        instancedMesh.userData.tipoD =
-          distribuicoes[0]?.Spazio_tipoD || "unknown";
-
-        distribGroup.add(instancedMesh);
-        outlineGroup.children.forEach((child) => {
-          distribGroup.add(child);
-        });
-        classeEspacoDistrMeshes.push(instancedMesh);
-
-        scene.add(distribGroup);
-
-        console.log(
-          `Estações de loja desenhadas (classe 06): ${distribuicoes.length}`
-        );
+    // Cor
+    let colorString = item.ColoreD;
+    try {
+      if (colorString && typeof colorString === "string") {
+        colorString = colorString.toLowerCase();
+        color.set(colorString);
+      } else {
+        color.copy(defaultColor);
       }
+    } catch (err) {
+      console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
+      color.copy(defaultColor);
+    }
+    color.toArray(colorArray, i * 3);
+
+    // Contorno individual correto (sem dummy)
+    const boxGeo = new THREE.BoxGeometry(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+    const outline = new THREE.LineSegments(edgeGeo, outlineMaterial.clone());
+    outline.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    outline.visible = false;
+    outline.userData.tipoD = item.Spazio_tipoD;
+
+    distribGroup.add(outline); // junta diretamente ao grupo de distribuição
+
+    outlinesArray.push({
+      outline,
+      position: outline.position.clone(),
+    });
+
+    // Escala original
+    originalScalesByClasse["06"][i] = {
+      x: width * shrinkFactor,
+      y: height * shrinkFactor,
+      z: depth * shrinkFactor,
+    };
+  });
+
+  instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+    colorArray,
+    3
+  );
+  instancedMesh.instanceMatrix.needsUpdate = true;
+
+  instancedMesh.userData.espacos = [...distribuicoes];
+  instancedMesh.userData.tipoD = distribuicoes[0]?.Spazio_tipoD || "unknown";
+
+  distribGroup.add(instancedMesh);
+  classeEspacoDistrMeshes.push(instancedMesh);
+
+  scene.add(distribGroup);
+
+  console.log(
+    `Estações de loja desenhadas (classe 06): ${distribuicoes.length}`
+  );
+}
+
 
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "08" Transition Zones
@@ -1389,235 +1405,221 @@ worldOctree.fromGraphNode(baseFloor);
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "09"
       async function createStacksFromJSON(stacksArray) {
-        const shrinkFactor = 1;
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const dummy = new THREE.Object3D();
-        stackGroup.clear();
-        const outlineGroup = new THREE.Group();
-        const defaultColor = new THREE.Color("#9966ff");
-        const count = stacksArray.length;
+  const shrinkFactor = 1;
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  stackGroup.clear();
+  const defaultColor = new THREE.Color("#9966ff");
+  const count = stacksArray.length;
 
-        const material = new THREE.MeshBasicMaterial({
-          color: defaultColor,
-          transparent: true,
-          opacity: 0.9,
-          depthWrite: true,
-        });
+  const material = new THREE.MeshBasicMaterial({
+    color: defaultColor,
+    transparent: true,
+    opacity: 0.9,
+    depthWrite: true,
+  });
 
-        const instancedMesh = new THREE.InstancedMesh(
-          geometry,
-          material,
-          count
-        );
-        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+  const dummy = new THREE.Object3D();
 
-        const outlineGeometry = new THREE.EdgesGeometry(geometry);
-        const outlineMaterial = new THREE.LineBasicMaterial({
-          color: 0xffffff,
-          transparent: true,
-          opacity: 1,
-        });
+  const outlineMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+  });
 
-        const color = new THREE.Color();
-        const colorArray = new Float32Array(count * 3);
+  const color = new THREE.Color();
+  const colorArray = new Float32Array(count * 3);
 
-        stacksArray.forEach((item, i) => {
-          let width = parseFloat(item.Spazio_coord_largo || 100) / 100;
-          const height = parseFloat(item.Spazio_coord_alto || 100) / 100;
-          let depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
 
-          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
-          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
-          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+  stacksArray.forEach((item, i) => {
+    let width = parseFloat(item.Spazio_coord_largo || 100) / 100;
+    let depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
+    const height = parseFloat(item.Spazio_coord_alto || 100) / 100;
 
-          const orientation = String(item.Spazio_orientamento || "").trim();
-          if (orientation === "1") {
-            [width, depth] = [depth, width];
-          }
+    const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+    const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+    const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
 
-          dummy.position.set(x + width / 2, y + height, z + depth / 2);
-          dummy.scale.set(width, height, depth);
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-          instancedMesh.userData.tipo = item.Spazio_tipo;
-          instancedMesh.userData.tipoD = item.Spazio_tipoD;
-          instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
-          //Contorno
-          const outline = new THREE.LineSegments(
-            outlineGeometry,
-            outlineMaterial.clone()
-          );
-          outline.applyMatrix4(dummy.matrix);
-          outline.visible = false;
-          outline.userData.tipoD = item.Spazio_tipoD;
-          outlineGroup.add(outline);
+    const orientation = String(item.Spazio_orientamento || "").trim();
+    if (orientation === "1") {
+      [width, depth] = [depth, width];
+    }
 
-          outlinesArray.push({
-            outline,
-            position: dummy.position.clone(),
-          });
+    dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    dummy.scale.set(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(i, dummy.matrix);
 
-          //Get the color from JSON
+    instancedMesh.userData.tipo = item.Spazio_tipo;
+    instancedMesh.userData.tipoD = item.Spazio_tipoD;
+    instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
 
-          let colorString = item.ColoreD;
-          try {
-            if (colorString && typeof colorString === "string") {
-              color.set(colorString.toLowerCase());
-            } else {
-              color.copy(defaultColor);
-            }
-          } catch (err) {
-            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
-            color.copy(defaultColor);
-          }
-
-          color.toArray(colorArray, i * 3);
-
-          //Guardar a escala para a funçao toggleVisibility
-          originalScalesByClasse["09"][i] = {
-            x: width * shrinkFactor,
-            y: height * shrinkFactor,
-            z: depth * shrinkFactor,
-          };
-        });
-
-        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
-          colorArray,
-          3
-        );
-        instancedMesh.instanceMatrix.needsUpdate = true;
-
-        instancedMesh.userData.espacos = [...stacksArray];
-        instancedMesh.userData.tipoD =
-          stacksArray[0]?.Spazio_tipoD || "unknown";
-
-        stackGroup.add(instancedMesh);
-        outlineGroup.children.forEach((child) => {
-          stackGroup.add(child);
-        });
-        scene.add(stackGroup);
-        classePilhaMeshes.push(instancedMesh);
-
-        console.log(`Pilhas desenhados (classe 09): ${count}`);
+    // Cor
+    let colorString = item.ColoreD;
+    try {
+      if (colorString && typeof colorString === "string") {
+        color.set(colorString.toLowerCase());
+      } else {
+        color.copy(defaultColor);
       }
+    } catch (err) {
+      console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
+      color.copy(defaultColor);
+    }
+    color.toArray(colorArray, i * 3);
+
+    // Contorno individual correto
+    const boxGeo = new THREE.BoxGeometry(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+    const outline = new THREE.LineSegments(edgeGeo, outlineMaterial.clone());
+    outline.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    outline.visible = false;
+    outline.userData.tipoD = item.Spazio_tipoD;
+
+    stackGroup.add(outline);
+
+    outlinesArray.push({
+      outline,
+      position: outline.position.clone(),
+    });
+
+    // Escala original
+    originalScalesByClasse["09"][i] = {
+      x: width * shrinkFactor,
+      y: height * shrinkFactor,
+      z: depth * shrinkFactor,
+    };
+  });
+
+  instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colorArray, 3);
+  instancedMesh.instanceMatrix.needsUpdate = true;
+
+  instancedMesh.userData.espacos = [...stacksArray];
+  instancedMesh.userData.tipoD = stacksArray[0]?.Spazio_tipoD || "unknown";
+
+  stackGroup.add(instancedMesh);
+  classePilhaMeshes.push(instancedMesh);
+  scene.add(stackGroup);
+
+  console.log(`Pilhas desenhadas (classe 09): ${count}`);
+}
+
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "10" Cais Temporario ainda sem a funcionalidade da altura
 
       async function createTemporaryDockFromJSON(tempDocks) {
-        const shrinkFactor = 1;
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const dummy = new THREE.Object3D();
-        tempDockGroup.clear();
-        const outlineGroup = new THREE.Group();
-        const defaultColor = new THREE.Color("#ffb74d"); // Cor suave
-        const count = tempDocks.length;
+  const shrinkFactor = 1;
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  tempDockGroup.clear();
+  const defaultColor = new THREE.Color("#ffb74d");
+  const count = tempDocks.length;
 
-        const material = new THREE.MeshBasicMaterial({
-          color: defaultColor,
-          transparent: true,
-          opacity: 0.9,
-          depthWrite: true,
-        });
+  const material = new THREE.MeshBasicMaterial({
+    color: defaultColor,
+    transparent: true,
+    opacity: 0.9,
+    depthWrite: true,
+  });
 
-        const instancedMesh = new THREE.InstancedMesh(
-          geometry,
-          material,
-          count
-        );
-        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+  const dummy = new THREE.Object3D();
 
-        const outlineGeometry = new THREE.EdgesGeometry(geometry);
-        const outlineMaterial = new THREE.LineBasicMaterial({
-          color: 0xffffff,
-          transparent: true,
-          opacity: 1,
-        });
+  const outlineMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+  });
 
-        const color = new THREE.Color();
-        const colorArray = new Float32Array(count * 3);
+  const color = new THREE.Color();
+  const colorArray = new Float32Array(count * 3);
 
-        tempDocks.forEach((item, i) => {
-          const width = parseFloat(item.Spazio_coord_largo || 100) / 100;
-          const depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
 
-          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
-          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
-          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+  tempDocks.forEach((item, i) => {
+    let width = parseFloat(item.Spazio_coord_largo || 100) / 100;
+    let depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
+    const height = 0.1;
 
-          const orientation = String(item.Spazio_orientamento || "").trim();
-          if (orientation === "1") {
-            [width, depth] = [depth, width];
-          }
+    const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+    const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+    const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
 
-          dummy.position.set(x + width / 2, y, z + depth / 2);
-          dummy.scale.set(
-            width * shrinkFactor,
-            0.1, // altura ignorada por agora
-            depth * shrinkFactor
-          );
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-          instancedMesh.userData.tipo = item.Spazio_tipo;
-          instancedMesh.userData.tipoD = item.Spazio_tipoD;
-          instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
-          // Contorno invisível
-          const outline = new THREE.LineSegments(
-            outlineGeometry,
-            outlineMaterial.clone()
-          );
-          outline.applyMatrix4(dummy.matrix);
-          outline.visible = false;
-          outline.userData.tipoD = item.Spazio_tipoD;
-          outlineGroup.add(outline);
+    const orientation = String(item.Spazio_orientamento || "").trim();
+    if (orientation === "1") [width, depth] = [depth, width];
 
-          outlinesArray.push({
-            outline,
-            position: dummy.position.clone(),
-          });
+    dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    dummy.scale.set(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(i, dummy.matrix);
 
-          let colorString = item.ColoreD;
-          try {
-            if (colorString && typeof colorString === "string") {
-              colorString = colorString.toLowerCase();
-              color.set(colorString);
-            } else {
-              color.copy(defaultColor);
-              colorString = "default";
-            }
-          } catch (err) {
-            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
-            color.copy(defaultColor);
-            colorString = "default";
-          }
+    instancedMesh.userData.tipo = item.Spazio_tipo;
+    instancedMesh.userData.tipoD = item.Spazio_tipoD;
+    instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
 
-          color.toArray(colorArray, i * 3);
-
-          //Guardar a escala para a funçao toggleVisibility
-          originalScalesByClasse["10"][i] = {
-            x: width * shrinkFactor,
-            y: 0.05,
-            z: depth * shrinkFactor,
-          };
-        });
-
-        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
-          colorArray,
-          3
-        );
-        instancedMesh.instanceMatrix.needsUpdate = true;
-
-        instancedMesh.userData.espacos = [...tempDocks];
-        instancedMesh.userData.tipoD = tempDocks[0]?.Spazio_tipoD || "unknown";
-
-        tempDockGroup.add(instancedMesh);
-        outlineGroup.children.forEach((child) => {
-          tempDockGroup.add(child);
-        });
-        scene.add(tempDockGroup);
-        classeCaisTemporarioMeshes.push(instancedMesh);
-
-        console.log(`Cais Temporários desenhados (classe 10): ${count}`);
+    // Cor
+    let colorString = item.ColoreD;
+    try {
+      if (colorString && typeof colorString === "string") {
+        color.set(colorString.toLowerCase());
+      } else {
+        color.copy(defaultColor);
       }
+    } catch (err) {
+      console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
+      color.copy(defaultColor);
+    }
+    color.toArray(colorArray, i * 3);
+
+    // Contorno correto por item (sem dummy)
+    const boxGeo = new THREE.BoxGeometry(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+    const outline = new THREE.LineSegments(edgeGeo, outlineMaterial.clone());
+    outline.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    outline.visible = false;
+    outline.userData.tipoD = item.Spazio_tipoD;
+
+    tempDockGroup.add(outline);
+    outlinesArray.push({
+      outline,
+      position: outline.position.clone(),
+    });
+
+    // Escalas para toggleVisibility
+    originalScalesByClasse["10"][i] = {
+      x: width * shrinkFactor,
+      y: height * shrinkFactor,
+      z: depth * shrinkFactor,
+    };
+  });
+
+  instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colorArray, 3);
+  instancedMesh.instanceMatrix.needsUpdate = true;
+
+  instancedMesh.userData.espacos = [...tempDocks];
+  instancedMesh.userData.tipoD = tempDocks[0]?.Spazio_tipoD || "unknown";
+
+  tempDockGroup.add(instancedMesh);
+  classeCaisTemporarioMeshes.push(instancedMesh);
+  scene.add(tempDockGroup);
+
+  console.log(`Cais Temporários desenhados (classe 10): ${count}`);
+}
+
 
       // END NEW DYNAMIC FUNCTIONS TO DRAW SPACES
       async function createRacksFromJSON(racks) {
