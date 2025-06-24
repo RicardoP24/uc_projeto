@@ -921,121 +921,108 @@ worldOctree.fromGraphNode(baseFloor);
 
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "03" // SEM OPÇAO DE METER ALTURA AINDA
-      async function createDockFromJSON(docks) {
-        const shrinkFactor = 1;
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const dummy = new THREE.Object3D();
-        dockGroup.clear();
-        const outlineGroup = new THREE.Group();
-        const defaultColor = new THREE.Color("#0080ff"); // azul suave para docks
+async function createDockFromJSON(docks) {
+  const shrinkFactor = 1;
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const dummy = new THREE.Object3D();
+  dockGroup.clear();
+  const outlineGroup = new THREE.Group();
+  const defaultColor = new THREE.Color("#0080ff"); // azul suave para docks
 
-        const count = docks.length;
+  const count = docks.length;
 
-        const material = new THREE.MeshBasicMaterial({
-          color: defaultColor,
-          transparent: true,
-          opacity: 0.9,
-          depthWrite: true, // otimizado
-        });
+  const material = new THREE.MeshBasicMaterial({
+    color: defaultColor,
+    transparent: true,
+    opacity: 0.9,
+    depthWrite: true,
+  });
 
-        const instancedMesh = new THREE.InstancedMesh(
-          geometry,
-          material,
-          count
-        );
-        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+  instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 
-        const outlineGeometry = new THREE.EdgesGeometry(geometry);
-        const outlineMaterial = new THREE.LineBasicMaterial({
-          color: 0xffffff,
-          transparent: true,
-          opacity: 1,
-        });
+  const outlineGeometry = new THREE.EdgesGeometry(geometry);
+  const outlineMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+  });
 
-        const color = new THREE.Color();
-        const colorArray = new Float32Array(count * 3);
+  const color = new THREE.Color();
+  const colorArray = new Float32Array(count * 3);
 
-        docks.forEach((dock, i) => {
-          let width = parseFloat(dock.Spazio_coord_largo || 100) / 100;
-          let depth = parseFloat(dock.Spazio_coord_fondo || 100) / 100;
-         
+  docks.forEach((dock, i) => {
+    // ⬇️ Forçar altura e Spazio_coord_alto para consistência com labels
+    let width = parseFloat(dock.Spazio_coord_largo || 100) / 100;
+    let height = 0.01;
+    let depth = parseFloat(dock.Spazio_coord_fondo || 100) / 100;
 
-          const x = parseFloat(dock.Spazio_coord_draw_a || 0) / 100;
-          const y = parseFloat(dock.Spazio_coord_draw_b || 0) / 100;
-          const z = parseFloat(dock.Spazio_coord_draw_c || 0) / 100;
+    const x = parseFloat(dock.Spazio_coord_draw_a || 0) / 100;
+    const y = parseFloat(dock.Spazio_coord_draw_b || 0) / 100;
+    const z = parseFloat(dock.Spazio_coord_draw_c || 0) / 100;
 
-          const orientation = String(dock.Spazio_orientamento || "").trim();
-          if (orientation === "1") {
-            [width, depth] = [depth, width];
-          }
+    const orientation = String(dock.Spazio_orientamento || "").trim();
+    if (orientation === "1") {
+      [width, depth] = [depth, width];
+    }
 
-          dummy.position.set(x + width / 2, y , z + depth / 2);
-          dummy.scale.set(width * shrinkFactor, 0.1, depth * shrinkFactor);
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-          instancedMesh.userData.tipo = dock.Spazio_tipo;
-          instancedMesh.userData.tipoD = dock.Spazio_tipoD;
-          instancedMesh.userData.spazio_disp = dock.Spazio_disponibile;
-          // Contorno invisível (mantido igual aos outros)
-          const outline = new THREE.LineSegments(
-            outlineGeometry,
-            outlineMaterial.clone()
-          );
-          outline.applyMatrix4(dummy.matrix);
-          outline.visible = false;
-          outline.userData.tipoD = dock.Spazio_tipoD;
-          outlineGroup.add(outline);
+    dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    dummy.scale.set(width * shrinkFactor, height * shrinkFactor, depth * shrinkFactor);
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(i, dummy.matrix);
 
-          outlinesArray.push({
-            outline,
-            position: dummy.position.clone(),
-          });
 
-          let colorString = dock.ColoreD;
+    // ⬇️ Preserva userData para relacionamento
+    instancedMesh.userData.tipo = dock.Spazio_tipo;
+    instancedMesh.userData.tipoD = dock.Spazio_tipoD;
+    instancedMesh.userData.spazio_disp = dock.Spazio_disponibile;
 
-          try {
-            if (colorString && typeof colorString === "string") {
-              colorString = colorString.toLowerCase();
-              color.set(colorString);
-            } else {
-              color.copy(defaultColor);
-              colorString = "default";
-            }
-          } catch (err) {
-            console.warn(`Cor inválida no espaço[${i}]:`, dock.ColoreD);
-            color.copy(defaultColor);
-            colorString = "default";
-          }
+    const outline = new THREE.LineSegments(outlineGeometry, outlineMaterial.clone());
+    outline.applyMatrix4(dummy.matrix);
+    outline.visible = false;
+    outline.userData.tipoD = dock.Spazio_tipoD;
+    outlineGroup.add(outline);
 
-          color.toArray(colorArray, i * 3);
+    outlinesArray.push({
+      outline,
+      position: dummy.position.clone(),
+    });
 
-          //Guardar a escala para a funçao toggleVisibility
-          originalScalesByClasse["03"][i] = {
-            x: width * shrinkFactor,
-            y: 0.05,
-            z: depth * shrinkFactor,
-          };
-        });
-
-        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
-          colorArray,
-          3
-        );
-        instancedMesh.instanceMatrix.needsUpdate = true;
-
-        instancedMesh.userData.espacos = [...docks];
-        instancedMesh.userData.tipoD = docks[0]?.Spazio_tipoD || "unknown";
-
-        dockGroup.add(instancedMesh);
-        outlineGroup.children.forEach((child) => {
-          dockGroup.add(child);
-        });
-        classeCaisMeshes.push(instancedMesh);
-
-        scene.add(dockGroup);
-
-        console.log(`Espaços de cais desenhados (classe 03): ${docks.length}`);
+    let colorString = dock.ColoreD;
+    try {
+      if (colorString && typeof colorString === "string") {
+        color.set(colorString.toLowerCase());
+      } else {
+        color.copy(defaultColor);
       }
+    } catch {
+      color.copy(defaultColor);
+    }
+
+    color.toArray(colorArray, i * 3);
+
+    // Guarda escala original
+    originalScalesByClasse["03"][i] = {
+      x: width * shrinkFactor,
+      y: height,
+      z: depth * shrinkFactor,
+    };
+  });
+
+  instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colorArray, 3);
+  instancedMesh.instanceMatrix.needsUpdate = true;
+
+  // Salva todos os docks no userData
+  instancedMesh.userData.espacos = [...docks];
+  instancedMesh.userData.tipoD = docks[0]?.Spazio_tipoD || "unknown";
+
+  dockGroup.add(instancedMesh);
+  outlineGroup.children.forEach((child) => dockGroup.add(child));
+  classeCaisMeshes.push(instancedMesh);
+  scene.add(dockGroup);
+
+  console.log(`Espaços de cais desenhados (classe 03): ${docks.length}`);
+}
 
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "05" Zonas Anómalas
@@ -1885,8 +1872,9 @@ const labelsAtivas = new Map(); // key: Spazio, value: { labelObj, tipo }
   return labelObj;
 }
 
- function updateDynamicLabels() {
+ function updateDynamicLabels() { 
   topCamera.updateMatrixWorld();
+
   const cameraMatrixWorldInverse = new THREE.Matrix4()
     .copy(topCamera.matrixWorld)
     .invert();
@@ -1910,16 +1898,30 @@ const labelsAtivas = new Map(); // key: Spazio, value: { labelObj, tipo }
     const height = parseFloat(item.Spazio_coord_alto || 0) / 100;
     const depth = parseFloat(item.Spazio_coord_fondo || 0) / 100;
 
-    const posY = item.Spazio_coord_alto === "0.001" ? 0 : y+height;
+    const posY = item.Spazio_coord_alto === "0.001" ? 0 : y + height;
     const position = new THREE.Vector3(x + width / 2, posY, z + depth / 2);
 
-    let distance = topCamera.position.distanceTo(position);
+    const distance = topCamera.position.distanceTo(position);
     const inView = frustum.containsPoint(position);
- 
 
-    if (isActive && inView && distance < 50) {
+    // 🧠 Regras de distância
+    let maxDistance = 50;
+
+    // 1️⃣ Prioridade: corredor
+    const pertenceAoCorredor = corridorGroup.children.some((child) =>
+      Array.isArray(child.userData?.espacos) &&
+      child.userData.espacos.some((e) => e.Spazio === item.Spazio)
+    );
+    if (pertenceAoCorredor) {
+      maxDistance = 550;
+    }  
+
+    const permitirRender = isActive && inView && distance < maxDistance;
+
+    if (permitirRender) {
       if (!labelExists) {
         let alvo = item;
+
         if (item.Spazio_classe === "04") {
           const pertenceAoRack = rackGroup.children.some((child) =>
             Array.isArray(child.userData?.espacos) &&
@@ -1929,6 +1931,10 @@ const labelsAtivas = new Map(); // key: Spazio, value: { labelObj, tipo }
             alvo = { ...item, Spazio_coord_alto: "0.001" };
           }
         }
+
+         if (item.Spazio_classe === "03" || item.Spazio_classe === "10") {
+            alvo = { ...item, Spazio_coord_alto: "0.001" };
+          }
 
         const labelObj = addLabelForSingleComponent(alvo, type);
         if (labelObj) {
@@ -1945,7 +1951,9 @@ const labelsAtivas = new Map(); // key: Spazio, value: { labelObj, tipo }
     }
   });
 }
-      function mirrorDataXCoordinates(data) {
+
+
+function mirrorDataXCoordinates(data) {
         const centerX = getLayoutCenterX(data);
 
         const mirrorArray = (arr) => {
