@@ -461,6 +461,8 @@ worldOctree.fromGraphNode(baseFloor);
       function createWarehouseAreaFromComponentsAll() {
         const allMeshes = [
           ...classeEspExecMeshes,
+          ...classeEspArmMeshes,
+          ...classeCaisMeshes,
           ...classeDivEspacosMeshes,
           ...classeZonAnomalasMeshes,
           ...classeEspacoDistrMeshes,
@@ -823,9 +825,10 @@ worldOctree.fromGraphNode(baseFloor);
 
         // Associar os dados ao instancedMesh para o toggle funcionar corretamente
         instancedMesh.userData.espacos = [...spacesArray];
-        instancedMesh.userData.tipoD =
-          spacesArray[0]?.Spazio_tipoD || "unknown";
+        instancedMesh.userData.tipoD =spacesArray[0]?.Spazio_tipoD || "unknown";
+
         spaceGroup.add(instancedMesh);
+        classeEspExecMeshes.push(instancedMesh)
         console.log(
           `Espaços de execucao desenhados (classe 01): ${spacesArray.length}`
         );
@@ -916,6 +919,8 @@ worldOctree.fromGraphNode(baseFloor);
           bufferArray[0]?.Spazio_tipoD || "unknown";
 
         bufferGroup.add(instancedMesh);
+        classeEspArmMeshes.push(instancedMesh);
+        
         console.log(`Espaços Armazenamento desenhados (classe 02): ${count}`);
       }
 
@@ -967,7 +972,7 @@ async function createDockFromJSON(docks) {
     }
 
     dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
-    dummy.scale.set(width * shrinkFactor, height * shrinkFactor, depth * shrinkFactor);
+          dummy.scale.set(width * shrinkFactor, 0.05, depth * shrinkFactor); // 0.05 de altura "quase plano"
     dummy.updateMatrix();
     instancedMesh.setMatrixAt(i, dummy.matrix);
 
@@ -1710,78 +1715,76 @@ async function createDockFromJSON(docks) {
         }
         return true;
       }
-      function onMouseMove(event) {
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+ function onMouseMove(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-        raycaster.setFromCamera(mouse, activeCamera);
+  raycaster.setFromCamera(mouse, activeCamera);
 
-        // Você pode incluir mais objetos instanciados aqui se quiser
-        const instancedTargets = [
-          ...classeDivEspacosMeshes.filter((m) => m.isInstancedMesh),
-          ...classeEspArmMeshes.filter((m) => m.isInstancedMesh),
-          ...classeCaisMeshes.filter((m) => m.isInstancedMesh),
-          ...classeZonAnomalasMeshes.filter((m) => m.isInstancedMesh),
-          ...classeEspacoDistrMeshes.filter((m) => m.isInstancedMesh),
-          ...classeTransportesMeshes.filter((m) => m.isInstancedMesh),
-          ...classeTransicaoMeshes.filter((m) => m.isInstancedMesh),
-          ...classePilhaMeshes.filter((m) => m.isInstancedMesh),
-          ...classeCaisTemporarioMeshes.filter((m) => m.isInstancedMesh),
-        ];
+  const instancedTargets = [
+    ...classeEspExecMeshes.filter((m) => m.isInstancedMesh),
+    ...classeDivEspacosMeshes.filter((m) => m.isInstancedMesh),
+    ...classeEspArmMeshes.filter((m) => m.isInstancedMesh),
+    ...classeCaisMeshes.filter((m) => m.isInstancedMesh),
+    ...classeZonAnomalasMeshes.filter((m) => m.isInstancedMesh),
+    ...classeEspacoDistrMeshes.filter((m) => m.isInstancedMesh),
+    ...classeTransportesMeshes.filter((m) => m.isInstancedMesh),
+    ...classeTransicaoMeshes.filter((m) => m.isInstancedMesh),
+    ...classePilhaMeshes.filter((m) => m.isInstancedMesh),
+    ...classeCaisTemporarioMeshes.filter((m) => m.isInstancedMesh),
+  ];
 
-        const intersects = raycaster.intersectObjects(instancedTargets, true);
+  const intersects = raycaster.intersectObjects(instancedTargets, true);
 
-        if (intersects.length > 0) {
-          const intersect = intersects[0];
+  if (intersects.length > 0) {
+    const intersect = intersects[0];
+    const mesh = intersect.object;
+    const instanceId = intersect.instanceId;
 
-          const mesh = intersect.object;
-          const instanceId = intersect.instanceId;
-
-          if (mesh && mesh.isInstancedMesh && typeof instanceId === "number") {
-            // Se mudou de instância
-            if (
-              hoveredInstance &&
-              (hoveredInstance.mesh !== mesh ||
-                hoveredInstance.id !== instanceId)
-            ) {
-              // Restaura cor anterior
-
-              hoveredInstance = null;
-            }
-
-            if (!hoveredInstance) {
-              hoveredInstance = {
-                mesh,
-                id: instanceId,
-              };
-            }
-
-            // Tooltip
-            const pos = intersect.point;
-            tooltip.style.left = event.clientX + 10 + "px";
-            tooltip.style.top = event.clientY + 10 + "px";
-            tooltip.innerHTML = `<strong>${
-              mesh.userData.tipoD
-            }</strong><br>ID: ${instanceId}<br>
-      ${
-        mesh.userData.spazio_disp == "0"
-          ? "Espaço Indisponível"
-          : "Espaço Disponível"
-      }`;
-            tooltip.style.display = "block";
-            document.body.style.cursor = "pointer";
-            return;
-          }
-        }
-
-        // Nenhum hover válido
-        if (hoveredInstance) {
-          hoveredInstance = null;
-        }
-
-        tooltip.style.display = "none";
-        document.body.style.cursor = "default";
+    if (mesh && mesh.isInstancedMesh && typeof instanceId === "number") {
+      if (
+        hoveredInstance &&
+        (hoveredInstance.mesh !== mesh || hoveredInstance.id !== instanceId)
+      ) {
+        hoveredInstance = null;
       }
+
+      if (!hoveredInstance) {
+        hoveredInstance = { mesh, id: instanceId };
+      }
+
+      const pos = intersect.point;
+
+      const espacos = mesh.userData.espacos || [];
+      const espaco = espacos[instanceId];
+
+      let disponibilidade = "Desconhecido";
+      if (espaco && espaco.Spazio_disponibile === "0") {
+        disponibilidade = "Espaço Indisponível";
+      } else if (espaco) {
+        disponibilidade = "Espaço Disponível";
+      }
+
+      tooltip.style.left = event.clientX + 10 + "px";
+      tooltip.style.top = event.clientY + 10 + "px";
+      tooltip.innerHTML = `
+        <strong>${espaco?.Spazio_tipoD || mesh.userData.tipoD || "Tipo"}</strong><br>
+        ID: ${espaco?.Spazio || instanceId}<br>
+        ${disponibilidade}
+      `;
+      tooltip.style.display = "block";
+      document.body.style.cursor = "pointer";
+      return;
+    }
+  }
+
+  if (hoveredInstance) {
+    hoveredInstance = null;
+  }
+
+  tooltip.style.display = "none";
+  document.body.style.cursor = "default";
+}
 
       window.addEventListener("mousemove", onMouseMove);
 
