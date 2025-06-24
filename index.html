@@ -729,6 +729,7 @@
 
         renderer.render(scene, activeCamera);
         labelRenderer.render(scene, activeCamera);
+        updateDynamicLabels();
 
         stats.update();
       }
@@ -1834,46 +1835,115 @@
         scene.add(employeeModel);
       }
 
-      function addLabelForSingleComponent(component, type = "", name = "") {
-        if (!component || !component.Spazio) return;
+      const tiposAtivos = new Set();
+const labelsAtivas = new Map(); // key: Spazio, value: { labelObj, tipo }
 
-        const label = formatSpazioLabel(component.Spazio);
 
-        const x = parseFloat(component.Spazio_coord_draw_a) / 100;
-        const y = parseFloat(component.Spazio_coord_draw_b) / 100;
-        const z = parseFloat(component.Spazio_coord_draw_c) / 100;
+ function addLabelForSingleComponent(component, type = "") {
+  if (!component || !component.Spazio) return null;
 
-        const width = parseFloat(component.Spazio_coord_largo || 0) / 100;
-        const height = parseFloat(component.Spazio_coord_alto || 0) / 100;
-        const depth = parseFloat(component.Spazio_coord_fondo || 0) / 100;
+  const label = formatSpazioLabel(component.Spazio);
 
-        const labelDiv = document.createElement("div");
-        labelDiv.className = `label toggle-label toggle-label-${type}`;
-        labelDiv.textContent = label;
-        labelDiv.style.color = "white";
-        labelDiv.style.fontSize = "12px";
-        labelDiv.style.fontWeight = "bold";
-        labelDiv.style.pointerEvents = "none";
-        labelDiv.style.backgroundColor = "transparent";
-        labelDiv.style.padding = "2px 4px";
-        labelDiv.style.borderRadius = "4px";
-        labelDiv.style.zIndex = "-1";
-        const labelObj = new CSS2DObject(labelDiv);
-        labelObj.position.set(0, 0.05, 0);
-        labelObj.rotation.x = -Math.PI / 2;
+  const x = parseFloat(component.Spazio_coord_draw_a || 0) / 100;
+  const y = parseFloat(component.Spazio_coord_draw_b || 0) / 100;
+  const z = parseFloat(component.Spazio_coord_draw_c || 0) / 100;
 
-        const dummy = new THREE.Object3D();
-         
-        if (component.Spazio_coord_alto==="0.001")
-          dummy.position.set(x + width / 2, 0, z + depth / 2);
+  const width = parseFloat(component.Spazio_coord_largo || 0) / 100;
+  const height = parseFloat(component.Spazio_coord_alto || 0) / 100;
+  const depth = parseFloat(component.Spazio_coord_fondo || 0) / 100;
+
+  const labelDiv = document.createElement("div");
+  labelDiv.className = `label toggle-label toggle-label-${type}`;
+  labelDiv.textContent = label;
+  labelDiv.style.cssText = `
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    pointer-events: none;
+    background-color: transparent;
+    padding: 2px 4px;
+    border-radius: 4px;
+    z-index: -1;
+  `;
+
+  const labelObj = new CSS2DObject(labelDiv);
+  labelDiv.__threeObj = labelObj;
+  labelObj.position.set(0, 0.05, 0);
+  labelObj.rotation.x = -Math.PI / 2;
+
+  const dummy = new THREE.Object3D();
+  if (component.Spazio_coord_alto === "0.001") {
+    dummy.position.set(x + width / 2, 0, z + depth / 2);
+  } else {
+    dummy.position.set(x + width / 2, y+height, z + depth / 2);
+  }
+
+  dummy.add(labelObj);
+  scene.add(dummy);
+
+  return labelObj;
+}
+
+ function updateDynamicLabels() {
+  topCamera.updateMatrixWorld();
+  const cameraMatrixWorldInverse = new THREE.Matrix4()
+    .copy(topCamera.matrixWorld)
+    .invert();
+
+  const cameraViewProjectionMatrix = new THREE.Matrix4()
+    .multiplyMatrices(topCamera.projectionMatrix, cameraMatrixWorldInverse);
+
+  const frustum = new THREE.Frustum().setFromProjectionMatrix(cameraViewProjectionMatrix);
+
+  EspacosAll.forEach((item) => {
+    const spazioId = item.Spazio;
+    const type = (item.Spazio_tipo || "").trim();
+    const isActive = tiposAtivos.has(type);
+    const labelExists = labelsAtivas.has(spazioId);
+
+    const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+    const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+    const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+
+    const width = parseFloat(item.Spazio_coord_largo || 0) / 100;
+    const height = parseFloat(item.Spazio_coord_alto || 0) / 100;
+    const depth = parseFloat(item.Spazio_coord_fondo || 0) / 100;
+
+    const posY = item.Spazio_coord_alto === "0.001" ? 0 : y+height;
+    const position = new THREE.Vector3(x + width / 2, posY, z + depth / 2);
+
+    let distance = topCamera.position.distanceTo(position);
+    const inView = frustum.containsPoint(position);
  
-        else dummy.position.set(x + width / 2, height, z + depth / 2);
 
-        dummy.add(labelObj);
+    if (isActive && inView && distance < 50) {
+      if (!labelExists) {
+        let alvo = item;
+        if (item.Spazio_classe === "04") {
+          const pertenceAoRack = rackGroup.children.some((child) =>
+            Array.isArray(child.userData?.espacos) &&
+            child.userData.espacos.some((e) => e.Spazio === item.Spazio)
+          );
+          if (!pertenceAoRack) {
+            alvo = { ...item, Spazio_coord_alto: "0.001" };
+          }
+        }
 
-        scene.add(dummy);
+        const labelObj = addLabelForSingleComponent(alvo, type);
+        if (labelObj) {
+          labelsAtivas.set(spazioId, { labelObj, tipo: type });
+        }
       }
-
+    } else {
+      if (labelExists) {
+        const obj = labelsAtivas.get(spazioId);
+        scene.remove(obj.labelObj.parent);
+        obj.labelObj.element.remove();
+        labelsAtivas.delete(spazioId);
+      }
+    }
+  });
+}
       function mirrorDataXCoordinates(data) {
         const centerX = getLayoutCenterX(data);
 
@@ -2161,51 +2231,27 @@
     ul.appendChild(li);
   });
 document.querySelectorAll(".label-toggle").forEach((checkbox) => {
-  checkbox.addEventListener("change", (e) => {
-    const type = e.target.value;
-    const isVisible = e.target.checked;
+ 
+ checkbox.addEventListener("change", (e) => {
+  const type = e.target.value;
+  const isVisible = e.target.checked;
 
-    const labelContainer = labelRenderer.domElement;
+  if (isVisible) {
+    tiposAtivos.add(type);
+  } else {
+    tiposAtivos.delete(type);
 
-    if (isVisible) {
-      // 🧹 Remover todas as labels do tipo antes de recriar
-      labelContainer
-        .querySelectorAll(`.toggle-label-${type}`)
-        .forEach((el) => el.remove());
+    // Remove todas as labels do tipo da cena e do DOM
+    [...labelsAtivas.entries()].forEach(([spazioId, obj]) => {
+      if (obj.tipo === type) {
+        scene.remove(obj.labelObj.parent); // dummy com a label
+        obj.labelObj.element.remove(); // <div>
+        labelsAtivas.delete(spazioId);
+      }
+    });
+  }
+});
 
-      // 🧠 Adicionar novas labels do tipo
-      EspacosAll.forEach((item) => {
-        const itemTipo = (item.Spazio_tipo || "").trim();
-        if (itemTipo !== type) return;
-
-        if (item.Spazio_classe === "04") {
-          const pertenceAoRack = rackGroup.children.some((child) =>
-          Array.isArray(child.userData?.espacos) &&
-          child.userData.espacos.some((e) => e.Spazio === item.Spazio)
-        );
-        
-        
-          if (pertenceAoRack) {
-            console.log(pertenceAoRack)
-            addLabelForSingleComponent(item, type, "");
-          } else {
-            
-            const itemClone = { ...item, Spazio_coord_alto: "0.001" };
-            addLabelForSingleComponent(itemClone, type, "");
-          }
-        } else {
-          addLabelForSingleComponent(item, type, "");
-        }
-      });
-    }
-
-    // 👁️ Atualizar visibilidade
-    labelContainer
-      .querySelectorAll(`.toggle-label-${type}`)
-      .forEach((el) => {
-        el.style.visibility = isVisible ? "visible" : "hidden";
-      });
-  });
 });
 
  
