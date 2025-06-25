@@ -9,13 +9,19 @@
       name="viewport"
       content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
     />
-    <link rel="stylesheet" href="main.css" />
+    <link rel="stylesheet" href="warehouse3DGMRS.css" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
+    <div id="loader" class="loader-overlay">
+  <div class="loader-content">
+    <img src="resources/imgs/fade-stagger-circles.svg" alt="loading" class="loader-icon" />
+    
+  </div>
+</div>
     <!-- HEADER NAVIGATION -->
     <div id="top-nav">
       <div class="nav-left">
@@ -23,6 +29,9 @@
         <span class="title">Warehouse 3D</span>
       </div>
       <div class="nav-right">
+        <button id="toggleWarehouseBtn" title="Show Warehouse">
+           <i class="ph ph-warehouse"></i>
+           </button>
         <button id="toggle-view-btn">2D</button>
         <button id="tutorial-btn">Tutorial</button>
       </div>
@@ -64,7 +73,7 @@
 
     <!-- Sidebar HTML -->
     <div id="sidebar">
-      <h2 class="arm">Armazém Alpha</h2>
+      <h2  id="ArmName" class="arm"></h2>
       <div id="sidebar-dynamic-container"></div>
 
       <!-- CHECKBOX CAPTIONS SIMPLES E ALINHADO -->
@@ -103,6 +112,128 @@
         CSS2DObject,
       } from "./three/examples/jsm/renderers/CSS2DRenderer.js";
 
+ const traduções = {
+  Arm: {
+    PT: "Armazém 3D",
+    BR: "Armazém 3D",
+    EN: "Warehouse 3D",
+    IT: "Magazzino 3D",
+    ES: "Almacén 3D",
+    PL: "Magazyn 3D",
+    EL: "Warehouse 3D"
+  },
+  Tut: {
+    PT: "Tutorial",
+    BR: "Tutorial",
+    EN: "Tutorial",
+    IT: "Tutorial",
+    ES: "Tutorial",
+    PL: "Samouczek",
+    EL: "Οδηγός"
+  },
+  Ctrls: {
+    PT: "Controles",
+    BR: "Controles",
+    EN: "Controllers",
+    IT: "Controlli",
+    ES: "Controles",
+    PL: "Sterowanie",
+    EL: "Χειριστήρια"
+  },
+  MouseLook: {
+    PT: "\"MOUSE 1\" para olhar em redor",
+    BR: "\"MOUSE 1\" para olhar ao redor",
+    EN: "\"MOUSE 1\" to look around",
+    IT: "\"MOUSE 1\" per guardarti intorno",
+    ES: "\"MOUSE 1\" para mirar alrededor",
+    PL: "\"MOUSE 1\" – rozglądanie się",
+    EL: "\"MOUSE 1\" για να κοιτάξεις γύρω"
+  },
+  WASD: {
+    PT: "\"WASD\" para mover",
+    BR: "\"WASD\" para mover",
+    EN: "\"WASD\" to move",
+    IT: "\"WASD\" per muovere",
+    ES: "\"WASD\" para moverte",
+    PL: "\"WASD\" – poruszanie się",
+    EL: "\"WASD\" για μετακίνηση"
+  },
+  Freecam: {
+    PT: "\"T\" para alternar câmara livre",
+    BR: "\"T\" para alternar freecam",
+    EN: "\"T\" to toggle freecam",
+    IT: "\"T\" per attivare/disattivare la freecam",
+    ES: "\"T\" para alternar freecam",
+    PL: "\"T\" – przełącz tryb freecam",
+    EL: "\"T\" για εναλλαγή freecam"
+  },
+  Scroll: {
+    PT: "\"SCROLL\" do rato para ampliar",
+    BR: "\"SCROLL\" do mouse para ampliar",
+    EN: "\"MOUSE SCROLL\" to amplify",
+    IT: "\"SCROLL\" del mouse per ampliare",
+    ES: "\"SCROLL\" del ratón para ampliar",
+    PL: "\"PRZEWIJANIE MYSZĄ\" – przybliżanie",
+    EL: "\"ΚΥΛΙΣΗ ΠΟΝΤΙΚΙΟΥ\" για μεγέθυνση"
+  },
+  ToggleCaptions: {
+    PT: "Alternar Legendas",
+    BR: "Alternar Legendas",
+    EN: "TOGGLE CAPTIONS",
+    IT: "Mostra/Nasconde didascalie",
+    ES: "Alternar Subtítulos",
+    PL: "Przełącz napisy",
+    EL: "Εναλλαγή λεζάντων"
+  },
+  Layout: {
+    PT: "Layout",
+    BR: "Layout",
+    EN: "Layout",
+    IT: "Layout",
+    ES: "Diseño",
+    PL: "Układ",
+    EL: "Διάταξη"
+  },
+  Availability: {
+    PT: "Verificar Disponibilidade",
+    BR: "Verificar Disponibilidade",
+    EN: "Check Availability",
+    IT: "Verifica Disponibilità",
+    ES: "Comprobar Disponibilidad",
+    PL: "Sprawdź dostępność",
+    EL: "Έλεγχος διαθεσιμότητας"
+  },
+  Flatten2D: {
+    PT: "Achatar Altura (2D)",
+    BR: "Achatar Altura (2D)",
+    EN: "Flatten Height (2D)",
+    IT: "Appiattisci Altezza (2D)",
+    ES: "Aplanar Altura (2D)",
+    PL: "Spłaszcz wysokość (2D)",
+    EL: "Επίπεδο ύψους (2D)"
+  },
+  Label: {
+    PT: "Etiqueta",
+    BR: "Rótulo",
+    EN: "Label",
+    IT: "Etichetta",
+    ES: "Etiqueta",
+    PL: "Etykieta",
+    EL: "Ετικέτα"
+  },
+  Levels: {
+    PT: "Níveis",
+    BR: "Níveis",
+    EN: "Levels",
+    IT: "Livelli",
+    ES: "Niveles",
+    PL: "Poziomy",
+    EL: "Επίπεδα"
+  }
+};
+
+
+
       const clock = new THREE.Clock();
       let wallBoundingBoxCoords;
       let racks;
@@ -123,6 +254,7 @@
       let classeTransicaoMeshes = [];
       let classePilhaMeshes = [];
       let classeCaisTemporarioMeshes = [];
+      let isWarehouseVisible = false;
       const originalScalesByClasse = {
         "01": {},
         "02": {},
@@ -139,7 +271,7 @@
       let hoveredInstance = null; // guarda instância ativa no hover
 
       const bufferOriginalScales = {}; // índice → escala real
-      /// BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+      
       const scene = new THREE.Scene();
       //Mudança das core GM
       scene.background = new THREE.Color(0x252c3f);
@@ -237,7 +369,7 @@
       const resetTopCamBtn = document.getElementById("reset-topcam");
 
       const viewCheckboxes = document.querySelectorAll(
-        '#sidebar input[type="checkbox"]'
+      `#sidebar input[type="checkbox"]`
       );
 
  
@@ -407,6 +539,40 @@ worldOctree.fromGraphNode(baseFloor);
 
       window.addEventListener("resize", onWindowResize);
 
+      // TESTING FUNCTIONS FOR TRANSLATE
+
+      let currentLang = "EN"; // default
+
+    async function translateConfig() {
+      try {
+        const res = await fetch("/api/lang"); // ← aqui está o endpoint real
+        const lang = (await res.text()).trim().toUpperCase(); // ex: "PT"
+
+      if (traduções.Arm[lang]) {
+      currentLang = lang;
+    } else {
+      console.warn("Idioma não suportado:", lang);
+    }
+
+    // cria função global t()
+    window.t = (key) => {
+      const linha = traduções[key];
+      return linha?.[currentLang] || linha?.EN || key;
+    };
+
+    // // aplica exemplos
+    // document.querySelector("#titulo").textContent = t("Arm");
+    // document.querySelector("#btnTutorial").textContent = t("Tut");
+
+  } catch (err) {
+    console.error("Erro ao obter idioma:", err);
+  }
+}
+
+
+
+
+
       function onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -422,6 +588,7 @@ worldOctree.fromGraphNode(baseFloor);
 
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
+
 
       // Calculate the bounding box of all the racks and the center
       function calculateWallBoundingBox(racks) {
@@ -717,6 +884,7 @@ worldOctree.fromGraphNode(baseFloor);
           );
         }
 
+    // Código fora da função animate (definido uma vez)
 // Definido fora da função animate (no escopo global, uma vez só):
 const frustum = new THREE.Frustum();
 const cameraViewProjectionMatrix = new THREE.Matrix4();
@@ -1621,6 +1789,19 @@ for (let i = 0; i < outlinesArray.length; i++) {
 }
 
 
+
+async function toggleWarehouse() {
+  const allTipoDLabels = Object.keys(EspacosPorTipoD);
+
+  for (const tipoD of allTipoDLabels) {
+    await toggleLayoutVisibility(tipoD, !isWarehouseVisible);
+  }
+
+  isWarehouseVisible = !isWarehouseVisible;
+
+
+}
+
       // END NEW DYNAMIC FUNCTIONS TO DRAW SPACES
       async function createRacksFromJSON(racks) {
          
@@ -2228,7 +2409,7 @@ const labelsAtivas = new Map(); // key: Spazio, value: { labelObj, tipo }
 
     const labelElement = document.createElement("label");
     labelElement.appendChild(input);
-    labelElement.append(label, " ", "Label");
+    labelElement.append(label, " ", "Label"); //TRADUÇÃO
 
     li.appendChild(labelElement);
     ul.appendChild(li);
@@ -2395,9 +2576,7 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
 
           bufferLevelsByTipo.set(tipo, niveisObjetos);
 
-          console.log(
-            `✅ Criado seletor para tipo '${tipo}' (${nome}) com ${niveisObjetos.length} níveis`
-          );
+         
         });
       }
 
@@ -2468,7 +2647,7 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
 
           // <label>
           const label = document.createElement("label");
-          label.textContent = "Níveis";
+          label.textContent = "Níveis"; // Tradução
           label.style.minWidth = "60px";
 
           // <select>
@@ -2497,7 +2676,7 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
           // Adicionar dentro da <section>
           section.appendChild(container);
 
-          console.log(`✅ Criado menu de níveis para tipo '${tipo}' (${nome})`);
+          
         });
       }
 
@@ -2584,7 +2763,7 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
 
         // Agrupar por tipo de espaço
         componentes.forEach((item) => {
-          const tipo = item.Spazio_tipo || "Desconhecido";
+          const tipo = item.Spazio_tipo;
           if (!tiposMap[tipo]) {
             tiposMap[tipo] = [];
           }
@@ -2713,7 +2892,7 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
 
 
         instancedMesh.userData.espacos = [...corridors];
-        instancedMesh.userData.tipoD = corridors[0]?.Spazio_tipoD || "unknown";
+        instancedMesh.userData.tipoD = corridors[0]?.Spazio_tipoD;
 
         corridorGroup.add(instancedMesh);
         corridorGroup.add(outlineGroup);
@@ -3073,118 +3252,120 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
       }
       //END OF NEW FUNCTIONS FOR DYNAMIC SIDE BAR ---------------------------------------------------------------------------
 
-      window.onload = function () {
-        fetch("resources/data/dados_limpo.json")
-          .then((response) => response.json())
-          .then(async (data) => {
-            trocarCoordenadasBC(data);
-            // mirrorDataXCoordinates(data);
-            const val = await extractDataFromJSON(data);
+     window.onload = async function () {
+      translateConfig();
+  const loader = document.getElementById("loader");
 
-            //ALTERAÇAO GM
+  try {
+    const response = await fetch("resources/data/dados_limpo.json");
+    const data = await response.json();
 
-            labelRenderer.setSize(window.innerWidth, window.innerHeight);
-            labelRenderer.domElement.style.position = "absolute";
-            labelRenderer.domElement.style.top = "0px";
-            labelRenderer.domElement.style.pointerEvents = "none";
-            document.body.appendChild(labelRenderer.domElement);
+    trocarCoordenadasBC(data);
+    const val = await extractDataFromJSON(data);
 
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setAnimationLoop(animate);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.VSMShadowMap;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            container.appendChild(renderer.domElement);
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.domElement.style.position = "absolute";
+    labelRenderer.domElement.style.top = "0px";
+    labelRenderer.domElement.style.pointerEvents = "none";
+    document.body.appendChild(labelRenderer.domElement);
 
-            stats.domElement.style.position = "fixed";
-            stats.domElement.style.bottom = "10px";
-            stats.domElement.style.right = "10px";
-            stats.domElement.style.left = ""; // limpa se existir
-            stats.domElement.style.top = ""; // limpa para não se sobrepor
-            stats.domElement.style.zIndex = "9999";
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setAnimationLoop(animate);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.VSMShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    container.appendChild(renderer.domElement);
 
-            document.body.appendChild(stats.domElement);
+    stats.domElement.style.position = "fixed";
+    stats.domElement.style.bottom = "10px";
+    stats.domElement.style.right = "10px";
+    stats.domElement.style.left = "";
+    stats.domElement.style.top = "";
+    stats.domElement.style.zIndex = "9999";
+    document.body.appendChild(stats.domElement);
+    container.appendChild(stats.domElement);
 
-            container.appendChild(stats.domElement);
-            toggleCamera();
-            createSelectsLevels();
+    toggleCamera();
+    createSelectsLevels();
 
-            //Gerar dinamicamento os Spazio_tipoD na interface ---------------------------------------------------------------------------
+    const uniqueSpazioTipoD = [...new Set(data.map((d) => d.Spazio_tipoD))];
+    const sidebarContainer = document.getElementById("sidebar-dynamic-container");
 
-            const uniqueSpazioTipoD = [
-              ...new Set(data.map((d) => d.Spazio_tipoD)),
-            ];
-            const sidebarContainer = document.getElementById(
-              "sidebar-dynamic-container"
-            );
+    const wrapper = document.createElement("details");
+    wrapper.className = "dropdown-group";
+    wrapper.open = false;
+    wrapper.innerHTML = `
+      <summary>
+        <span style="display: flex; align-items: center; gap: 6px">
+          <i class="ph ph-stack"></i>
+          <span>SPACES</span>
+        </span>
+      </summary>
+      <div id="espacos-content"></div>
+    `;
+    sidebarContainer.appendChild(wrapper);
 
-            const wrapper = document.createElement("details");
-            wrapper.className = "dropdown-group";
-            wrapper.open = false;
-            wrapper.innerHTML = `
+    const espacosContent = wrapper.querySelector("#espacos-content");
+
+    uniqueSpazioTipoD.forEach((tipo) => {
+      const section = document.createElement("details");
+      section.className = "dropdown-group";
+      section.innerHTML = `
         <summary>
           <span style="display: flex; align-items: center; gap: 6px">
-            <i class="ph ph-stack"></i>
-            <span>SPACES</span>
+            <i class="ph ph-cube"></i>
+            <span>${tipo}</span>
           </span>
         </summary>
-        <div id="espacos-content"></div>
+        <ul>
+          <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}"  /> Layout</label></li>
+          <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}"  /> Check Availability </label></li>
+          <li><label><input type="checkbox" class="toggle-height" data-tipo="${tipo}" /> Flatten Height (2D)</label></li>
+        </ul>
       `;
-            sidebarContainer.appendChild(wrapper);
+      espacosContent.appendChild(section);
+    });
 
-            const espacosContent = wrapper.querySelector("#espacos-content");
+    createSelectsLevels();
+    gerarMenuToggleLabels(...EspacosAll);
+    gerarSelectsBufferPorTipo(...EspacosAll);
 
-            uniqueSpazioTipoD.forEach((tipo) => {
-              const section = document.createElement("details");
-              section.className = "dropdown-group";
-              section.innerHTML = `
-          <summary>
-            <span style="display: flex; align-items: center; gap: 6px">
-              <i class="ph ph-cube"></i>
-              <span>${tipo}</span>
-            </span>
-          </summary>
-          <ul>
-            <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}"  /> Layout</label></li>
+    document.addEventListener("change", (e) => {
+      const tipo = e.target.dataset.tipo;
+      if (e.target.classList.contains("toggle-layout")) {
+        toggleLayoutVisibility(tipo, e.target.checked, data);
+      } else if (e.target.classList.contains("toggle-active")) {
+        toggleActiveSpaces(tipo, e.target.checked, data);
+      } else if (e.target.classList.contains("toggle-height")) {
+        toggleHeight2D(tipo, e.target.checked, data);
+      }
+    });
 
-
-            <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}"  /> Check Availability </label></li>
-            <li><label><input type="checkbox" class="toggle-height" data-tipo="${tipo}" /> Flatten Height (2D)</label></li>
-          </ul>
-        `;
-              espacosContent.appendChild(section);
-            });
-            createSelectsLevels();
+    document.addEventListener("click", (e) => {
+      if (e.target.classList.contains("btn-levels")) {
+        const tipo = e.target.dataset.tipo;
+        showLevels(tipo);
+      }
+    });
 
 
-            gerarMenuToggleLabels(...EspacosAll);
-            gerarSelectsBufferPorTipo(...EspacosAll);
+const title = document.getElementById("ArmName");
+const objComNome = data.find(item => item.EnteD && item.EnteD.trim() !== "");
 
-            // EVENT LISTENERS ---------------------------------------------------------------------------
+if (title && objComNome) {
+  title.textContent = objComNome.EnteD;            
+  // title.textContent = `${t("Arm")} - ${objComNome.EnteD}`;
+}
 
-            document.addEventListener("change", (e) => {
-              const tipo = e.target.dataset.tipo;
-              if (e.target.classList.contains("toggle-layout")) {
-                toggleLayoutVisibility(tipo, e.target.checked, data);
-                // } else if (e.target.classList.contains("toggle-labels")) {
-                //   toggleLabelsVisbility(tipo, e.target.checked);
-              } else if (e.target.classList.contains("toggle-active")) {
-                toggleActiveSpaces(tipo, e.target.checked, data);
-              } else if (e.target.classList.contains("toggle-height")) {
-                toggleHeight2D(tipo, e.target.checked, data);
-              }
-            });
+  } catch (error) {
+    console.error("Erro ao carregar aplicação:", error);
+    alert("Erro a carregar o armazém. Tenta recarregar a página.");
+  } finally {
+    loader.style.display = "none"; // oculta o loader mesmo que falhe
+  }
+};
 
-            document.addEventListener("click", (e) => {
-              if (e.target.classList.contains("btn-levels")) {
-                const tipo = e.target.dataset.tipo;
-                showLevels(tipo);
-              }
-            });
-          })
-          .catch((error) => console.error("Error fetching JSON:", error));
-      };
 
       function trocarCoordenadasBC(array) {
         array.forEach((item) => {
@@ -3204,6 +3385,8 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
         return true;
       }
 
+      // ToggleWarehouse
+      document.getElementById("toggleWarehouseBtn").addEventListener("click", toggleWarehouse);
       //Tutorial button ALTERAÇAO GM
       const tutorialBtn = document.getElementById("tutorial-btn");
       const tooltipTutorial = document.getElementById("tutorial-tooltip");

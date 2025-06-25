@@ -77,6 +77,33 @@ select {
   background: #2e3758;
 }
 
+.loader-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: #1C1F2A;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  color: #d1d1d1;
+  font-size: 1.2rem;
+}
+
+.loader-icon {
+  width: 64px;
+  height: 64px;
+  display: block;
+  margin: 0 auto;
+}
+
 
 @media all and (max-width: 640px) {
   .lil-gui.root {
@@ -470,8 +497,54 @@ input[type="checkbox"] {
   border: 1px solid #3399ff;
 }
 .arm {
-  margin-bottom: 35px;
+  font-size: 0.95rem !important;
+  font-weight: 500;
+  margin: 16px 6px 16px 0px;
+  color: #ffffff;
+  text-transform: uppercase;
+  
+  
 }
+
+
+#toggleWarehouseBtn {
+  background-color: transparent;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+#toggleWarehouseBtn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
+#toggle-view-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-radius: 6px;
+}
+
+#toggle-view-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
 
 #view-controls {
   position: absolute;
