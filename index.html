@@ -9,13 +9,19 @@
       name="viewport"
       content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
     />
-    <link rel="stylesheet" href="main.css" />
+    <link rel="stylesheet" href="warehouse3DGMRS.css" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
+    <div id="loader" class="loader-overlay">
+  <div class="loader-content">
+    <img src="resources/imgs/fade-stagger-circles.svg" alt="loading" class="loader-icon" />
+    
+  </div>
+</div>
     <!-- HEADER NAVIGATION -->
     <div id="top-nav">
       <div class="nav-left">
@@ -23,6 +29,9 @@
         <span class="title">Warehouse 3D</span>
       </div>
       <div class="nav-right">
+        <button id="toggleWarehouseBtn" title="Show Warehouse">
+           <i class="ph ph-warehouse"></i>
+           </button>
         <button id="toggle-view-btn">2D</button>
         <button id="tutorial-btn">Tutorial</button>
       </div>
@@ -64,7 +73,7 @@
 
     <!-- Sidebar HTML -->
     <div id="sidebar">
-      <h2 class="arm">Armazém Alpha</h2>
+      <h2  id="ArmName" class="arm"></h2>
       <div id="sidebar-dynamic-container"></div>
 
       <!-- CHECKBOX CAPTIONS SIMPLES E ALINHADO -->
@@ -103,6 +112,128 @@
         CSS2DObject,
       } from "./three/examples/jsm/renderers/CSS2DRenderer.js";
 
+ const traduções = {
+  Arm: {
+    PT: "Armazém 3D",
+    BR: "Armazém 3D",
+    EN: "Warehouse 3D",
+    IT: "Magazzino 3D",
+    ES: "Almacén 3D",
+    PL: "Magazyn 3D",
+    EL: "Warehouse 3D"
+  },
+  Tut: {
+    PT: "Tutorial",
+    BR: "Tutorial",
+    EN: "Tutorial",
+    IT: "Tutorial",
+    ES: "Tutorial",
+    PL: "Samouczek",
+    EL: "Οδηγός"
+  },
+  Ctrls: {
+    PT: "Controles",
+    BR: "Controles",
+    EN: "Controllers",
+    IT: "Controlli",
+    ES: "Controles",
+    PL: "Sterowanie",
+    EL: "Χειριστήρια"
+  },
+  MouseLook: {
+    PT: "\"MOUSE 1\" para olhar em redor",
+    BR: "\"MOUSE 1\" para olhar ao redor",
+    EN: "\"MOUSE 1\" to look around",
+    IT: "\"MOUSE 1\" per guardarti intorno",
+    ES: "\"MOUSE 1\" para mirar alrededor",
+    PL: "\"MOUSE 1\" – rozglądanie się",
+    EL: "\"MOUSE 1\" για να κοιτάξεις γύρω"
+  },
+  WASD: {
+    PT: "\"WASD\" para mover",
+    BR: "\"WASD\" para mover",
+    EN: "\"WASD\" to move",
+    IT: "\"WASD\" per muovere",
+    ES: "\"WASD\" para moverte",
+    PL: "\"WASD\" – poruszanie się",
+    EL: "\"WASD\" για μετακίνηση"
+  },
+  Freecam: {
+    PT: "\"T\" para alternar câmara livre",
+    BR: "\"T\" para alternar freecam",
+    EN: "\"T\" to toggle freecam",
+    IT: "\"T\" per attivare/disattivare la freecam",
+    ES: "\"T\" para alternar freecam",
+    PL: "\"T\" – przełącz tryb freecam",
+    EL: "\"T\" για εναλλαγή freecam"
+  },
+  Scroll: {
+    PT: "\"SCROLL\" do rato para ampliar",
+    BR: "\"SCROLL\" do mouse para ampliar",
+    EN: "\"MOUSE SCROLL\" to amplify",
+    IT: "\"SCROLL\" del mouse per ampliare",
+    ES: "\"SCROLL\" del ratón para ampliar",
+    PL: "\"PRZEWIJANIE MYSZĄ\" – przybliżanie",
+    EL: "\"ΚΥΛΙΣΗ ΠΟΝΤΙΚΙΟΥ\" για μεγέθυνση"
+  },
+  ToggleCaptions: {
+    PT: "Alternar Legendas",
+    BR: "Alternar Legendas",
+    EN: "TOGGLE CAPTIONS",
+    IT: "Mostra/Nasconde didascalie",
+    ES: "Alternar Subtítulos",
+    PL: "Przełącz napisy",
+    EL: "Εναλλαγή λεζάντων"
+  },
+  Layout: {
+    PT: "Layout",
+    BR: "Layout",
+    EN: "Layout",
+    IT: "Layout",
+    ES: "Diseño",
+    PL: "Układ",
+    EL: "Διάταξη"
+  },
+  Availability: {
+    PT: "Verificar Disponibilidade",
+    BR: "Verificar Disponibilidade",
+    EN: "Check Availability",
+    IT: "Verifica Disponibilità",
+    ES: "Comprobar Disponibilidad",
+    PL: "Sprawdź dostępność",
+    EL: "Έλεγχος διαθεσιμότητας"
+  },
+  Flatten2D: {
+    PT: "Achatar Altura (2D)",
+    BR: "Achatar Altura (2D)",
+    EN: "Flatten Height (2D)",
+    IT: "Appiattisci Altezza (2D)",
+    ES: "Aplanar Altura (2D)",
+    PL: "Spłaszcz wysokość (2D)",
+    EL: "Επίπεδο ύψους (2D)"
+  },
+  Label: {
+    PT: "Etiqueta",
+    BR: "Rótulo",
+    EN: "Label",
+    IT: "Etichetta",
+    ES: "Etiqueta",
+    PL: "Etykieta",
+    EL: "Ετικέτα"
+  },
+  Levels: {
+    PT: "Níveis",
+    BR: "Níveis",
+    EN: "Levels",
+    IT: "Livelli",
+    ES: "Niveles",
+    PL: "Poziomy",
+    EL: "Επίπεδα"
+  }
+};
+
+
+
       const clock = new THREE.Clock();
       let wallBoundingBoxCoords;
       let racks;
@@ -123,6 +254,7 @@
       let classeTransicaoMeshes = [];
       let classePilhaMeshes = [];
       let classeCaisTemporarioMeshes = [];
+      let isWarehouseVisible = false;
       const originalScalesByClasse = {
         "01": {},
         "02": {},
@@ -139,7 +271,7 @@
       let hoveredInstance = null; // guarda instância ativa no hover
 
       const bufferOriginalScales = {}; // índice → escala real
-      /// BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+      
       const scene = new THREE.Scene();
       //Mudança das core GM
       scene.background = new THREE.Color(0x252c3f);
@@ -237,7 +369,7 @@
       const resetTopCamBtn = document.getElementById("reset-topcam");
 
       const viewCheckboxes = document.querySelectorAll(
-        '#sidebar input[type="checkbox"]'
+      `#sidebar input[type="checkbox"]`
       );
 
  
@@ -407,6 +539,40 @@ worldOctree.fromGraphNode(baseFloor);
 
       window.addEventListener("resize", onWindowResize);
 
+      // TESTING FUNCTIONS FOR TRANSLATE
+
+      let currentLang = "EN"; // default
+
+    async function translateConfig() {
+      try {
+        const res = await fetch("/api/lang"); // ← aqui está o endpoint real
+        const lang = (await res.text()).trim().toUpperCase(); // ex: "PT"
+
+      if (traduções.Arm[lang]) {
+      currentLang = lang;
+    } else {
+      console.warn("Idioma não suportado:", lang);
+    }
+
+    // cria função global t()
+    window.t = (key) => {
+      const linha = traduções[key];
+      return linha?.[currentLang] || linha?.EN || key;
+    };
+
+    // // aplica exemplos
+    // document.querySelector("#titulo").textContent = t("Arm");
+    // document.querySelector("#btnTutorial").textContent = t("Tut");
+
+  } catch (err) {
+    console.error("Erro ao obter idioma:", err);
+  }
+}
+
+
+
+
+
       function onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -422,6 +588,7 @@ worldOctree.fromGraphNode(baseFloor);
 
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
+
 
       // Calculate the bounding box of all the racks and the center
       function calculateWallBoundingBox(racks) {
@@ -719,15 +886,36 @@ worldOctree.fromGraphNode(baseFloor);
           );
         }
 
-        outlinesArray.forEach(({ outline, position }) => {
-          const dist = activeCamera.position.distanceTo(position);
+    // Código fora da função animate (definido uma vez)
+// Definido fora da função animate (no escopo global, uma vez só):
+const frustum = new THREE.Frustum();
+const cameraViewProjectionMatrix = new THREE.Matrix4();
 
-          const isHiddenByLayout = outline.userData.hiddenByLayout;
-          const isHiddenByHeight2D = outline.userData.hiddenByHeight2D;
+// Dentro da função animate, substitui a parte antiga por:
+activeCamera.updateMatrixWorld(); // garantir matriz atualizada
+cameraViewProjectionMatrix.multiplyMatrices(
+  activeCamera.projectionMatrix,
+  activeCamera.matrixWorldInverse
+);
+frustum.setFromProjectionMatrix(cameraViewProjectionMatrix);
 
-          outline.visible =
-            !isHiddenByLayout && !isHiddenByHeight2D && dist < 300;
-        });
+for (let i = 0; i < outlinesArray.length; i++) {
+  const { outline, position } = outlinesArray[i];
+
+  const isHiddenByLayout = outline.userData.hiddenByLayout;
+  const isHiddenByHeight2D = outline.userData.hiddenByHeight2D;
+  const dist = activeCamera.position.distanceTo(position);
+  const isVisibleInFrustum = frustum.containsPoint(position);
+  const isNearEnough = dist < 200;
+
+  outline.visible =
+    !isHiddenByLayout &&
+    !isHiddenByHeight2D &&
+    isVisibleInFrustum &&
+    isNearEnough;
+}
+
+
 
         renderer.render(scene, activeCamera);
         labelRenderer.render(scene, activeCamera);
@@ -1146,121 +1334,117 @@ async function createDockFromJSON(docks) {
       //-------------------------------------------------------------------------------------------------------------------------------------
       // Spazio_classe === "06" ZONAS DE DISTRIBUIÇAO
 
-      async function createDistributionFromJSON(distribuicoes) {
-        const shrinkFactor = 1;
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const dummy = new THREE.Object3D();
-        distribGroup.clear();
-        const outlineGroup = new THREE.Group();
-        const defaultColor = new THREE.Color("#ffc107");
-        const count = distribuicoes.length;
-        const material = new THREE.MeshBasicMaterial({
-          color: defaultColor,
-          transparent: true,
-          opacity: 0.9,
-        });
+    async function createDistributionFromJSON(distribuicoes) {
+  const shrinkFactor = 1;
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  distribGroup.clear();
+  const defaultColor = new THREE.Color("#ffc107");
 
-        const instancedMesh = new THREE.InstancedMesh(
-          geometry,
-          material,
-          count
-        );
+  const count = distribuicoes.length;
+  const material = new THREE.MeshBasicMaterial({
+    color: defaultColor,
+    transparent: true,
+    opacity: 0.9,
+  });
 
-        const outlineGeometry = new THREE.EdgesGeometry(geometry);
-        const outlineMaterial = new THREE.LineBasicMaterial({
-          color: 0xffffff,
-          transparent: true,
-          opacity: 1,
-        });
+  const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+  const dummy = new THREE.Object3D();
 
-        const color = new THREE.Color();
-        const colorArray = new Float32Array(count * 3); // RGB por instância
+  const outlineMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+  });
 
-        distribuicoes.forEach((item, i) => {
-          const width = parseFloat(item.Spazio_coord_largo || 100) / 100;
-          const height = parseFloat(item.Spazio_coord_alto || 100) / 100;
-          const depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
+  const color = new THREE.Color();
+  const colorArray = new Float32Array(count * 3); // RGB por instância
 
-          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
-          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
-          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+ 
 
-          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          dummy.scale.set(
-            width * shrinkFactor,
-            height * shrinkFactor,
-            depth * shrinkFactor
-          );
-          dummy.updateMatrix();
+  distribuicoes.forEach((item, i) => {
+    const width = parseFloat(item.Spazio_coord_largo || 100) / 100;
+    const height = parseFloat(item.Spazio_coord_alto || 100) / 100;
+    const depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
 
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-          instancedMesh.userData.tipo = item.Spazio_tipo;
-          instancedMesh.userData.tipoD = item.Spazio_tipoD;
-          instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
-          // Cria contorno, mas invisível
-          const outline = new THREE.LineSegments(
-            outlineGeometry,
-            outlineMaterial.clone()
-          );
-          outline.applyMatrix4(dummy.matrix);
-          outline.visible = false;
-          outline.userData.tipoD = item.Spazio_tipoD;
-          outlineGroup.add(outline);
+    const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+    const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+    const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
 
-          // Guarda no array global
-          outlinesArray.push({
-            outline,
-            position: dummy.position.clone(),
-          });
+    // InstancedMesh
+    dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    dummy.scale.set(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(i, dummy.matrix);
 
-          let colorString = item.ColoreD;
+    instancedMesh.userData.tipo = item.Spazio_tipo;
+    instancedMesh.userData.tipoD = item.Spazio_tipoD;
+    instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
 
-          try {
-            if (colorString && typeof colorString === "string") {
-              colorString = colorString.toLowerCase();
-              color.set(colorString);
-            } else {
-              color.copy(defaultColor);
-              colorString = "default";
-            }
-          } catch (err) {
-            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
-            color.copy(defaultColor);
-            colorString = "default";
-          }
-
-          color.toArray(colorArray, i * 3);
-
-          //Guardar a escala para a funçao toggleVisibility
-          originalScalesByClasse["06"][i] = {
-            x: width * shrinkFactor,
-            y: height * shrinkFactor,
-            z: depth * shrinkFactor,
-          };
-        });
-        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
-          colorArray,
-          3
-        );
-
-        instancedMesh.instanceMatrix.needsUpdate = true;
-
-        instancedMesh.userData.espacos = [...distribuicoes];
-        instancedMesh.userData.tipoD =
-          distribuicoes[0]?.Spazio_tipoD || "unknown";
-
-        distribGroup.add(instancedMesh);
-        outlineGroup.children.forEach((child) => {
-          distribGroup.add(child);
-        });
-        classeEspacoDistrMeshes.push(instancedMesh);
-
-        scene.add(distribGroup);
-
-        console.log(
-          `Estações de loja desenhadas (classe 06): ${distribuicoes.length}`
-        );
+    // Cor
+    let colorString = item.ColoreD;
+    try {
+      if (colorString && typeof colorString === "string") {
+        colorString = colorString.toLowerCase();
+        color.set(colorString);
+      } else {
+        color.copy(defaultColor);
       }
+    } catch (err) {
+      console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
+      color.copy(defaultColor);
+    }
+    color.toArray(colorArray, i * 3);
+
+    // Contorno individual correto (sem dummy)
+    const boxGeo = new THREE.BoxGeometry(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+    const outline = new THREE.LineSegments(edgeGeo, outlineMaterial.clone());
+    outline.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    outline.visible = false;
+    outline.userData.tipoD = item.Spazio_tipoD;
+
+    distribGroup.add(outline); // junta diretamente ao grupo de distribuição
+
+    outlinesArray.push({
+      outline,
+      position: outline.position.clone(),
+    });
+
+    // Escala original
+    originalScalesByClasse["06"][i] = {
+      x: width * shrinkFactor,
+      y: height * shrinkFactor,
+      z: depth * shrinkFactor,
+    };
+  });
+
+  instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+    colorArray,
+    3
+  );
+  instancedMesh.instanceMatrix.needsUpdate = true;
+
+  instancedMesh.userData.espacos = [...distribuicoes];
+  instancedMesh.userData.tipoD = distribuicoes[0]?.Spazio_tipoD || "unknown";
+
+  distribGroup.add(instancedMesh);
+  classeEspacoDistrMeshes.push(instancedMesh);
+
+  scene.add(distribGroup);
+
+  console.log(
+    `Estações de loja desenhadas (classe 06): ${distribuicoes.length}`
+  );
+}
+
 
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "08" Transition Zones
@@ -1381,235 +1565,234 @@ async function createDockFromJSON(docks) {
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "09"
       async function createStacksFromJSON(stacksArray) {
-        const shrinkFactor = 1;
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const dummy = new THREE.Object3D();
-        stackGroup.clear();
-        const outlineGroup = new THREE.Group();
-        const defaultColor = new THREE.Color("#9966ff");
-        const count = stacksArray.length;
+  const shrinkFactor = 1;
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  stackGroup.clear();
+  const defaultColor = new THREE.Color("#9966ff");
+  const count = stacksArray.length;
 
-        const material = new THREE.MeshBasicMaterial({
-          color: defaultColor,
-          transparent: true,
-          opacity: 0.9,
-          depthWrite: true,
-        });
+  const material = new THREE.MeshBasicMaterial({
+    color: defaultColor,
+    transparent: true,
+    opacity: 0.9,
+    depthWrite: true,
+  });
 
-        const instancedMesh = new THREE.InstancedMesh(
-          geometry,
-          material,
-          count
-        );
-        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+  const dummy = new THREE.Object3D();
 
-        const outlineGeometry = new THREE.EdgesGeometry(geometry);
-        const outlineMaterial = new THREE.LineBasicMaterial({
-          color: 0xffffff,
-          transparent: true,
-          opacity: 1,
-        });
+  const outlineMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+  });
 
-        const color = new THREE.Color();
-        const colorArray = new Float32Array(count * 3);
+  const color = new THREE.Color();
+  const colorArray = new Float32Array(count * 3);
 
-        stacksArray.forEach((item, i) => {
-          let width = parseFloat(item.Spazio_coord_largo || 100) / 100;
-          const height = parseFloat(item.Spazio_coord_alto || 100) / 100;
-          let depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
 
-          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
-          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
-          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+  stacksArray.forEach((item, i) => {
+    let width = parseFloat(item.Spazio_coord_largo || 100) / 100;
+    let depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
+    const height = parseFloat(item.Spazio_coord_alto || 100) / 100;
 
-          const orientation = String(item.Spazio_orientamento || "").trim();
-          if (orientation === "1") {
-            [width, depth] = [depth, width];
-          }
+    const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+    const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+    const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
 
-          dummy.position.set(x + width / 2, y + height, z + depth / 2);
-          dummy.scale.set(width, height, depth);
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-          instancedMesh.userData.tipo = item.Spazio_tipo;
-          instancedMesh.userData.tipoD = item.Spazio_tipoD;
-          instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
-          //Contorno
-          const outline = new THREE.LineSegments(
-            outlineGeometry,
-            outlineMaterial.clone()
-          );
-          outline.applyMatrix4(dummy.matrix);
-          outline.visible = false;
-          outline.userData.tipoD = item.Spazio_tipoD;
-          outlineGroup.add(outline);
+    const orientation = String(item.Spazio_orientamento || "").trim();
+    if (orientation === "1") {
+      [width, depth] = [depth, width];
+    }
 
-          outlinesArray.push({
-            outline,
-            position: dummy.position.clone(),
-          });
+    dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    dummy.scale.set(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(i, dummy.matrix);
 
-          //Get the color from JSON
+    instancedMesh.userData.tipo = item.Spazio_tipo;
+    instancedMesh.userData.tipoD = item.Spazio_tipoD;
+    instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
 
-          let colorString = item.ColoreD;
-          try {
-            if (colorString && typeof colorString === "string") {
-              color.set(colorString.toLowerCase());
-            } else {
-              color.copy(defaultColor);
-            }
-          } catch (err) {
-            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
-            color.copy(defaultColor);
-          }
-
-          color.toArray(colorArray, i * 3);
-
-          //Guardar a escala para a funçao toggleVisibility
-          originalScalesByClasse["09"][i] = {
-            x: width * shrinkFactor,
-            y: height * shrinkFactor,
-            z: depth * shrinkFactor,
-          };
-        });
-
-        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
-          colorArray,
-          3
-        );
-        instancedMesh.instanceMatrix.needsUpdate = true;
-
-        instancedMesh.userData.espacos = [...stacksArray];
-        instancedMesh.userData.tipoD =
-          stacksArray[0]?.Spazio_tipoD || "unknown";
-
-        stackGroup.add(instancedMesh);
-        outlineGroup.children.forEach((child) => {
-          stackGroup.add(child);
-        });
-        scene.add(stackGroup);
-        classePilhaMeshes.push(instancedMesh);
-
-        console.log(`Pilhas desenhados (classe 09): ${count}`);
+    // Cor
+    let colorString = item.ColoreD;
+    try {
+      if (colorString && typeof colorString === "string") {
+        color.set(colorString.toLowerCase());
+      } else {
+        color.copy(defaultColor);
       }
+    } catch (err) {
+      console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
+      color.copy(defaultColor);
+    }
+    color.toArray(colorArray, i * 3);
+
+    // Contorno individual correto
+    const boxGeo = new THREE.BoxGeometry(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+    const outline = new THREE.LineSegments(edgeGeo, outlineMaterial.clone());
+    outline.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    outline.visible = false;
+    outline.userData.tipoD = item.Spazio_tipoD;
+
+    stackGroup.add(outline);
+
+    outlinesArray.push({
+      outline,
+      position: outline.position.clone(),
+    });
+
+    // Escala original
+    originalScalesByClasse["09"][i] = {
+      x: width * shrinkFactor,
+      y: height * shrinkFactor,
+      z: depth * shrinkFactor,
+    };
+  });
+
+  instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colorArray, 3);
+  instancedMesh.instanceMatrix.needsUpdate = true;
+
+  instancedMesh.userData.espacos = [...stacksArray];
+  instancedMesh.userData.tipoD = stacksArray[0]?.Spazio_tipoD || "unknown";
+
+  stackGroup.add(instancedMesh);
+  classePilhaMeshes.push(instancedMesh);
+  scene.add(stackGroup);
+
+  console.log(`Pilhas desenhadas (classe 09): ${count}`);
+}
+
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "10" Cais Temporario ainda sem a funcionalidade da altura
 
       async function createTemporaryDockFromJSON(tempDocks) {
-        const shrinkFactor = 1;
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const dummy = new THREE.Object3D();
-        tempDockGroup.clear();
-        const outlineGroup = new THREE.Group();
-        const defaultColor = new THREE.Color("#ffb74d"); // Cor suave
-        const count = tempDocks.length;
+  const shrinkFactor = 1;
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  tempDockGroup.clear();
+  const defaultColor = new THREE.Color("#ffb74d");
+  const count = tempDocks.length;
 
-        const material = new THREE.MeshBasicMaterial({
-          color: defaultColor,
-          transparent: true,
-          opacity: 0.9,
-          depthWrite: true,
-        });
+  const material = new THREE.MeshBasicMaterial({
+    color: defaultColor,
+    transparent: true,
+    opacity: 0.9,
+    depthWrite: true,
+  });
 
-        const instancedMesh = new THREE.InstancedMesh(
-          geometry,
-          material,
-          count
-        );
-        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+  const dummy = new THREE.Object3D();
 
-        const outlineGeometry = new THREE.EdgesGeometry(geometry);
-        const outlineMaterial = new THREE.LineBasicMaterial({
-          color: 0xffffff,
-          transparent: true,
-          opacity: 1,
-        });
+  const outlineMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+  });
 
-        const color = new THREE.Color();
-        const colorArray = new Float32Array(count * 3);
+  const color = new THREE.Color();
+  const colorArray = new Float32Array(count * 3);
 
-        tempDocks.forEach((item, i) => {
-          const width = parseFloat(item.Spazio_coord_largo || 100) / 100;
-          const depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
 
-          const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
-          const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
-          const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
+  tempDocks.forEach((item, i) => {
+    let width = parseFloat(item.Spazio_coord_largo || 100) / 100;
+    let depth = parseFloat(item.Spazio_coord_fondo || 100) / 100;
+    const height = 0.1;
 
-          const orientation = String(item.Spazio_orientamento || "").trim();
-          if (orientation === "1") {
-            [width, depth] = [depth, width];
-          }
+    const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
+    const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
+    const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
 
-          dummy.position.set(x + width / 2, y, z + depth / 2);
-          dummy.scale.set(
-            width * shrinkFactor,
-            0.1, // altura ignorada por agora
-            depth * shrinkFactor
-          );
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-          instancedMesh.userData.tipo = item.Spazio_tipo;
-          instancedMesh.userData.tipoD = item.Spazio_tipoD;
-          instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
-          // Contorno invisível
-          const outline = new THREE.LineSegments(
-            outlineGeometry,
-            outlineMaterial.clone()
-          );
-          outline.applyMatrix4(dummy.matrix);
-          outline.visible = false;
-          outline.userData.tipoD = item.Spazio_tipoD;
-          outlineGroup.add(outline);
+    const orientation = String(item.Spazio_orientamento || "").trim();
+    if (orientation === "1") [width, depth] = [depth, width];
 
-          outlinesArray.push({
-            outline,
-            position: dummy.position.clone(),
-          });
+    dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    dummy.scale.set(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(i, dummy.matrix);
 
-          let colorString = item.ColoreD;
-          try {
-            if (colorString && typeof colorString === "string") {
-              colorString = colorString.toLowerCase();
-              color.set(colorString);
-            } else {
-              color.copy(defaultColor);
-              colorString = "default";
-            }
-          } catch (err) {
-            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
-            color.copy(defaultColor);
-            colorString = "default";
-          }
+    instancedMesh.userData.tipo = item.Spazio_tipo;
+    instancedMesh.userData.tipoD = item.Spazio_tipoD;
+    instancedMesh.userData.spazio_disp = item.Spazio_disponibile;
 
-          color.toArray(colorArray, i * 3);
-
-          //Guardar a escala para a funçao toggleVisibility
-          originalScalesByClasse["10"][i] = {
-            x: width * shrinkFactor,
-            y: 0.05,
-            z: depth * shrinkFactor,
-          };
-        });
-
-        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
-          colorArray,
-          3
-        );
-        instancedMesh.instanceMatrix.needsUpdate = true;
-
-        instancedMesh.userData.espacos = [...tempDocks];
-        instancedMesh.userData.tipoD = tempDocks[0]?.Spazio_tipoD || "unknown";
-
-        tempDockGroup.add(instancedMesh);
-        outlineGroup.children.forEach((child) => {
-          tempDockGroup.add(child);
-        });
-        scene.add(tempDockGroup);
-        classeCaisTemporarioMeshes.push(instancedMesh);
-
-        console.log(`Cais Temporários desenhados (classe 10): ${count}`);
+    // Cor
+    let colorString = item.ColoreD;
+    try {
+      if (colorString && typeof colorString === "string") {
+        color.set(colorString.toLowerCase());
+      } else {
+        color.copy(defaultColor);
       }
+    } catch (err) {
+      console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
+      color.copy(defaultColor);
+    }
+    color.toArray(colorArray, i * 3);
+
+    // Contorno correto por item (sem dummy)
+    const boxGeo = new THREE.BoxGeometry(
+      width * shrinkFactor,
+      height * shrinkFactor,
+      depth * shrinkFactor
+    );
+    const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+    const outline = new THREE.LineSegments(edgeGeo, outlineMaterial.clone());
+    outline.position.set(x + width / 2, y + height / 2, z + depth / 2);
+    outline.visible = false;
+    outline.userData.tipoD = item.Spazio_tipoD;
+
+    tempDockGroup.add(outline);
+    outlinesArray.push({
+      outline,
+      position: outline.position.clone(),
+    });
+
+    // Escalas para toggleVisibility
+    originalScalesByClasse["10"][i] = {
+      x: width * shrinkFactor,
+      y: height * shrinkFactor,
+      z: depth * shrinkFactor,
+    };
+  });
+
+  instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colorArray, 3);
+  instancedMesh.instanceMatrix.needsUpdate = true;
+
+  instancedMesh.userData.espacos = [...tempDocks];
+  instancedMesh.userData.tipoD = tempDocks[0]?.Spazio_tipoD || "unknown";
+
+  tempDockGroup.add(instancedMesh);
+  classeCaisTemporarioMeshes.push(instancedMesh);
+  scene.add(tempDockGroup);
+
+  console.log(`Cais Temporários desenhados (classe 10): ${count}`);
+}
+
+
+
+async function toggleWarehouse() {
+  const allTipoDLabels = Object.keys(EspacosPorTipoD);
+
+  for (const tipoD of allTipoDLabels) {
+    await toggleLayoutVisibility(tipoD, !isWarehouseVisible);
+  }
+
+  isWarehouseVisible = !isWarehouseVisible;
+
+
+}
 
       // END NEW DYNAMIC FUNCTIONS TO DRAW SPACES
       async function createRacksFromJSON(racks) {
@@ -2238,7 +2421,7 @@ function gerarMenuToggleLabels(...listas) {
 
     const labelElement = document.createElement("label");
     labelElement.appendChild(input);
-    labelElement.append(label, " ", "Label");
+    labelElement.append(label, " ", "Label"); //TRADUÇÃO
 
     li.appendChild(labelElement);
     ul.appendChild(li);
@@ -2457,7 +2640,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
 
           // <label>
           const label = document.createElement("label");
-          label.textContent = "Níveis";
+          label.textContent = "Níveis"; // Tradução
           label.style.minWidth = "60px";
 
           // <select>
@@ -2486,7 +2669,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
           // Adicionar dentro da <section>
           section.appendChild(container);
 
-          console.log(`✅ Criado menu de níveis para tipo '${tipo}' (${nome})`);
+          
         });
       
       }
@@ -2565,7 +2748,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
 
         // Agrupar por tipo de espaço
         componentes.forEach((item) => {
-          const tipo = item.Spazio_tipo || "Desconhecido";
+          const tipo = item.Spazio_tipo;
           if (!tiposMap[tipo]) {
             tiposMap[tipo] = [];
           }
@@ -2697,7 +2880,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
 
 
         instancedMesh.userData.espacos = [...corridors];
-        instancedMesh.userData.tipoD = corridors[0]?.Spazio_tipoD || "unknown";
+        instancedMesh.userData.tipoD = corridors[0]?.Spazio_tipoD;
 
         corridorGroup.add(instancedMesh);
         corridorGroup.add(outlineGroup);
@@ -3060,116 +3243,120 @@ createSelectsLevels()
       }
       //END OF NEW FUNCTIONS FOR DYNAMIC SIDE BAR ---------------------------------------------------------------------------
 
-      window.onload = function () {
-        fetch("resources/data/dados_limpo.json")
-          .then((response) => response.json())
-          .then(async (data) => {
-            trocarCoordenadasBC(data);
-            // mirrorDataXCoordinates(data);
-            const val = await extractDataFromJSON(data);
+     window.onload = async function () {
+      translateConfig();
+  const loader = document.getElementById("loader");
 
-            //ALTERAÇAO GM
+  try {
+    const response = await fetch("resources/data/dados_limpo.json");
+    const data = await response.json();
 
-            labelRenderer.setSize(window.innerWidth, window.innerHeight);
-            labelRenderer.domElement.style.position = "absolute";
-            labelRenderer.domElement.style.top = "0px";
-            labelRenderer.domElement.style.pointerEvents = "none";
-            document.body.appendChild(labelRenderer.domElement);
+    trocarCoordenadasBC(data);
+    const val = await extractDataFromJSON(data);
 
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setAnimationLoop(animate);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.VSMShadowMap;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            container.appendChild(renderer.domElement);
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.domElement.style.position = "absolute";
+    labelRenderer.domElement.style.top = "0px";
+    labelRenderer.domElement.style.pointerEvents = "none";
+    document.body.appendChild(labelRenderer.domElement);
 
-            stats.domElement.style.position = "fixed";
-            stats.domElement.style.bottom = "10px";
-            stats.domElement.style.right = "10px";
-            stats.domElement.style.left = ""; // limpa se existir
-            stats.domElement.style.top = ""; // limpa para não se sobrepor
-            stats.domElement.style.zIndex = "9999";
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setAnimationLoop(animate);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.VSMShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    container.appendChild(renderer.domElement);
 
-            document.body.appendChild(stats.domElement);
+    stats.domElement.style.position = "fixed";
+    stats.domElement.style.bottom = "10px";
+    stats.domElement.style.right = "10px";
+    stats.domElement.style.left = "";
+    stats.domElement.style.top = "";
+    stats.domElement.style.zIndex = "9999";
+    document.body.appendChild(stats.domElement);
+    container.appendChild(stats.domElement);
 
             container.appendChild(stats.domElement);
             toggleCamera();
 
-            //Gerar dinamicamento os Spazio_tipoD na interface ---------------------------------------------------------------------------
+    const uniqueSpazioTipoD = [...new Set(data.map((d) => d.Spazio_tipoD))];
+    const sidebarContainer = document.getElementById("sidebar-dynamic-container");
 
-            const uniqueSpazioTipoD = [
-              ...new Set(data.map((d) => d.Spazio_tipoD)),
-            ];
-            const sidebarContainer = document.getElementById(
-              "sidebar-dynamic-container"
-            );
+    const wrapper = document.createElement("details");
+    wrapper.className = "dropdown-group";
+    wrapper.open = false;
+    wrapper.innerHTML = `
+      <summary>
+        <span style="display: flex; align-items: center; gap: 6px">
+          <i class="ph ph-stack"></i>
+          <span>SPACES</span>
+        </span>
+      </summary>
+      <div id="espacos-content"></div>
+    `;
+    sidebarContainer.appendChild(wrapper);
 
-            const wrapper = document.createElement("details");
-            wrapper.className = "dropdown-group";
-            wrapper.open = false;
-            wrapper.innerHTML = `
+    const espacosContent = wrapper.querySelector("#espacos-content");
+
+    uniqueSpazioTipoD.forEach((tipo) => {
+      const section = document.createElement("details");
+      section.className = "dropdown-group";
+      section.innerHTML = `
         <summary>
           <span style="display: flex; align-items: center; gap: 6px">
-            <i class="ph ph-stack"></i>
-            <span>SPACES</span>
+            <i class="ph ph-cube"></i>
+            <span>${tipo}</span>
           </span>
         </summary>
-        <div id="espacos-content"></div>
+        <ul>
+          <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}"  /> Layout</label></li>
+          <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}"  /> Check Availability </label></li>
+          <li><label><input type="checkbox" class="toggle-height" data-tipo="${tipo}" /> Flatten Height (2D)</label></li>
+        </ul>
       `;
-            sidebarContainer.appendChild(wrapper);
+      espacosContent.appendChild(section);
+    });
 
-            const espacosContent = wrapper.querySelector("#espacos-content");
+    createSelectsLevels();
+    gerarMenuToggleLabels(...EspacosAll);
+    gerarSelectsBufferPorTipo(...EspacosAll);
 
-            uniqueSpazioTipoD.forEach((tipo) => {
-              const section = document.createElement("details");
-              section.className = "dropdown-group";
-              section.innerHTML = `
-          <summary>
-            <span style="display: flex; align-items: center; gap: 6px">
-              <i class="ph ph-cube"></i>
-              <span>${tipo}</span>
-            </span>
-          </summary>
-          <ul>
-            <li><label><input type="checkbox" class="toggle-layout" data-tipo="${tipo}"  /> Layout</label></li>
+    document.addEventListener("change", (e) => {
+      const tipo = e.target.dataset.tipo;
+      if (e.target.classList.contains("toggle-layout")) {
+        toggleLayoutVisibility(tipo, e.target.checked, data);
+      } else if (e.target.classList.contains("toggle-active")) {
+        toggleActiveSpaces(tipo, e.target.checked, data);
+      } else if (e.target.classList.contains("toggle-height")) {
+        toggleHeight2D(tipo, e.target.checked, data);
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (e.target.classList.contains("btn-levels")) {
+        const tipo = e.target.dataset.tipo;
+        showLevels(tipo);
+      }
+    });
 
 
-            <li><label><input type="checkbox" class="toggle-active" data-tipo="${tipo}"  /> Check Availability </label></li>
-            <li><label><input type="checkbox" class="toggle-height" data-tipo="${tipo}" /> Flatten Height (2D)</label></li>
-          </ul>
-        `;
-              espacosContent.appendChild(section);
-            });
+const title = document.getElementById("ArmName");
+const objComNome = data.find(item => item.EnteD && item.EnteD.trim() !== "");
 
+if (title && objComNome) {
+  title.textContent = objComNome.EnteD;            
+  // title.textContent = `${t("Arm")} - ${objComNome.EnteD}`;
+}
 
-            gerarMenuToggleLabels(...EspacosAll);
-            gerarSelectsBufferPorTipo(...EspacosAll);
+  } catch (error) {
+    console.error("Erro ao carregar aplicação:", error);
+    alert("Erro a carregar o armazém. Tenta recarregar a página.");
+  } finally {
+    loader.style.display = "none"; // oculta o loader mesmo que falhe
+  }
+};
 
-            // EVENT LISTENERS ---------------------------------------------------------------------------
-
-            document.addEventListener("change", (e) => {
-              const tipo = e.target.dataset.tipo;
-              if (e.target.classList.contains("toggle-layout")) {
-                toggleLayoutVisibility(tipo, e.target.checked, data);
-                // } else if (e.target.classList.contains("toggle-labels")) {
-                //   toggleLabelsVisbility(tipo, e.target.checked);
-              } else if (e.target.classList.contains("toggle-active")) {
-                toggleActiveSpaces(tipo, e.target.checked, data);
-              } else if (e.target.classList.contains("toggle-height")) {
-                toggleHeight2D(tipo, e.target.checked, data);
-              }
-            });
-
-            document.addEventListener("click", (e) => {
-              if (e.target.classList.contains("btn-levels")) {
-                const tipo = e.target.dataset.tipo;
-                showLevels(tipo);
-              }
-            });
-          })
-          .catch((error) => console.error("Error fetching JSON:", error));
-      };
 
       function trocarCoordenadasBC(array) {
         array.forEach((item) => {
@@ -3189,6 +3376,8 @@ createSelectsLevels()
         return true;
       }
 
+      // ToggleWarehouse
+      document.getElementById("toggleWarehouseBtn").addEventListener("click", toggleWarehouse);
       //Tutorial button ALTERAÇAO GM
       const tutorialBtn = document.getElementById("tutorial-btn");
       const tooltipTutorial = document.getElementById("tutorial-tooltip");
