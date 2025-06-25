@@ -9,7 +9,7 @@
       name="viewport"
       content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
     />
-    <link rel="stylesheet" href="warehouse3DGMRS.css" />
+    <link rel="stylesheet" href="three/ISRWarehouse3D/warehouse3DGMRS.css" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
@@ -18,19 +18,19 @@
   <body>
     <div id="loader" class="loader-overlay">
   <div class="loader-content">
-    <img src="resources/imgs/fade-stagger-circles.svg" alt="loading" class="loader-icon" />
+    <img src="three/ISRWarehouse3D/imgs/fade-stagger-circles.svg" alt="loading" class="loader-icon" />
     
   </div>
 </div>
     <!-- HEADER NAVIGATION -->
     <div id="top-nav">
       <div class="nav-left">
-        <img src="resources/imgs/Eve_Icon.png" class="logo" />
+        <img src="three/ISRWarehouse3D/imgs/Eve_Icon.png" class="logo" />
         <span class="title">Warehouse 3D</span>
       </div>
       <div class="nav-right">
         <button id="toggleWarehouseBtn" title="Show Warehouse">
-           <i class="ph ph-warehouse"></i>
+           <img src ="three/ISRWarehouse3D/imgs/warehouse-light.svg" class="phosphor-icon"/>
            </button>
         <button id="toggle-view-btn">2D</button>
         <button id="tutorial-btn">Tutorial</button>
@@ -80,7 +80,7 @@
       <details class="dropdown-group" open>
         <summary id="toggle-captions-btn">
           <span style="display: flex; align-items: center; gap: 6px">
-            <i class="ph ph-warehouse"></i>
+            <img src="three/ISRWarehouse3D/imgs/warehouse-light.svg" class="phosphor-icon">
             <span>TOGGLE CAPTIONS</span>
           </span>
         </summary>
@@ -3249,7 +3249,7 @@ createSelectsLevels()
   const loader = document.getElementById("loader");
 
   try {
-    const response = await fetch("resources/data/dados_limpo.json");
+    const response = await fetch("data/dados_limpo.json");
     const data = await response.json();
 
     trocarCoordenadasBC(data);
@@ -3290,7 +3290,7 @@ createSelectsLevels()
     wrapper.innerHTML = `
       <summary>
         <span style="display: flex; align-items: center; gap: 6px">
-          <i class="ph ph-stack"></i>
+          <img src="three/ISRWarehouse3D/imgs/stack-light.svg" class="phosphor-icon">
           <span>SPACES</span>
         </span>
       </summary>
@@ -3306,7 +3306,7 @@ createSelectsLevels()
       section.innerHTML = `
         <summary>
           <span style="display: flex; align-items: center; gap: 6px">
-            <i class="ph ph-cube"></i>
+            <img src="three/ISRWarehouse3D/imgs/cube-light.svg" class="phosphor-icon">
             <span>${tipo}</span>
           </span>
         </summary>
