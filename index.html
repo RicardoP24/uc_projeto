@@ -89,7 +89,7 @@
         }
       }
     </script>
-
+    
     <script type="module">
       import * as THREE from "three";
       import Stats from "three/addons/libs/stats.module.js";
@@ -2140,6 +2140,7 @@ function mirrorDataXCoordinates(data) {
 
         generateDynamicLegend(data); // GM legendas
         createWarehouseAreaFromComponentsAll();
+
         // gerarMenuToggleLabels(
         //   classeDivEspacos,
         //   classeExec,
@@ -2203,7 +2204,7 @@ function mirrorDataXCoordinates(data) {
         };
       }
 
-      function gerarMenuToggleLabels(...listas) {
+function gerarMenuToggleLabels(...listas) {
   const tiposMap = new Map(); // tipo => label
 
   listas.flat().forEach((item) => {
@@ -2274,62 +2275,58 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
  
       const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
 
-      function encontrarObjetos3D(tipo, grupos) {
-        const objetos = [];
-
-        grupos.forEach((group) => {
-          group.children.forEach((child) => {
-            const tipoChild = (
-              child.userData?.tipo ||
-              child.userData?.tipoD ||
-              ""
-            ).trim();
-            if (tipoChild === tipo) objetos.push(child);
-          });
-        });
-        return objetos;
+ function encontrarObjetos3D(tipo, grupos) {
+  for (const group of grupos) {
+    for (const child of group.children) {
+      const espacos = child.userData?.espacos || [];
+      const possuiTipo = espacos.some(
+        (item) => (item.Spazio_tipo || "").trim() === tipo
+      );
+      if (possuiTipo) {
+        return child; // retorna a primeira instância encontrada
       }
+    }
+  }
+  return null;
+}
 
-      function agruparEspacosEmNiveis(espacos) {
-        const restantes = [...espacos].sort(
-          (a, b) => a.base - b.base || a.topo - b.topo
-        );
-        const niveis = [];
+ 
 
-        while (restantes.length > 0) {
-          // Encontra o menor base possível
-          const baseMin = restantes[0].base;
+ function agruparEspacosEmNiveis(espacos) {
+  const restantes = [...espacos].sort(
+    (a, b) => a.base - b.base || a.topo - b.topo
+  );
+  const niveis = [];
 
-          // Encontra todos os com base == baseMin
-          const nivelAtual = restantes.filter((e) => e.base === baseMin);
+  let topoAnterior = -Infinity;
 
-          // Remove esses do conjunto
-          for (const e of nivelAtual) {
-            const idx = restantes.indexOf(e);
-            if (idx !== -1) restantes.splice(idx, 1);
-          }
+  while (restantes.length > 0) {
+    // 1. Encontra o primeiro com base > topoAnterior
+    const proximo = restantes.find(e => e.base > topoAnterior);
+    if (!proximo) break;
 
-          // Agora adiciona todos os espaços cuja base seja maior que baseMin e menor que topoMax
-          const topoMax = Math.max(...nivelAtual.map((e) => e.topo));
-          const entreBaseETopo = restantes.filter(
-            (e) => e.base > baseMin && e.base < topoMax
-          );
+    // 2. Define novo limite
+    const limiteTopo = proximo.topo;
 
-          for (const e of entreBaseETopo) {
-            nivelAtual.push(e);
-          }
+    // 3. Agrupa todos com base <= limiteTopo e base > topoAnterior
+    const nivelAtual = restantes.filter(e =>
+      e.base > topoAnterior && e.base <= limiteTopo
+    );
 
-          // Remove esses também
-          for (const e of entreBaseETopo) {
-            const idx = restantes.indexOf(e);
-            if (idx !== -1) restantes.splice(idx, 1);
-          }
+    // 4. Atualiza topoAnterior com o maior topo do nível atual
+    topoAnterior = Math.max(...nivelAtual.map(e => e.topo));
 
-          niveis.push(nivelAtual);
-        }
+    // 5. Remove os elementos agrupados
+    for (const e of nivelAtual) {
+      const idx = restantes.indexOf(e);
+      if (idx !== -1) restantes.splice(idx, 1);
+    }
 
-        return niveis;
-      }
+    niveis.push(nivelAtual);
+  }
+
+  return niveis;
+}
 
       function createSelectsLevels() {
         if (!Array.isArray(EspacosAll) || EspacosAll.length === 0) {
@@ -2338,7 +2335,7 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
         }
 
         const tiposMap = new Map();
-
+         
         EspacosAll.forEach((espaco) => {
           const tipo = (espaco.Spazio_tipo || "Desconhecido").trim();
           const nome = (espaco.Spazio_tipoD || tipo).trim();
@@ -2364,49 +2361,43 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
         ];
 
         tiposMap.forEach(({ nome, objetos }, tipo) => {
-          const espacosData = objetos.map((obj) => {
-            const base = parseFloat(obj.Spazio_coord_draw_b || 0);
-            const altura = parseFloat(obj.Spazio_coord_alto || 0);
-            const topo = base + altura;
-            return { base, topo, altura, tipo: obj.Spazio_tipo };
+           
+ 
+           
+        const meshPai = encontrarObjetos3D(tipo, grupos);
+        if (!meshPai || !meshPai.userData?.espacos) return; // <-- aqui substitui o "continue"
+
+
+
+        const espacosData = [];
+
+        const espacos = meshPai.userData?.espacos || [];
+
+          espacos.forEach((obj, index) => {
+            if ((obj.Spazio_tipo || "").trim() === tipo) {
+              const base = parseFloat(obj.Spazio_coord_draw_b || 0);
+              const altura = parseFloat(obj.Spazio_coord_alto || 0);
+              const topo = base + altura;
+
+              espacosData.push({
+                base,
+                topo,
+                altura,
+                tipo: obj.Spazio_tipo,
+                tipoD: obj.Spazio_tipoD,
+                spazio: obj.Spazio,
+                classe:obj.Spazio_classe,
+                index,         
+              });
+            }
           });
 
-          const espacosValidos = espacosData.filter((e) => e.altura > 0);
-          const niveisBrutos = agruparEspacosEmNiveis(espacosValidos);
-          const niveis = corrigirNiveisEspacos(niveisBrutos);
+          const niveis = agruparEspacosEmNiveis(espacosData);
+          niveis.meshPai = meshPai;
 
-          const todosObjetos = encontrarObjetos3D(tipo, grupos);
-
-          if (tipo === "05" && todosObjetos.length === 0) {
-            console.warn(
-              "❌ Nenhum objeto 3D encontrado com tipo 05 em nenhum grupo."
-            );
-          }
-
-          const niveisObjetos = niveis.map((nivel) =>
-            nivel
-              .map((item) =>
-                todosObjetos.find((obj) => obj.userData?.tipo == item.tipo)
-              )
-              .filter(Boolean)
-          );
-
-          const totalMeshes = niveisObjetos.reduce(
-            (acc, arr) => acc + arr.length,
-            0
-          );
-          if (totalMeshes === 0) {
-            console.warn(
-              `⚠️ Tipo ${tipo} sem objetos 3D válidos — não será exibido`
-            );
-            return;
-          }
-
-          bufferLevelsByTipo.set(tipo, niveisObjetos);
-
-          console.log(
-            `✅ Criado seletor para tipo '${tipo}' (${nome}) com ${niveisObjetos.length} níveis`
-          );
+           
+          bufferLevelsByTipo.set(tipo, niveis);
+   
         });
       }
 
@@ -2444,20 +2435,8 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
             const topo = base + altura;
             return { base, topo, altura, tipo: obj.Spazio_tipo };
           });
-
-          const niveisBrutos = agruparEspacosEmNiveis(espacosData);
-          const niveis = corrigirNiveisEspacos(niveisBrutos);
-
-          const todosObjetos = encontrarObjetos3D(tipo, grupos);
-          const niveisObjetos = niveis.map((nivel) =>
-            nivel
-              .map((item) =>
-                todosObjetos.find((obj) => obj.userData?.tipo == item.tipo)
-              )
-              .filter(Boolean)
-          );
-
-          bufferLevelsByTipo.set(tipo, niveisObjetos);
+          
+          const niveis = agruparEspacosEmNiveis(espacosData);
 
           // Procurar <details> correspondente no DOM
           const allSections = document.querySelectorAll(
@@ -2485,7 +2464,7 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
           select.className = "buffer-select";
           select.dataset.tipo = tipo;
 
-          const maxNivel = niveisObjetos.length;
+          const maxNivel = niveis.length;
           for (let i = 1; i <= maxNivel; i++) {
             const option = document.createElement("option");
             option.value = i;
@@ -2508,6 +2487,7 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
 
           console.log(`✅ Criado menu de níveis para tipo '${tipo}' (${nome})`);
         });
+      
       }
 
       function corrigirNiveisEspacos(niveis) {
@@ -2538,55 +2518,46 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
         return niveis;
       }
 
-      function updateBufferLevelsPorTipo(tipo, nivelMax) {
-        const niveis = bufferLevelsByTipo.get(tipo);
-        if (!niveis) return;
+ function updateBufferLevelsPorTipo(tipo, nivelMax) {
+    
+  const niveis = bufferLevelsByTipo.get(tipo);
+        console.log(niveis)
 
-        const dummy = new THREE.Object3D();
+  if (!niveis || !niveis.meshPai) return;
 
-        niveis.forEach((nivel, i) => {
-          const mostrar = i < nivelMax;
+  const mesh = niveis.meshPai;
+  const dummy = new THREE.Object3D();
 
-          nivel.forEach((obj, index) => {
-            if (!obj || !obj instanceof THREE.InstancedMesh) return;
+  for (let i = 0; i < niveis.length; i++) {
+    const nivel = niveis[i];
 
-            const mesh = obj;
-            const meshIndex =
-              mesh.instanceId !== undefined ? mesh.instanceId : index;
+    nivel.forEach((espaco) => {
+      const index = espaco.index;
+      const classe = espaco.classe;
+      if (typeof index !== "number" || !classe) return;
 
-            // Pegamos a escala original, caso tenha sido salva antes
-            const original = bufferOriginalScales[meshIndex] || {
-              x: 1,
-              y: 1,
-              z: 1,
-            };
+      mesh.getMatrixAt(index, dummy.matrix);
+      dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
 
-            // Obtemos a matriz atual da instância
-            mesh.getMatrixAt(meshIndex, dummy.matrix);
-            dummy.matrix.decompose(
-              dummy.position,
-              dummy.quaternion,
-              dummy.scale
-            );
-
-            if (mostrar) {
-              // Restaura a escala original
-              dummy.scale.set(original.x, original.y, original.z);
-            } else {
-              // Reduz a escala para "esconder"
-              dummy.scale.set(0.001, 0.001, 0.001);
-            }
-
-            dummy.updateMatrix();
-            mesh.setMatrixAt(meshIndex, dummy.matrix);
-          });
-
-          // Após alterar as matrizes, marque-as para atualização
-          if (nivel[0] && nivel[0].instanceMatrix) {
-            nivel[0].instanceMatrix.needsUpdate = true;
-          }
-        });
+      if (i >= nivelMax) {
+        // Oculta instância acima do nível permitido
+        dummy.scale.set(0.0001, 0.0001, 0.0001);
+      } else {
+        // Restaura escala original
+        const original = originalScalesByClasse[classe]?.[index];
+        if (original) {
+          dummy.scale.set(original.x, original.y, original.z);
+        }
       }
+
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+     });
+  }
+
+  mesh.instanceMatrix.needsUpdate = true;
+}
+
 
       function processDivSpacesClass(componentes) {
         const tiposMap = {};
@@ -2616,7 +2587,10 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
           } else {
             createCorridorsFromJSON(grupo);
           }
+
+
         }
+
       }
 
       //Nova função realizada por GM para representar os espaços
@@ -2814,6 +2788,7 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
                 await createTemporaryDockFromJSON(itemsDaClasse);
                 break;
             }
+            createSelectsLevels();
           }
 
           // Atualiza visibilidade (escala) das instâncias desenhadas
@@ -3117,7 +3092,6 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
 
             container.appendChild(stats.domElement);
             toggleCamera();
-            createSelectsLevels();
 
             //Gerar dinamicamento os Spazio_tipoD na interface ---------------------------------------------------------------------------
 
@@ -3164,7 +3138,6 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
         `;
               espacosContent.appendChild(section);
             });
-            createSelectsLevels();
 
 
             gerarMenuToggleLabels(...EspacosAll);
