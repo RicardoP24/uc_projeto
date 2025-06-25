@@ -3249,7 +3249,7 @@ createSelectsLevels()
   const loader = document.getElementById("loader");
 
   try {
-    const response = await fetch("data/dados_limpo.json");
+    const response = await fetch("resources/data/dados_limpo.json");
     const data = await response.json();
 
     trocarCoordenadasBC(data);
