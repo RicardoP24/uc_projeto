@@ -1103,8 +1103,8 @@ for (let i = 0; i < outlinesArray.length; i++) {
 
         instancedMesh.instanceMatrix.needsUpdate = true;
         instancedMesh.userData.espacos = [...bufferArray];
-        instancedMesh.userData.tipoD =
-          bufferArray[0]?.Spazio_tipoD || "unknown";
+        instancedMesh.userData.tipoD =bufferArray[0]?.Spazio_tipoD ;
+        instancedMesh.userData.tipo =bufferArray[0]?.Spazio_tipo ;
 
         bufferGroup.add(instancedMesh);
         classeEspArmMeshes.push(instancedMesh);
@@ -1817,8 +1817,7 @@ async function toggleWarehouse() {
           count
         );
         instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-        instancedMesh.userData.tipo = "rack";
-
+ 
         const outlineGeometry = new THREE.EdgesGeometry(geometry);
         const colorArray = new Float32Array(count * 3);
         const dummyColor = new THREE.Color(0x000000); // desnecessário, mas mantido para consistência
@@ -1877,8 +1876,9 @@ async function toggleWarehouse() {
         instancedMesh.instanceMatrix.needsUpdate = true;
 
         instancedMesh.userData.espacos = [...racks];
-        instancedMesh.userData.tipoD = racks[0]?.Spazio_tipoD || "unknown";
-         
+        instancedMesh.userData.tipoD = racks[0]?.Spazio_tipoD;
+        instancedMesh.userData.tipo = racks[0]?.Spazio_tipo;
+
         rackGroup.add(instancedMesh);
         outlineGroup.children.forEach((child) => rackGroup.add(child));
         classeDivEspacosMeshes.push(instancedMesh);
@@ -2483,25 +2483,14 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
   );
   const niveis = [];
 
-  let topoAnterior = -Infinity;
-
   while (restantes.length > 0) {
-    // 1. Encontra o primeiro com base > topoAnterior
-    const proximo = restantes.find(e => e.base > topoAnterior);
-    if (!proximo) break;
+    const primeiro = restantes[0]; // menor base
+    const topoLimite = primeiro.topo;
 
-    // 2. Define novo limite
-    const limiteTopo = proximo.topo;
+    // Agrupa todos que começam antes do fim desse primeiro
+    const nivelAtual = restantes.filter(e => e.base <= topoLimite);
 
-    // 3. Agrupa todos com base <= limiteTopo e base > topoAnterior
-    const nivelAtual = restantes.filter(e =>
-      e.base > topoAnterior && e.base <= limiteTopo
-    );
-
-    // 4. Atualiza topoAnterior com o maior topo do nível atual
-    topoAnterior = Math.max(...nivelAtual.map(e => e.topo));
-
-    // 5. Remove os elementos agrupados
+    // Remove os agrupados
     for (const e of nivelAtual) {
       const idx = restantes.indexOf(e);
       if (idx !== -1) restantes.splice(idx, 1);
@@ -2512,6 +2501,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
 
   return niveis;
 }
+
 
       function createSelectsLevels() {
         if (!Array.isArray(EspacosAll) || EspacosAll.length === 0) {
@@ -2548,7 +2538,6 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
         tiposMap.forEach(({ nome, objetos }, tipo) => {
            
  
-           
         const meshPai = encontrarObjetos3D(tipo, grupos);
         if (!meshPai || !meshPai.userData?.espacos) return; // <-- aqui substitui o "continue"
 
@@ -2577,6 +2566,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
             }
           });
 
+           
           const niveis = agruparEspacosEmNiveis(espacosData);
           niveis.meshPai = meshPai;
 
@@ -2705,8 +2695,8 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
 
  function updateBufferLevelsPorTipo(tipo, nivelMax) {
     
+   
   const niveis = bufferLevelsByTipo.get(tipo);
-        console.log(niveis)
 
   if (!niveis || !niveis.meshPai) return;
 
