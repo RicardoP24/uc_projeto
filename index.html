@@ -2770,118 +2770,90 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
 
       //Nova função realizada por GM para representar os espaços
  async function createCorridorsFromJSON(corridors) {
-  const corridorOpacity = 0.95;
-  const shrinkFactor = 1.0;
+  const shrinkFactor = 1;
+  const dummy = new THREE.Object3D();
   const defaultColor = new THREE.Color("#3399ff");
   const baseGeometry = new THREE.PlaneGeometry(1, 1);
-  const dummy = new THREE.Object3D();
+  const tipoD = corridors[0]?.Spazio_tipoD || "unknown";
+  const MAX_TO_RENDER = 200; // limit for visible corridors
 
-  const outlineGeometry = new THREE.EdgesGeometry(baseGeometry);
-  const outlineMaterial = new THREE.LineBasicMaterial({
-    color: 0x000000,
-    transparent: true,
-    opacity: 0.6,
-  });
+  // Get current camera position
+  const camPos = new THREE.Vector3();
+  camera.getWorldPosition(camPos);
 
-  const corredoresPorTipo = new Map();
-  corridors.forEach((item) => {
-    const tipo = (item.Spazio_tipo || "Desconhecido").trim();
-    if (!corredoresPorTipo.has(tipo)) {
-      corredoresPorTipo.set(tipo, []);
-    }
-    corredoresPorTipo.get(tipo).push(item);
-  });
-
-  corredoresPorTipo.forEach((corrs, tipo) => {
-    const count = corrs.length;
-    const material = new THREE.MeshBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      opacity: corridorOpacity,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
+  // Remove previous meshes of the same tipoD from the scene
+  corridorGroup.children
+    .filter(child => child.userData?.tipoD === tipoD)
+    .forEach(child => {
+      corridorGroup.remove(child);
+      child.geometry?.dispose?.();
+      child.material?.dispose?.();
     });
 
-    const instancedMesh = new THREE.InstancedMesh(baseGeometry, material, count);
-    instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    instancedMesh.userData.tipo = tipo;
+  // Sort corridors by distance to the camera and keep only the closest ones
+  const sorted = corridors
+    .map(c => {
+      const x = parseFloat(c.Spazio_coord_draw_a || 0) / 100;
+      const z = parseFloat(c.Spazio_coord_draw_c || 0) / 100;
+      const pos = new THREE.Vector3(x, 0, z);
+      const distance = pos.distanceTo(camPos);
+      return { ...c, __dist: distance };
+    })
+    .sort((a, b) => a.__dist - b.__dist)
+    .slice(0, MAX_TO_RENDER); // Only keep nearest N
 
-    const colorArray = new Float32Array(count * 3);
-    const color = new THREE.Color();
-    const outlineGroup = new THREE.Group();
+  // Lightweight material for performance
+  const material = new THREE.MeshBasicMaterial({
+    color: defaultColor,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.6,
+    depthWrite: false,
+  });
 
-    corrs.forEach((corridor, index) => {
-      const x = parseFloat(corridor.Spazio_coord_draw_a || 0) / 100;
-      const z = parseFloat(corridor.Spazio_coord_draw_c || 0) / 100;
+  const instancedMesh = new THREE.InstancedMesh(baseGeometry, material, sorted.length);
+  instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  instancedMesh.frustumCulled = true;
 
-      let width = parseFloat(corridor.Spazio_coord_largo || 100) / 100;
-      let depth = parseFloat(corridor.Spazio_coord_fondo || 100) / 100;
+  for (let i = 0; i < sorted.length; i++) {
+    const c = sorted[i];
+    let width = parseFloat(c.Spazio_coord_largo || 100) / 100;
+    let depth = parseFloat(c.Spazio_coord_fondo || 100) / 100;
 
-      const orientation = String(corridor.Spazio_orientamento || "").trim();
-      if (orientation === "1") [width, depth] = [depth, width];
+    const x = parseFloat(c.Spazio_coord_draw_a || 0) / 100;
+    const z = parseFloat(c.Spazio_coord_draw_c || 0) / 100;
+    const orientation = String(c.Spazio_orientamento || "").trim();
 
-      const scaleX = width * shrinkFactor;
-      const scaleZ = depth * shrinkFactor;
-      const y = 0.01 + index * 0.0001;
+    if (orientation === "1") [width, depth] = [depth, width];
 
-      dummy.position.set(x + width / 2, y, z + depth / 2);
-      dummy.rotation.x = -Math.PI / 2;
-      dummy.scale.set(scaleX, scaleZ, 1);
-      dummy.updateMatrix();
-      instancedMesh.setMatrixAt(index, dummy.matrix);
+    const scaleX = width * shrinkFactor;
+    const scaleZ = depth * shrinkFactor;
+    const y = 0.01;
 
-      instancedMesh.userData.tipo = corridor.Spazio_tipo;
-      instancedMesh.userData.tipoD = corridor.Spazio_tipoD;
-      instancedMesh.userData.spazio_disp = corridor.Spazio_disponibile;
+    dummy.position.set(x + width / 2, y, z + depth / 2);
+    dummy.rotation.x = -Math.PI / 2;
+    dummy.scale.set(scaleX, scaleZ, 1);
+    dummy.updateMatrix();
 
-          // Cor por instância
-          try {
-            color.set((corridor.ColoreD || "#3399ff").toLowerCase());
-          } catch {
-            color.copy(defaultColor);
-          }
-          color.toArray(colorArray, index * 3);
+    instancedMesh.setMatrixAt(i, dummy.matrix);
+  }
 
-          // Contorno
-          const outline = new THREE.LineSegments(
-            outlineGeometry.clone(),
-            outlineMaterial.clone()
-          );
-          outline.applyMatrix4(dummy.matrix);
-          outline.visible = true; // pode ser false se quiser só mostrar onHover
-          outline.userData.tipo = corridor.Spazio_tipo;
-          outline.userData.tipoD = corridor.Spazio_tipoD; 
+  instancedMesh.instanceMatrix.needsUpdate = true;
+  instancedMesh.userData.espacos = [...sorted];
+  instancedMesh.userData.tipoD = tipoD;
 
-          outlineGroup.add(outline);
-          outlinesArray.push({
-            outline,
-            position: dummy.position.clone(),
-          });
-          classeDivEspacosMeshes.push(outline);
-        });
+  corridorGroup.add(instancedMesh);
+  classeDivEspacosMeshes = classeDivEspacosMeshes.filter(
+    mesh => mesh.userData?.tipoD !== tipoD
+  );
+  classeDivEspacosMeshes.push(instancedMesh);
 
-        instancedMesh.geometry.setAttribute(
-          "color",
-          new THREE.InstancedBufferAttribute(colorArray, 3)
-        );
-        instancedMesh.instanceMatrix.needsUpdate = true;
+  if (!scene.children.includes(corridorGroup)) {
+    scene.add(corridorGroup);
+  }
 
+}
 
-        instancedMesh.userData.espacos = [...corridors];
-        instancedMesh.userData.tipoD = corridors[0]?.Spazio_tipoD;
-
-        corridorGroup.add(instancedMesh);
-        corridorGroup.add(outlineGroup);
-
-        classeDivEspacosMeshes.push(instancedMesh);
-
-        console.log(`Corredores desenhados (instanced): ${count}`);
-      }); 
-    }
- 
       function applyInitialLabelVisibilityFromMenu() {
         document.querySelectorAll(".label-toggle").forEach((checkbox) => {
           const type = checkbox.value;
@@ -3083,7 +3055,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
         );
       }
 
- function toggleHeight2D(tipoD, isChecked, data) {
+function toggleHeight2D(tipoD, isChecked, data) {
   const allGroups = {
     "01": spaceGroup,
     "02": bufferGroup,
@@ -3102,49 +3074,33 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
 
   targetClasses.forEach(targetClass => {
     if (targetClass === "04") {
-      const groups = [rackGroup, corridorGroup];
-
-      const removerTudoDoTipoD = () => {
-        groups.forEach(group => {
-          group.children
-            .filter(child => child.userData?.tipoD === tipoD)
-            .forEach(child => {
-              group.remove(child);
-              child.geometry?.dispose?.();
-              child.material?.dispose?.();
-            });
-        });
-
-        classeDivEspacosMeshes
-          .filter(mesh => mesh.userData?.tipoD === tipoD)
-          .forEach(mesh => {
-            if (mesh.parent) mesh.parent.remove(mesh);
-            mesh.geometry?.dispose?.();
-            mesh.material?.dispose?.();
-          });
-
-        classeDivEspacosMeshes = classeDivEspacosMeshes.filter(
-          mesh => mesh.userData?.tipoD !== tipoD
-        );
-
-        const toRemoveFromScene = [];
-        scene.traverse(obj => {
-          if (obj.isLineSegments && obj.userData?.tipoD === tipoD) {
-            toRemoveFromScene.push(obj);
-          }
-        });
-
-        toRemoveFromScene.forEach(obj => {
-          if (obj.parent) obj.parent.remove(obj);
-          obj.geometry?.dispose?.();
-          obj.material?.dispose?.();
+        
+      // ✅ Remoção de corredores/racks por tipoD sem traverse
+      const clearGroupByTipoD = (group) => {
+        const toRemove = group.children.filter(child => child.userData?.tipoD === tipoD);
+        toRemove.forEach(child => {
+          group.remove(child);
+          child.geometry?.dispose?.();
+          child.material?.dispose?.();
         });
       };
 
-      removerTudoDoTipoD();
+      clearGroupByTipoD(rackGroup);
+      clearGroupByTipoD(corridorGroup);
 
+      // Limpa também array auxiliar sem traverse
+      classeDivEspacosMeshes = classeDivEspacosMeshes.filter(mesh => {
+        if (mesh.userData?.tipoD === tipoD) {
+          mesh.geometry?.dispose?.();
+          mesh.material?.dispose?.();
+          return false;
+        }
+        return true;
+      });
+
+      // ⚡ Só executa criação quando necessário
       if (isChecked) {
-        createCorridorsFromJSON(filteredItems);
+createCorridorsFromJSON(filteredItems);
       } else {
         createRacksFromJSON(filteredItems);
       }
@@ -3152,6 +3108,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
       return;
     }
 
+    // Demais classes (com InstancedMesh)
     const targetGroups = Array.isArray(allGroups[targetClass])
       ? allGroups[targetClass]
       : [allGroups[targetClass]];
@@ -3163,6 +3120,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
         if (!child.isInstancedMesh || !Array.isArray(child.userData?.espacos)) return;
 
         const espacos = child.userData.espacos;
+        let changed = false;
 
         for (let i = 0; i < espacos.length; i++) {
           const item = espacos[i];
@@ -3171,34 +3129,34 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
           child.getMatrixAt(i, dummy.matrix);
           dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
 
-          if (isChecked) {
-            dummy.scale.y = 0.001;
-          } else {
-            const original = originalScalesByClasse[targetClass]?.[i];
-            if (original) dummy.scale.y = original.y;
-          }
+          const original = originalScalesByClasse[targetClass]?.[i];
+          const newY = isChecked ? 0.001 : original?.y ?? dummy.scale.y;
 
-          dummy.updateMatrix();
-          child.setMatrixAt(i, dummy.matrix);
+          if (dummy.scale.y !== newY) {
+            dummy.scale.y = newY;
+            dummy.updateMatrix();
+            child.setMatrixAt(i, dummy.matrix);
+            changed = true;
+          }
         }
 
-        child.instanceMatrix.needsUpdate = true;
+        if (changed) {
+          child.instanceMatrix.needsUpdate = true;
+        }
       });
     });
 
+    // ✅ Toggle outlines sem traverse
     outlinesArray.forEach(({ outline }) => {
       if (outline.userData?.tipoD === tipoD) {
         outline.visible = !isChecked;
         outline.userData.hiddenByHeight2D = isChecked;
       }
     });
-
-    console.log(
-      `✔ Tipo "${tipoD}" (classe ${targetClass}) → ${isChecked ? "achatado" : "altura normal"}`
-    );
   });
 
-createSelectsLevels()
+  createSelectsLevels();
+  console.log(`✔ Atualizado tipoD ${tipoD} para ${isChecked ? "achatado" : "normal"}`);
 }
 
 
