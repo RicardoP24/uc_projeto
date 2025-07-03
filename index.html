@@ -259,6 +259,7 @@
         "01": {},
         "02": {},
         "03": {},
+        "04": {},
         "05": {},
         "06": {},
         "08": {},
@@ -919,6 +920,7 @@ for (let i = 0; i < outlinesArray.length; i++) {
 
         renderer.render(scene, activeCamera);
         labelRenderer.render(scene, activeCamera);
+         
         updateDynamicLabels();
 
         stats.update();
@@ -1001,6 +1003,7 @@ for (let i = 0; i < outlinesArray.length; i++) {
             x: width * shrinkFactor,
             y: height * shrinkFactor,
             z: depth * shrinkFactor,
+            tipo: space.Spazio_tipoD
           };
         });
 
@@ -1023,31 +1026,92 @@ for (let i = 0; i < outlinesArray.length; i++) {
       }
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "02"
-      async function createWarehouseSpacesFromJSON(bufferArray) {
+      async function createWarehouseSpacesFromJSON(newBufferItems, isVisible = true) {
+        if (!Array.isArray(newBufferItems) || newBufferItems.length === 0) return;
+
         const bufferOpacity = 0.9;
         const shrinkFactor = 0.65;
         const defaultColor = new THREE.Color("#d48c8c");
-
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const dummy = new THREE.Object3D();
-        const count = bufferArray.length;
 
         const material = new THREE.MeshBasicMaterial({
-          color: defaultColor, // Aplica a cor padrão no material
+          color: defaultColor,
           transparent: true,
           opacity: bufferOpacity,
           depthWrite: true,
         });
 
-        const instancedMesh = new THREE.InstancedMesh(
-          geometry,
-          material,
-          count
-        );
-        const color = new THREE.Color();
-        const colorArray = new Float32Array(count * 3); // RGB por instância
+        const tipo = newBufferItems[0].Spazio_tipo;
+        const classe = "02";
 
-        bufferArray.forEach((item, i) => {
+        const existingMesh = bufferGroup.children.find(
+          (child) => child.isInstancedMesh && child.userData?.classe === classe
+        );
+
+        // Se já existir o tipo, atualiza escalas apenas
+        if (existingMesh && existingMesh.userData.espacos?.some(e => e.Spazio_tipo === tipo)) {
+          const tempMatrix = new THREE.Matrix4();
+          const espacos = existingMesh.userData.espacos;
+          const scales = originalScalesByClasse[classe] || {};
+
+          espacos.forEach((item, i) => {
+            if (item.Spazio_tipo === tipo) {
+              existingMesh.getMatrixAt(i, tempMatrix);
+              tempMatrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+              const original = scales[i];
+              const targetScale = isVisible
+                ? original || dummy.scale
+                : { x: 0.0001, y: 0.0001, z: 0.0001 };
+
+              dummy.scale.set(targetScale.x, targetScale.y, targetScale.z);
+              dummy.updateMatrix();
+              existingMesh.setMatrixAt(i, dummy.matrix);
+            }
+          });
+
+          existingMesh.instanceMatrix.needsUpdate = true;
+
+          return;
+        }
+
+        // Caso contrário, adicionar os novos itens
+        const existingCount = existingMesh?.count || 0;
+        const newCount = newBufferItems.length;
+        const totalCount = existingCount + newCount;
+
+        const mergedMesh = new THREE.InstancedMesh(geometry, material, totalCount);
+        const color = new THREE.Color();
+        const colorArray = new Float32Array(totalCount * 3);
+        const tempMatrix = new THREE.Matrix4();
+
+        const mergedEspacos = existingMesh?.userData.espacos
+          ? [...existingMesh.userData.espacos]
+          : [];
+
+        // Copia instâncias existentes
+        if (existingMesh) {
+          for (let i = 0; i < existingCount; i++) {
+            existingMesh.getMatrixAt(i, tempMatrix);
+            mergedMesh.setMatrixAt(i, tempMatrix);
+          }
+
+          const oldColors = existingMesh.instanceColor?.array || [];
+          colorArray.set(oldColors);
+
+          bufferGroup.remove(existingMesh);
+          const idx = classeEspArmMeshes.indexOf(existingMesh);
+          if (idx !== -1) classeEspArmMeshes.splice(idx, 1);
+        }
+
+        // Inicializa estrutura de escalas
+        if (!originalScalesByClasse[classe]) originalScalesByClasse[classe] = {};
+
+        // Adiciona os novos
+        newBufferItems.forEach((item, i) => {
+          const index = existingCount + i;
+
           const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
           const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
           const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
@@ -1056,166 +1120,149 @@ for (let i = 0; i < outlinesArray.length; i++) {
           const height = parseFloat(item.Spazio_coord_alto || 180) / 100;
           let depth = parseFloat(item.Spazio_coord_fondo || 120) / 100;
 
-          const orientation = String(item.Spazio_orientamento || "").trim();
-          if (orientation === "1") {
+          if (String(item.Spazio_orientamento || "").trim() === "1") {
             [width, depth] = [depth, width];
           }
 
-          const scaleX = width * shrinkFactor;
-          const scaleY = height * shrinkFactor;
-          const scaleZ = depth * shrinkFactor;
-
-          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          dummy.scale.set(scaleX, scaleY, scaleZ);
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(i, dummy.matrix);
-
-          bufferOriginalScales[i] = { x: scaleX, y: scaleY, z: scaleZ };
-          let colorString = item.ColoreD;
-
-          try {
-            if (colorString && typeof colorString === "string") {
-              colorString = colorString.toLowerCase();
-              color.set(colorString);
-            } else {
-              color.copy(defaultColor);
-              colorString = "default";
-            }
-          } catch (err) {
-            console.warn(`Cor inválida no espaço[${i}]:`, item.ColoreD);
-            color.copy(defaultColor);
-            colorString = "default";
-          }
-
-          color.toArray(colorArray, i * 3);
-
-          //Guardar a escala para a funçao toggleVisibility
-          originalScalesByClasse["02"][i] = {
+          const scale = {
             x: width * shrinkFactor,
             y: height * shrinkFactor,
             z: depth * shrinkFactor,
           };
+
+          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+          dummy.scale.set(scale.x, scale.y, scale.z);
+          dummy.updateMatrix();
+          mergedMesh.setMatrixAt(index, dummy.matrix);
+
+          try {
+            color.set((item.ColoreD || "").toLowerCase());
+          } catch {
+            color.copy(defaultColor);
+          }
+
+          color.toArray(colorArray, index * 3);
+
+          originalScalesByClasse[classe][index] = { ...scale, tipo: item.Spazio_tipoD };
+          mergedEspacos.push(item);
         });
-        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
-          colorArray,
-          3
-        );
 
-        instancedMesh.instanceMatrix.needsUpdate = true;
-        instancedMesh.userData.espacos = [...bufferArray];
-        instancedMesh.userData.tipoD =bufferArray[0]?.Spazio_tipoD ;
-        instancedMesh.userData.tipo =bufferArray[0]?.Spazio_tipo ;
+        mergedMesh.instanceColor = new THREE.InstancedBufferAttribute(colorArray, 3);
+        mergedMesh.instanceMatrix.needsUpdate = true;
+        mergedMesh.userData.espacos = mergedEspacos;
+        mergedMesh.userData.tipo = tipo;
+        mergedMesh.userData.classe = classe;
 
-        bufferGroup.add(instancedMesh);
-        classeEspArmMeshes.push(instancedMesh);
-        
-        console.log(`Espaços Armazenamento desenhados (classe 02): ${count}`);
+        bufferGroup.add(mergedMesh);
+        classeEspArmMeshes.push(mergedMesh);
+
       }
 
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "03" // SEM OPÇAO DE METER ALTURA AINDA
-async function createDockFromJSON(docks) {
-  const shrinkFactor = 1;
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const dummy = new THREE.Object3D();
-  dockGroup.clear();
-  const outlineGroup = new THREE.Group();
-  const defaultColor = new THREE.Color("#0080ff"); // azul suave para docks
+      async function createDockFromJSON(docks) {
+        const shrinkFactor = 1;
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const dummy = new THREE.Object3D();
+        dockGroup.clear();
+        const outlineGroup = new THREE.Group();
+        const defaultColor = new THREE.Color("#0080ff"); // azul suave para docks
 
-  const count = docks.length;
+        const count = docks.length;
 
-  const material = new THREE.MeshBasicMaterial({
-    color: defaultColor,
-    transparent: true,
-    opacity: 0.9,
-    depthWrite: true,
-  });
+        const material = new THREE.MeshBasicMaterial({
+          color: defaultColor,
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: true,
+        });
 
-  const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
-  instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 
-  const outlineGeometry = new THREE.EdgesGeometry(geometry);
-  const outlineMaterial = new THREE.LineBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 1,
-  });
+        const outlineGeometry = new THREE.EdgesGeometry(geometry);
+        const outlineMaterial = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 1,
+        });
 
-  const color = new THREE.Color();
-  const colorArray = new Float32Array(count * 3);
+        const color = new THREE.Color();
+        const colorArray = new Float32Array(count * 3);
 
-  docks.forEach((dock, i) => {
-    // ⬇️ Forçar altura e Spazio_coord_alto para consistência com labels
-    let width = parseFloat(dock.Spazio_coord_largo || 100) / 100;
-    let height = 0.01;
-    let depth = parseFloat(dock.Spazio_coord_fondo || 100) / 100;
+        docks.forEach((dock, i) => {
+          // ⬇️ Forçar altura e Spazio_coord_alto para consistência com labels
+          let width = parseFloat(dock.Spazio_coord_largo || 100) / 100;
+          let height = 0.01;
+          let depth = parseFloat(dock.Spazio_coord_fondo || 100) / 100;
 
-    const x = parseFloat(dock.Spazio_coord_draw_a || 0) / 100;
-    const y = parseFloat(dock.Spazio_coord_draw_b || 0) / 100;
-    const z = parseFloat(dock.Spazio_coord_draw_c || 0) / 100;
+          const x = parseFloat(dock.Spazio_coord_draw_a || 0) / 100;
+          const y = parseFloat(dock.Spazio_coord_draw_b || 0) / 100;
+          const z = parseFloat(dock.Spazio_coord_draw_c || 0) / 100;
 
-    const orientation = String(dock.Spazio_orientamento || "").trim();
-    if (orientation === "1") {
-      [width, depth] = [depth, width];
-    }
+          const orientation = String(dock.Spazio_orientamento || "").trim();
+          if (orientation === "1") {
+            [width, depth] = [depth, width];
+          }
 
-    dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          dummy.scale.set(width * shrinkFactor, 0.05, depth * shrinkFactor); // 0.05 de altura "quase plano"
-    dummy.updateMatrix();
-    instancedMesh.setMatrixAt(i, dummy.matrix);
+          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
+                dummy.scale.set(width * shrinkFactor, 0.05, depth * shrinkFactor); // 0.05 de altura "quase plano"
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(i, dummy.matrix);
 
 
-    // ⬇️ Preserva userData para relacionamento
-    instancedMesh.userData.tipo = dock.Spazio_tipo;
-    instancedMesh.userData.tipoD = dock.Spazio_tipoD;
-    instancedMesh.userData.spazio_disp = dock.Spazio_disponibile;
+          // ⬇️ Preserva userData para relacionamento
+          instancedMesh.userData.tipo = dock.Spazio_tipo;
+          instancedMesh.userData.tipoD = dock.Spazio_tipoD;
+          instancedMesh.userData.spazio_disp = dock.Spazio_disponibile;
 
-    const outline = new THREE.LineSegments(outlineGeometry, outlineMaterial.clone());
-    outline.applyMatrix4(dummy.matrix);
-    outline.visible = false;
-    outline.userData.tipoD = dock.Spazio_tipoD;
-    outlineGroup.add(outline);
+          const outline = new THREE.LineSegments(outlineGeometry, outlineMaterial.clone());
+          outline.applyMatrix4(dummy.matrix);
+          outline.visible = false;
+          outline.userData.tipoD = dock.Spazio_tipoD;
+          outlineGroup.add(outline);
 
-    outlinesArray.push({
-      outline,
-      position: dummy.position.clone(),
-    });
+          outlinesArray.push({
+            outline,
+            position: dummy.position.clone(),
+          });
 
-    let colorString = dock.ColoreD;
-    try {
-      if (colorString && typeof colorString === "string") {
-        color.set(colorString.toLowerCase());
-      } else {
-        color.copy(defaultColor);
+          let colorString = dock.ColoreD;
+          try {
+            if (colorString && typeof colorString === "string") {
+              color.set(colorString.toLowerCase());
+            } else {
+              color.copy(defaultColor);
+            }
+          } catch {
+            color.copy(defaultColor);
+          }
+
+          color.toArray(colorArray, i * 3);
+
+          // Guarda escala original
+          originalScalesByClasse["03"][i] = {
+            x: width * shrinkFactor,
+            y: height,
+            z: depth * shrinkFactor,
+            tipo: dock.Spazio_tipoD
+          };
+        });
+
+        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colorArray, 3);
+        instancedMesh.instanceMatrix.needsUpdate = true;
+
+        // Salva todos os docks no userData
+        instancedMesh.userData.espacos = [...docks];
+        instancedMesh.userData.tipoD = docks[0]?.Spazio_tipoD || "unknown";
+
+        dockGroup.add(instancedMesh);
+        outlineGroup.children.forEach((child) => dockGroup.add(child));
+        classeCaisMeshes.push(instancedMesh);
+        scene.add(dockGroup);
+
+        console.log(`Espaços de cais desenhados (classe 03): ${docks.length}`);
       }
-    } catch {
-      color.copy(defaultColor);
-    }
-
-    color.toArray(colorArray, i * 3);
-
-    // Guarda escala original
-    originalScalesByClasse["03"][i] = {
-      x: width * shrinkFactor,
-      y: height,
-      z: depth * shrinkFactor,
-    };
-  });
-
-  instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colorArray, 3);
-  instancedMesh.instanceMatrix.needsUpdate = true;
-
-  // Salva todos os docks no userData
-  instancedMesh.userData.espacos = [...docks];
-  instancedMesh.userData.tipoD = docks[0]?.Spazio_tipoD || "unknown";
-
-  dockGroup.add(instancedMesh);
-  outlineGroup.children.forEach((child) => dockGroup.add(child));
-  classeCaisMeshes.push(instancedMesh);
-  scene.add(dockGroup);
-
-  console.log(`Espaços de cais desenhados (classe 03): ${docks.length}`);
-}
 
       //-------------------------------------------------------------------------------------------------------------------------------------
       //Spazio_classe === "05" Zonas Anómalas
@@ -1309,6 +1356,7 @@ async function createDockFromJSON(docks) {
             x: width * shrinkFactor,
             y: 0.05,
             z: depth * shrinkFactor,
+            tipo: item.Spazio_tipoD
           };
         });
 
@@ -1334,7 +1382,7 @@ async function createDockFromJSON(docks) {
       //-------------------------------------------------------------------------------------------------------------------------------------
       // Spazio_classe === "06" ZONAS DE DISTRIBUIÇAO
 
-    async function createDistributionFromJSON(distribuicoes) {
+async function createDistributionFromJSON(distribuicoes) {
   const shrinkFactor = 1;
   const geometry = new THREE.BoxGeometry(1, 1, 1);
   distribGroup.clear();
@@ -1423,6 +1471,7 @@ async function createDockFromJSON(docks) {
       x: width * shrinkFactor,
       y: height * shrinkFactor,
       z: depth * shrinkFactor,
+      tipo: item.Spazio_tipoD
     };
   });
 
@@ -1539,6 +1588,7 @@ async function createDockFromJSON(docks) {
             x: width * shrinkFactor,
             y: height * shrinkFactor,
             z: depth * shrinkFactor,
+            tipo: item.Spazio_tipoD
           };
         });
 
@@ -1656,6 +1706,7 @@ async function createDockFromJSON(docks) {
       x: width * shrinkFactor,
       y: height * shrinkFactor,
       z: depth * shrinkFactor,
+      tipo: item.Spazio_tipoD
     };
   });
 
@@ -1764,6 +1815,8 @@ async function createDockFromJSON(docks) {
       x: width * shrinkFactor,
       y: height * shrinkFactor,
       z: depth * shrinkFactor,
+      tipo: item.Spazio_tipoD,
+      
     };
   });
 
@@ -1796,95 +1849,96 @@ async function toggleWarehouse() {
 }
 
       // END NEW DYNAMIC FUNCTIONS TO DRAW SPACES
-      async function createRacksFromJSON(racks) {
-         
-        const shrinkFactor = 0.95;
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const dummy = new THREE.Object3D();
-        const outlineGroup = new THREE.Group();
-        const count = racks.length;
+ async function createRacksFromJSON(racks) {
+  const shrinkFactor = 0.95;
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const dummy = new THREE.Object3D();
+  const count = racks.length;
+  const defaultColor = new THREE.Color(0x000000);
 
-        const material = new THREE.MeshBasicMaterial({
-          color: 0x000000,
-          transparent: true,
-          opacity: 0, // invisível
-          depthWrite: false, // não interfere com depth buffer
-        });
+  const material = new THREE.MeshBasicMaterial({
+    color: defaultColor,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+  });
 
-        const instancedMesh = new THREE.InstancedMesh(
-          geometry,
-          material,
-          count
-        );
-        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+  instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+  const outlineMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+  });
+
+  const colorArray = new Float32Array(count * 3);
+  const outlineGroup = new THREE.Group();
+
+  racks.forEach((rack, i) => {
+    const x = parseFloat(rack.Spazio_coord_draw_a || 0) / 100;
+    const y = parseFloat(rack.Spazio_coord_draw_b || 0) / 100;
+    const z = parseFloat(rack.Spazio_coord_draw_c || 0) / 100;
+
+    let width = parseFloat(rack.Spazio_coord_largo || 120) / 100;
+    let height = parseFloat(rack.Spazio_coord_alto || 925) / 100;
+    let depth = parseFloat(rack.Spazio_coord_fondo || 320) / 100;
+
+    const orientation = String(rack.Spazio_orientamento || "").trim();
+    if (orientation === "2") {
+      [width, depth] = [depth, width];
+    }
+
+    const posX = x + width / 2;
+    const posY = y + height / 2;
+    const posZ = z + depth / 2;
+
+    // Instanced mesh
+    dummy.position.set(posX, posY, posZ);
+    dummy.scale.set(width * shrinkFactor, height * shrinkFactor, depth * shrinkFactor);
+    dummy.updateMatrix();
+    instancedMesh.setMatrixAt(i, dummy.matrix);
+
+    defaultColor.toArray(colorArray, i * 3);
+
+    // Outline individual
+    const boxGeo = new THREE.BoxGeometry(width * shrinkFactor, height * shrinkFactor, depth * shrinkFactor);
+    const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+    const outline = new THREE.LineSegments(edgeGeo, outlineMaterial.clone());
+    outline.position.set(posX, posY, posZ);
+    outline.visible = false;
+    outline.frustumCulled = false;
+    outline.userData.tipo = rack.Spazio_tipo;
+    outline.userData.tipoD = rack.Spazio_tipoD;
+    outline.userData.spazio_disp = rack.Spazio_disponibile;
+
+    outlineGroup.add(outline);
+    outlinesArray.push({
+      outline,
+      position: outline.position.clone(),
+    });
+
  
-        const outlineGeometry = new THREE.EdgesGeometry(geometry);
-        const colorArray = new Float32Array(count * 3);
-        const dummyColor = new THREE.Color(0x000000); // desnecessário, mas mantido para consistência
+  });
 
-        racks.forEach((rack, i) => {
-          const x = parseFloat(rack.Spazio_coord_draw_a || 0) / 100;
-          const y = 0;
-          const z = parseFloat(rack.Spazio_coord_draw_c || 0) / 100;
+  instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colorArray, 3);
+  instancedMesh.instanceMatrix.needsUpdate = true;
 
-          let width = parseFloat(rack.Spazio_coord_largo || 120) / 100;
-          const height = parseFloat(rack.Spazio_coord_alto || 925) / 100;
-          let depth = parseFloat(rack.Spazio_coord_fondo || 320) / 100;
+  instancedMesh.userData.espacos = [...racks];
+  instancedMesh.userData.tipoD = racks[0]?.Spazio_tipoD;
+  instancedMesh.userData.tipo = racks[0]?.Spazio_tipo;
 
-          const orientation = String(rack.Spazio_orientamento || "").trim();
-          if (orientation === "1") [width, depth] = [depth, width];
+  outlineGroup.userData.tipo = racks[0].Spazio_tipo;
+  outlineGroup.userData.tipoD = racks[0].Spazio_tipoD;
+  outlineGroup.userData.spazio_disp = racks[0].Spazio_disponibile;
 
-          dummy.position.set(x + width / 2, y + height / 2, z + depth / 2);
-          dummy.scale.set(
-            width * shrinkFactor,
-            height * shrinkFactor,
-            depth * shrinkFactor
-          );
-          dummy.updateMatrix();
-          instancedMesh.setMatrixAt(i, dummy.matrix);
+  rackGroup.add(instancedMesh);
+  rackGroup.add(outlineGroup);
+  // outlineGroup.children.forEach((child) => rackGroup.add(child));
+  classeDivEspacosMeshes.push(instancedMesh);
 
-          dummyColor.toArray(colorArray, i * 3); // não será usado visualmente
-
-          const outlineMaterial = new THREE.LineBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 1,
-          });
-
-          const outline = new THREE.LineSegments(
-            outlineGeometry,
-            outlineMaterial
-          );
-          outline.applyMatrix4(dummy.matrix);
-          outline.visible = false;
-
-          outline.userData.tipo = rack.Spazio_tipo;
-          outline.userData.tipoD = rack.Spazio_tipoD;
-          outline.userData.spazio_disp = rack.Spazio_disponibile;
-
-          outlineGroup.add(outline);
-          outlinesArray.push({
-            outline,
-            position: dummy.position.clone(),
-          });
-        });
-
-        instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
-          colorArray,
-          3
-        );
-        instancedMesh.instanceMatrix.needsUpdate = true;
-
-        instancedMesh.userData.espacos = [...racks];
-        instancedMesh.userData.tipoD = racks[0]?.Spazio_tipoD;
-        instancedMesh.userData.tipo = racks[0]?.Spazio_tipo;
-
-        rackGroup.add(instancedMesh);
-        outlineGroup.children.forEach((child) => rackGroup.add(child));
-        classeDivEspacosMeshes.push(instancedMesh);
-
-        console.log(`Racks desenhados: ${count}`);
-      }
+  console.log(`Racks desenhados (classe 01): ${count}`);
+}
 
       const raycaster = new THREE.Raycaster();
       const mouse = new THREE.Vector2();
@@ -2017,7 +2071,7 @@ const labelsAtivas = new Map(); // key: Spazio, value: { labelObj, tipo }
  function addLabelForSingleComponent(component, type = "") {
   if (!component || !component.Spazio) return null;
 
-  const label = formatSpazioLabel(component.Spazio);
+  const label = component.Spazio;
 
   const x = parseFloat(component.Spazio_coord_draw_a || 0) / 100;
   const y = parseFloat(component.Spazio_coord_draw_b || 0) / 100;
@@ -2059,87 +2113,98 @@ const labelsAtivas = new Map(); // key: Spazio, value: { labelObj, tipo }
   return labelObj;
 }
 
- function updateDynamicLabels() { 
+ const _vector = new THREE.Vector3();
+const _cameraMatrixInverse = new THREE.Matrix4();
+const _cameraVPMatrix = new THREE.Matrix4();
+const _frustum = new THREE.Frustum();
+
+let racksSet = new Set();
+let corridorSet = new Set();
+
+function cacheSpazioSets() {
+  racksSet.clear();
+  corridorSet.clear();
+
+  rackGroup.children.forEach(child => {
+    child.userData?.espacos?.forEach(e => racksSet.add(e.Spazio));
+  });
+
+  corridorGroup.children.forEach(child => {
+    child.userData?.espacos?.forEach(e => corridorSet.add(e.Spazio));
+  });
+}
+
+function updateDynamicLabels() {
   topCamera.updateMatrixWorld();
+  _cameraMatrixInverse.copy(topCamera.matrixWorld).invert();
+  _cameraVPMatrix.multiplyMatrices(topCamera.projectionMatrix, _cameraMatrixInverse);
+  _frustum.setFromProjectionMatrix(_cameraVPMatrix);
 
-  const cameraMatrixWorldInverse = new THREE.Matrix4()
-    .copy(topCamera.matrixWorld)
-    .invert();
+  const tipoValorMap = new Map();
+  tiposValores.forEach(({ tipo, valor }) => {
+    tipoValorMap.set(tipo, parseInt(valor) || 0);
+  });
 
-  const cameraViewProjectionMatrix = new THREE.Matrix4()
-    .multiplyMatrices(topCamera.projectionMatrix, cameraMatrixWorldInverse);
-
-  const frustum = new THREE.Frustum().setFromProjectionMatrix(cameraViewProjectionMatrix);
-
-  EspacosAll.forEach((item) => {
+  for (const item of EspacosAll) {
     const spazioId = item.Spazio;
-    const type = (item.Spazio_tipo || "").trim();
-    const isActive = tiposAtivos.has(type);
+    const type = item.Spazio_tipo?.trim();
+    if (!tiposAtivos.has(type)) continue;
+
     const labelExists = labelsAtivas.has(spazioId);
 
-    const x = parseFloat(item.Spazio_coord_draw_a || 0) / 100;
-    const y = parseFloat(item.Spazio_coord_draw_b || 0) / 100;
-    const z = parseFloat(item.Spazio_coord_draw_c || 0) / 100;
-
-    const width = parseFloat(item.Spazio_coord_largo || 0) / 100;
-    const height = parseFloat(item.Spazio_coord_alto || 0) / 100;
-    const depth = parseFloat(item.Spazio_coord_fondo || 0) / 100;
+    const x = +item.Spazio_coord_draw_a / 100;
+    const y = +item.Spazio_coord_draw_b / 100;
+    const z = +item.Spazio_coord_draw_c / 100;
+    const width = +item.Spazio_coord_largo / 100;
+    const height = +item.Spazio_coord_alto / 100;
+    const depth = +item.Spazio_coord_fondo / 100;
 
     const posY = item.Spazio_coord_alto === "0.001" ? 0 : y + height;
-    const position = new THREE.Vector3(x + width / 2, posY, z + depth / 2);
+    _vector.set(x + width / 2, posY, z + depth / 2);
 
-    const distance = topCamera.position.distanceTo(position);
-    const inView = frustum.containsPoint(position);
+    const inView = _frustum.containsPoint(_vector);
+    const distance = topCamera.position.distanceTo(_vector);
 
-    // 🧠 Regras de distância
-    let maxDistance = 50;
+    let maxDistance = corridorSet.has(spazioId) ? 550 : 50;
 
-    // 1️⃣ Prioridade: corredor
-    const pertenceAoCorredor = corridorGroup.children.some((child) =>
-      Array.isArray(child.userData?.espacos) &&
-      child.userData.espacos.some((e) => e.Spazio === item.Spazio)
-    );
-    if (pertenceAoCorredor) {
-      maxDistance = 550;
-    }  
-
-    const permitirRender = isActive && inView && distance < maxDistance;
-
-    if (permitirRender) {
-      if (!labelExists) {
-        let alvo = item;
-
-        if (item.Spazio_classe === "04") {
-          const pertenceAoRack = rackGroup.children.some((child) =>
-            Array.isArray(child.userData?.espacos) &&
-            child.userData.espacos.some((e) => e.Spazio === item.Spazio)
-          );
-          if (!pertenceAoRack) {
-            alvo = { ...item, Spazio_coord_alto: "0.001" };
-          }
-        }
-
-         if (item.Spazio_classe === "03" || item.Spazio_classe === "10") {
-            alvo = { ...item, Spazio_coord_alto: "0.001" };
-          }
-
-        const labelObj = addLabelForSingleComponent(alvo, type);
-        if (labelObj) {
-          labelsAtivas.set(spazioId, { labelObj, tipo: type });
-        }
-      }
-    } else {
+    if (!inView || distance >= maxDistance) {
       if (labelExists) {
         const obj = labelsAtivas.get(spazioId);
         scene.remove(obj.labelObj.parent);
         obj.labelObj.element.remove();
         labelsAtivas.delete(spazioId);
       }
+      continue;
     }
-  });
+
+    const limite = tipoValorMap.get(type) || 0;
+    const nomeLimitado = limite > 0 ? item.Spazio.slice(0, limite) : item.Spazio;
+
+    let coordAlto = item.Spazio_coord_alto;
+    if (
+      (item.Spazio_classe === "04" && !racksSet.has(spazioId)) ||
+      item.Spazio_classe === "03" ||
+      item.Spazio_classe === "10"
+    ) {
+      coordAlto = "0.001";
+    }
+
+    const alvo = {
+      ...item,
+      Spazio: nomeLimitado,
+      Spazio_coord_alto: coordAlto
+    };
+
+    if (!labelExists) {
+      const labelObj = addLabelForSingleComponent(alvo, type);
+      if (labelObj) {
+        labelsAtivas.set(spazioId, { labelObj, tipo: type });
+      }
+    }
+  }
 }
 
-
+ 
 function mirrorDataXCoordinates(data) {
         const centerX = getLayoutCenterX(data);
 
@@ -2163,25 +2228,12 @@ function mirrorDataXCoordinates(data) {
           });
         };
 
-        mirrorArray(data.Racks);
-        mirrorArray(data.Spaces);
-        mirrorArray(data.Buffer);
-        mirrorArray(data.Cais);
-        mirrorArray(data.Pilhas);
-        mirrorArray(data.DriveIn);
-        mirrorArray(data.Corridor);
+        mirrorArray(data);
       }
 
       function getLayoutCenterX(data) {
         const allX = [
-          ...data.classeDivEspacos,
-          ...data.classeExec,
-          ...data.classeDocks,
-          ...data.classeStacks,
-          ...data.classeTransporte,
-          ...data.classeArmaz,
-          ...data.classeDist,
-          ...data.classeTransicao,
+          ...data
         ]
 
           .map((item) => parseFloat(item.Spazio_coord_draw_a))
@@ -2192,24 +2244,7 @@ function mirrorDataXCoordinates(data) {
         return (minX + maxX) / 2;
       }
 
-      function addFlatLabelToObject(object, text, type = "") {
-        const labelDiv = document.createElement("div");
-        labelDiv.className = `label toggle-label toggle-label-${type}`;
-        labelDiv.textContent = text;
-        labelDiv.style.color = "white";
-        labelDiv.style.fontSize = "12px";
-        labelDiv.style.fontWeight = "bold";
-        labelDiv.style.pointerEvents = "none";
-        labelDiv.style.backgroundColor = "transparent";
-        labelDiv.style.padding = "2px 4px";
-        labelDiv.style.borderRadius = "4px";
-
-        const label = new CSS2DObject(labelDiv);
-        label.position.set(0, 0.05, 0);
-        label.rotation.x = -Math.PI / 2;
-
-        object.add(label);
-      }
+ 
 
  
       function addGridWithFloorBounds(adjustedMin, adjustedMax) {
@@ -2456,6 +2491,84 @@ document.querySelectorAll(".label-toggle").forEach((checkbox) => {
   return { listas };
 }
 
+
+const tiposValores = [];
+
+function gerarMenuSizeSpazioId(...listas) {
+  const tiposMap = new Map(); 
+
+  listas.flat().forEach((item) => {
+    const tipo = item.Spazio_tipo?.trim() || "Desconhecido";
+    const label = item.Spazio_tipoD?.trim() || tipo;
+    if (!tiposMap.has(tipo)) {
+      tiposMap.set(tipo, label);
+    }
+  });
+
+  tiposMap.forEach((label, tipo) => {
+    const allSections = document.querySelectorAll("#espacos-content > details");
+    const section = [...allSections].find(
+      (s) => s.querySelector("summary span span")?.textContent === label
+    );
+
+    if (!section) return;
+
+    let ul = section.querySelector("ul");
+    if (!ul) {
+      ul = document.createElement("ul");
+      section.appendChild(ul);
+    }
+
+    const li = document.createElement("li");
+
+    const labelElement = document.createElement("label");
+    labelElement.style.display = "flex";
+    labelElement.style.alignItems = "center";
+    labelElement.style.gap = "10px";
+
+
+    const inputNumber = document.createElement("input");
+    inputNumber.type = "number";
+    inputNumber.min = "0";
+    inputNumber.step = "1";
+    inputNumber.value = "";
+    inputNumber.className = "buffer-select spazioid"; // aplica estilo coerente
+    inputNumber.setAttribute("data-tipo", tipo); 
+    labelElement.append(`Id`);
+    labelElement.appendChild(inputNumber);
+
+    li.appendChild(labelElement);
+    ul.appendChild(li);
+  });
+
+  document.querySelectorAll("input.buffer-select.spazioid").forEach((input) => {
+  const tipo = input.dataset.tipo;
+  const valor = input.value;
+   tiposValores.push({ tipo, valor });
+  
+  });
+
+  document.querySelectorAll("input.buffer-select.spazioid").forEach((input) => {
+    input.addEventListener("input", () => {
+      const tipo = input.dataset.tipo;
+      const valor = input.value;
+
+      // Verifica se tipo já está no array
+      const existente = tiposValores.find(obj => obj.tipo === tipo);
+
+      if (existente) {
+        existente.valor = valor; // atualiza valor existente
+      } else {
+        tiposValores.push({ tipo, valor }); // adiciona novo
+      }
+
+
+    });
+  });
+  const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
+  return { listas };
+}
+
  
 const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
 
@@ -2576,96 +2689,80 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
         });
       }
 
-      function gerarSelectsBufferPorTipo(...listas) {
-        const tiposMap = new Map(); // tipo => { label, espacos }
+   function gerarSelectsBufferPorTipo(...listas) {
+  const tiposMap = new Map();
 
-        // Agrupar tipos com rótulo e objetos
-        listas.flat().forEach((item) => {
-          const tipo = (item.Spazio_tipo || "Desconhecido").trim();
-          const nome = (item.Spazio_tipoD || tipo).trim();
-          if (!tiposMap.has(tipo)) {
-            tiposMap.set(tipo, { nome, objetos: [] });
-          }
-          tiposMap.get(tipo).objetos.push(item);
-        });
+  listas.flat().forEach((item) => {
+    const tipo = (item.Spazio_tipo || "Desconhecido").trim();
+    const nome = (item.Spazio_tipoD || tipo).trim();
+    if (!tiposMap.has(tipo)) {
+      tiposMap.set(tipo, { nome, objetos: [] });
+    }
+    tiposMap.get(tipo).objetos.push(item);
+  });
 
-        const grupos = [
-          rackGroup,
-          corridorGroup,
-          bufferGroup,
-          spaceGroup,
-          dockGroup,
-          stackGroup,
-          driveInGroup,
-          anomalousGroup,
-          distribGroup,
-          transitionGroup,
-          tempDockGroup,
-        ];
+  const allSections = document.querySelectorAll("#espacos-content > details");
 
-        tiposMap.forEach(({ nome, objetos }, tipo) => {
-          const espacosData = objetos.map((obj) => {
-            const base = parseFloat(obj.Spazio_coord_draw_b || 0);
-            const altura = parseFloat(obj.Spazio_coord_alto || 0);
-            const topo = base + altura;
-            return { base, topo, altura, tipo: obj.Spazio_tipo };
-          });
-          
-          const niveis = agruparEspacosEmNiveis(espacosData);
+  tiposMap.forEach(({ nome, objetos }, tipo) => {
+    const espacosData = objetos.map((obj) => {
+      const base = parseFloat(obj.Spazio_coord_draw_b || 0);
+      const altura = parseFloat(obj.Spazio_coord_alto || 0);
+      const topo = base + altura;
+      return { base, topo, altura, tipo: obj.Spazio_tipo };
+    });
 
-          // Procurar <details> correspondente no DOM
-          const allSections = document.querySelectorAll(
-            "#espacos-content > details"
-          );
-          const section = [...allSections].find(
-            (s) => s.querySelector("summary span span")?.textContent === nome
-          );
-          if (!section) return;
+    const niveis = agruparEspacosEmNiveis(espacosData);
+    const section = [...allSections].find(
+      (s) => s.querySelector("summary span span")?.textContent === nome
+    );
+    if (!section) return;
 
-          // Criar <div> para os controles
-          const container = document.createElement("div");
-          container.style.display = "flex";
-          container.style.alignItems = "center";
-          container.style.gap = "6px";
-          container.style.margin = "4px 0";
+    const wrapper = document.createElement("div");
+    wrapper.className = "dropdown-group";
 
-          // <label>
-          const label = document.createElement("label");
-          label.textContent = "Níveis"; // Tradução
-          label.style.minWidth = "60px";
+    const details = document.createElement("details");
+    details.className = "dropdown-group";
 
-          // <select>
-          const select = document.createElement("select");
-          select.className = "buffer-select";
-          select.dataset.tipo = tipo;
+    const summary = document.createElement("summary");
+    summary.textContent = `Níveis (${niveis.length})`;
+    details.appendChild(summary);
 
-          const maxNivel = niveis.length;
-          for (let i = 1; i <= maxNivel; i++) {
-            const option = document.createElement("option");
-            option.value = i;
-            option.textContent = i;
-            if (i === maxNivel) option.selected = true;
-            select.appendChild(option);
-          }
+    const ul = document.createElement("ul");
 
-          select.addEventListener("change", (e) => {
-            const tipoSelecionado = e.target.dataset.tipo;
-            const nivel = parseInt(e.target.value);
-            updateBufferLevelsPorTipo(tipoSelecionado, nivel);
-          });
+    const selectedLevels = new Set(niveis.map((_, i) => i));
 
-          container.appendChild(label);
-          container.appendChild(select);
+    niveis.forEach((_, nivelIndex) => {
+      const li = document.createElement("li");
+      const label = document.createElement("label");
 
-          // Adicionar dentro da <section>
-          section.appendChild(container);
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = true;
+      checkbox.dataset.tipo = tipo;
+      checkbox.dataset.nivel = nivelIndex;
 
-          
-        });
-      
-      }
+      checkbox.addEventListener("change", () => {
+        const nivel = parseInt(checkbox.dataset.nivel);
+        checkbox.checked
+          ? selectedLevels.add(nivel)
+          : selectedLevels.delete(nivel);
 
-      function corrigirNiveisEspacos(niveis) {
+        updateBufferLevelsPorTipoCheckbox(tipo, selectedLevels);
+      });
+
+      label.appendChild(checkbox);
+      label.append(` Nível ${nivelIndex + 1}`);
+      li.appendChild(label);
+      ul.appendChild(li);
+    });
+
+    details.appendChild(ul);
+    wrapper.appendChild(details);
+    section.appendChild(wrapper);
+  });
+}
+
+  function corrigirNiveisEspacos(niveis) {
         let mudou;
 
         do {
@@ -2693,19 +2790,17 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
         return niveis;
       }
 
- function updateBufferLevelsPorTipo(tipo, nivelMax) {
-    
-   
+function updateBufferLevelsPorTipoCheckbox(tipo, niveisSelecionados) {
   const niveis = bufferLevelsByTipo.get(tipo);
-
   if (!niveis || !niveis.meshPai) return;
 
   const mesh = niveis.meshPai;
   const dummy = new THREE.Object3D();
 
   for (let i = 0; i < niveis.length; i++) {
-    const nivel = niveis[i];
+    const isVisible = niveisSelecionados.has(i);
 
+    const nivel = niveis[i];
     nivel.forEach((espaco) => {
       const index = espaco.index;
       const classe = espaco.classe;
@@ -2714,25 +2809,22 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
       mesh.getMatrixAt(index, dummy.matrix);
       dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
 
-      if (i >= nivelMax) {
-        // Oculta instância acima do nível permitido
-        dummy.scale.set(0.0001, 0.0001, 0.0001);
+      if (!isVisible) {
+        dummy.scale.set(0.0001, 0.0001, 0.0001); // hide
       } else {
-        // Restaura escala original
         const original = originalScalesByClasse[classe]?.[index];
         if (original) {
-          dummy.scale.set(original.x, original.y, original.z);
+          dummy.scale.set(original.x, original.y, original.z); // restore
         }
       }
 
       dummy.updateMatrix();
       mesh.setMatrixAt(index, dummy.matrix);
-     });
+    });
   }
 
   mesh.instanceMatrix.needsUpdate = true;
 }
-
 
       function processDivSpacesClass(componentes) {
         const tiposMap = {};
@@ -2750,7 +2842,6 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
 
         for (const tipo in tiposMap) {
           const grupo = tiposMap[tipo];
-          const varName = `tipo${tipo}Meshes`;
 
           // Criar visual inicial baseado na altura do 1º item
           const temAltura = grupo.some((item) => {
@@ -2769,92 +2860,121 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
       }
 
       //Nova função realizada por GM para representar os espaços
- async function createCorridorsFromJSON(corridors) {
+async function createCorridorsFromJSON(corridors) {
   const shrinkFactor = 1;
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
   const dummy = new THREE.Object3D();
+  const count = corridors.length;
   const defaultColor = new THREE.Color("#3399ff");
-  const baseGeometry = new THREE.PlaneGeometry(1, 1);
+
   const tipoD = corridors[0]?.Spazio_tipoD || "unknown";
-  const MAX_TO_RENDER = 200; // limit for visible corridors
 
-  // Get current camera position
-  const camPos = new THREE.Vector3();
-  camera.getWorldPosition(camPos);
-
-  // Remove previous meshes of the same tipoD from the scene
+  // Limpa anteriores
   corridorGroup.children
     .filter(child => child.userData?.tipoD === tipoD)
     .forEach(child => {
       corridorGroup.remove(child);
       child.geometry?.dispose?.();
-      child.material?.dispose?.();
+      if (Array.isArray(child.material)) {
+        child.material.forEach(m => m.dispose?.());
+      } else {
+        child.material?.dispose?.();
+      }
     });
 
-  // Sort corridors by distance to the camera and keep only the closest ones
-  const sorted = corridors
-    .map(c => {
-      const x = parseFloat(c.Spazio_coord_draw_a || 0) / 100;
-      const z = parseFloat(c.Spazio_coord_draw_c || 0) / 100;
-      const pos = new THREE.Vector3(x, 0, z);
-      const distance = pos.distanceTo(camPos);
-      return { ...c, __dist: distance };
-    })
-    .sort((a, b) => a.__dist - b.__dist)
-    .slice(0, MAX_TO_RENDER); // Only keep nearest N
+  // Outline group
+  const outlineGroup = new THREE.Group();
 
-  // Lightweight material for performance
+  // Material instanciado invisível (pode ser ajustado)
   const material = new THREE.MeshBasicMaterial({
     color: defaultColor,
-    side: THREE.DoubleSide,
-    transparent: true,
-    opacity: 0.6,
-    depthWrite: false,
+    transparent: false,
+    opacity: 1,
   });
 
-  const instancedMesh = new THREE.InstancedMesh(baseGeometry, material, sorted.length);
-  instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  instancedMesh.frustumCulled = true;
+  const outlineMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+  });
 
-  for (let i = 0; i < sorted.length; i++) {
-    const c = sorted[i];
+  const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+  instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  instancedMesh.frustumCulled = false;
+
+  const color = new THREE.Color();
+  const colorArray = new Float32Array(count * 3);
+
+  for (let i = 0; i < corridors.length; i++) {
+    const c = corridors[i];
+
     let width = parseFloat(c.Spazio_coord_largo || 100) / 100;
     let depth = parseFloat(c.Spazio_coord_fondo || 100) / 100;
-
     const x = parseFloat(c.Spazio_coord_draw_a || 0) / 100;
     const z = parseFloat(c.Spazio_coord_draw_c || 0) / 100;
     const orientation = String(c.Spazio_orientamento || "").trim();
-
     if (orientation === "1") [width, depth] = [depth, width];
 
-    const scaleX = width * shrinkFactor;
-    const scaleZ = depth * shrinkFactor;
-    const y = 0.01;
+    const posX = x + width / 2;
+    const posY = 0;
+    const posZ = z + depth / 2;
 
-    dummy.position.set(x + width / 2, y, z + depth / 2);
-    dummy.rotation.x = -Math.PI / 2;
-    dummy.scale.set(scaleX, scaleZ, 1);
+    // Instanced mesh
+    dummy.position.set(posX, posY, posZ);
+    dummy.scale.set(width * shrinkFactor, 0.01 * shrinkFactor, depth * shrinkFactor);
     dummy.updateMatrix();
-
     instancedMesh.setMatrixAt(i, dummy.matrix);
+
+    // Cor
+    try {
+      color.set("#" + c.Colore_Html || "#3399ff");
+    } catch {
+      color.copy(defaultColor);
+    }
+    color.toArray(colorArray, i * 3);
+
+    // Outline individual
+    const boxGeo = new THREE.BoxGeometry(width * shrinkFactor, 0.01 * shrinkFactor, depth * shrinkFactor);
+    const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+    const outline = new THREE.LineSegments(edgeGeo, outlineMaterial.clone());
+    outline.position.set(posX, posY, posZ);
+    outline.visible = false;
+    outline.frustumCulled = false;
+
+    outline.userData.tipo = c.Spazio_tipo;
+    outline.userData.tipoD = c.Spazio_tipoD;
+    outline.userData.spazio_disp = c.Spazio_disponibile;
+
+    outlineGroup.add(outline);
+    outlinesArray.push({
+      outline,
+      position: outline.position.clone(),
+    });
+
+ 
   }
 
+  instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colorArray, 3);
   instancedMesh.instanceMatrix.needsUpdate = true;
-  instancedMesh.userData.espacos = [...sorted];
+
+  instancedMesh.userData.espacos = [...corridors];
   instancedMesh.userData.tipoD = tipoD;
+  instancedMesh.userData.tipo = corridors[0]?.Spazio_tipo;
+
+  outlineGroup.userData.tipo = corridors[0]?.Spazio_tipo;
+  outlineGroup.userData.tipoD = tipoD;
+  outlineGroup.userData.spazio_disp = corridors[0]?.Spazio_disponibile;
 
   corridorGroup.add(instancedMesh);
-  classeDivEspacosMeshes = classeDivEspacosMeshes.filter(
-    mesh => mesh.userData?.tipoD !== tipoD
-  );
+  corridorGroup.add(outlineGroup);
+
+  classeDivEspacosMeshes = classeDivEspacosMeshes.filter(m => m.userData?.tipoD !== tipoD);
   classeDivEspacosMeshes.push(instancedMesh);
 
-  if (!scene.children.includes(corridorGroup)) {
-    scene.add(corridorGroup);
-  }
-
+  console.log(`Corredores desenhados (classe 05): ${count}`);
 }
 
-      function applyInitialLabelVisibilityFromMenu() {
+ function applyInitialLabelVisibilityFromMenu() {
         document.querySelectorAll(".label-toggle").forEach((checkbox) => {
           const type = checkbox.value;
           const visible = checkbox.checked;
@@ -2880,7 +3000,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
           "09": stackGroup,
           "10": tempDockGroup,
         };
-
+          
         const filteredItems = EspacosPorTipoD[spazioTipoDLabel];
         if (!filteredItems || filteredItems.length === 0) {
           console.warn("Nenhum item com Spazio_tipoD =", spazioTipoDLabel);
@@ -2906,6 +3026,8 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
           );
 
           if (isVisible && !alreadyDrawn) {
+             
+
             switch (targetClass) {
               case "01":
                 await createSpacesFromJSON(itemsDaClasse);
@@ -2938,9 +3060,10 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
             createSelectsLevels();
           }
 
+            
+
           // Atualiza visibilidade (escala) das instâncias desenhadas
           const dummy = new THREE.Object3D();
-
           targetGroups.forEach((group) => {
             if (!group) return;
 
@@ -2963,7 +3086,8 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
                       dummy.quaternion,
                       dummy.scale
                     );
-
+                    
+                     
                     const original = originalScalesByClasse[targetClass]?.[i];
                     const scale = isVisible
                       ? original || dummy.scale
@@ -2974,6 +3098,8 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
                     child.setMatrixAt(i, dummy.matrix);
                   }
                 }
+
+
 
                 child.instanceMatrix.needsUpdate = true;
               } else if (
@@ -2992,12 +3118,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
               outline.userData.hiddenByLayout = !isVisible;
             }
           });
-
-          console.log(
-            `✔ Layout "${spazioTipoDLabel}" (classe ${targetClass}) → ${
-              isVisible ? "ON" : "OFF"
-            }`
-          );
+ 
         }
       }
 
@@ -3049,10 +3170,7 @@ const bufferLevelsByTipo = new Map(); // Global — guarda níveis por tipo
         });
 
         instancedMesh.instanceColor.needsUpdate = true;
-
-        console.log(
-          `Espaços do tipo ${tipoD} atualizados com Check Active → ${isChecked}`
-        );
+ 
       }
 
 function toggleHeight2D(tipoD, isChecked, data) {
@@ -3076,18 +3194,39 @@ function toggleHeight2D(tipoD, isChecked, data) {
     if (targetClass === "04") {
         
       // ✅ Remoção de corredores/racks por tipoD sem traverse
+
       const clearGroupByTipoD = (group) => {
+        // 1. Remover objetos com tipoD do grupo
         const toRemove = group.children.filter(child => child.userData?.tipoD === tipoD);
         toRemove.forEach(child => {
           group.remove(child);
           child.geometry?.dispose?.();
-          child.material?.dispose?.();
+          if (Array.isArray(child.material)) {
+            child.material.forEach(mat => mat.dispose?.());
+          } else {
+            child.material?.dispose?.();
+          }
         });
+
+        // 2. Remover outlines com tipoD do grupo e do array
+        for (let i = outlinesArray.length - 1; i >= 0; i--) {
+          const obj = outlinesArray[i];
+          if (obj.outline?.userData?.tipoD === tipoD) {
+            if (group.children.includes(obj.outline)) {
+              group.remove(obj.outline);
+            }
+            obj.outline.geometry?.dispose?.();
+            obj.outline.material?.dispose?.();
+            outlinesArray.splice(i, 1);
+          }
+        }
       };
 
-      clearGroupByTipoD(rackGroup);
-      clearGroupByTipoD(corridorGroup);
+ 
 
+     
+    clearGroupByTipoD(rackGroup);
+    clearGroupByTipoD(corridorGroup);
       // Limpa também array auxiliar sem traverse
       classeDivEspacosMeshes = classeDivEspacosMeshes.filter(mesh => {
         if (mesh.userData?.tipoD === tipoD) {
@@ -3100,10 +3239,11 @@ function toggleHeight2D(tipoD, isChecked, data) {
 
       // ⚡ Só executa criação quando necessário
       if (isChecked) {
-createCorridorsFromJSON(filteredItems);
+      createCorridorsFromJSON(filteredItems);
       } else {
         createRacksFromJSON(filteredItems);
       }
+      
 
       return;
     }
@@ -3160,7 +3300,7 @@ createCorridorsFromJSON(filteredItems);
 }
 
 
-
+ 
       function showLevels(tipo) {
         console.log("Show levels:", tipo);
       }
@@ -3201,6 +3341,7 @@ createCorridorsFromJSON(filteredItems);
     const data = await response.json();
 
     trocarCoordenadasBC(data);
+    mirrorDataXCoordinates(data)
     const val = await extractDataFromJSON(data);
 
     labelRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -3270,6 +3411,7 @@ createCorridorsFromJSON(filteredItems);
     createSelectsLevels();
     gerarMenuToggleLabels(...EspacosAll);
     gerarSelectsBufferPorTipo(...EspacosAll);
+    gerarMenuSizeSpazioId(...EspacosAll)
 
     document.addEventListener("change", (e) => {
       const tipo = e.target.dataset.tipo;
